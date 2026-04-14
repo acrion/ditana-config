@@ -52,7 +52,9 @@
           "/usr/share/ditana/create-debug-user.sh" \
           "/etc/skel/.bashrc_ditana" \
           "/etc/skel/.shellrc" \
-          "/etc/skel/.shell.d/readme.md"
+          "/etc/skel/.shell.d/readme.md" \
+          "/usr/share/pixmaps/ditana-logo.png" \
+          "/usr/share/pixmaps/ditana-logo.svg"
     chroot-script "echo COLORTERM=truecolor >>/etc/environment"
   }
 - name="ditana-mirrorlist" default-value="`release-version`" {

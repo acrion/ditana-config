@@ -119,6 +119,9 @@
                   #"    sed -i 's/"Default": *"[^"]*"/"Default": "StartPage"/g' /usr/lib/librewolf/distribution/policies.json"# \
                   #"    sed -i '/"Remove": \[/,/\]/{ /"Google",/d }' /usr/lib/librewolf/distribution/policies.json"# \
                   "fi"
+    autostart {
+        - "" "/usr/share/ditana/first-login.sh"
+    }
   }
 - name="install-xfce" \
   dialog-name="Desktop Environment" \
@@ -213,6 +216,8 @@
     }
     autostart {
         - "XFCE;" "/usr/share/ditana/xfce-first-login.sh"
+        - "XFCE;" "/usr/bin/kalu"
+        - "XFCE;" "/usr/bin/variety"
     }
   }
 - name="install-wayfire" \
@@ -229,7 +234,6 @@
                   "wdisplays-persistent" \
                   "wcm" \
                   "wf-config" \
-                  "xapp" \
                   "xdg-desktop-portal-wlr" \
                   "xorg-xwayland" \
                   "grim"
