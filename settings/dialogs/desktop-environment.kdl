@@ -240,7 +240,7 @@
   long-description="Niri: A scrollable-tiling Wayland compositor. Instead of arranging windows in a fixed grid, Niri places them in an infinite horizontal strip that you scroll through, similar to a panoramic workspace. It is well-suited for keyboard-driven workflows and users who prefer automatic window tiling without manual layout management." \
   spdx-identifiers="GPL-3.0-or-later" \
   default-value=#false {
-    arch-packages "xwayland-satellite" "swaybg"
+    arch-packages "niri-git xwayland-satellite" "swaybg"
   }
 - name="install-wayland" \
   default-value="`install-niri OR install-wayfire`" {

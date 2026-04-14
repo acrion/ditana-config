@@ -249,6 +249,7 @@ Note: Enter the DPI value of your host display, not the virtual
 
   - name="apply-locale" type="procedure" available="`real-install`"
   - name="copy-xorg-keyboard-configuration" type="procedure" available="`real-install AND install-desktop-environment`"
+  - name="write-xkb-environment-config" type="procedure" available="`real-install AND install-desktop-environment`"
   - name="create-xfce-keyboard-xml" type="procedure" available="`real-install AND install-desktop-environment`"
   - name="modify-niri-config" type="procedure" available="`real-install AND install-desktop-environment`"
   - name="create-keyboard-service" type="procedure" available="`real-install AND NOT virtual-environment`"

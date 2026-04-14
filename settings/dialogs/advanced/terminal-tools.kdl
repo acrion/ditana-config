@@ -42,10 +42,12 @@
     "git-lfs" \
     "jq" \
     "fakeroot" \
+    "ghostty-terminfo" \
     "grep" \
     "htop" \
     "img2pdf" \
     "inotify-tools" \
+    "kitty-terminfo" \
     "less" \
     "lsof" \
     "lua" \

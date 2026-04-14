@@ -210,7 +210,7 @@ button:hover {
 }
 
 #custom-start {
-  background-image: url("/usr/share/icons/hicolor/scalable/apps/wayfire.svg");
+  background-image: url("/usr/share/pixmaps/ditana-logo.svg");
   background-size: 56px 56px;
   background-repeat: no-repeat;
   background-position: center;

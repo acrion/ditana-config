@@ -11,7 +11,7 @@
   },
   {
     "name": "Software Update",
-    "exec": "xdg-terminal-exec -e bash -c \"echo -e '\\033[32mDitana System Update\\033[0m'; echo; synar -Syu; echo; echo -e '\\033[33mPress any key to close this window\\033[0m'; read -n 1 -s -r -p ''\"",
+    "exec": "xdg-terminal-exec -e bash -c \"echo -e '\\033[32mDitana System Update\\033[0m'; echo; pikaur -Syu; echo; echo -e '\\033[33mPress any key to close this window\\033[0m'; read -n 1 -s -r -p ''\"",
     "icon": "system-software-update"
   },
   {
@@ -21,7 +21,7 @@
   },
   {
     "name": "Logout",
-    "exec": "wayland-logout",
+    "exec": "sh -c 'loginctl terminate-session ${XDG_SESSION_ID}'",
     "icon": "system-log-out"
   },
   {
