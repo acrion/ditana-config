@@ -1,0 +1,35 @@
+name: Package configuration archive
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create archive
+        run: |
+          tar czf ditana-config.tar.gz \
+            installation-steps.kdl \
+            settings/ \
+            folders/
+
+      - name: Update rolling release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest
+          name: Latest configuration
+          body: |
+            Automatically built from commit ${{ github.sha }}.
+            
+            Download `ditana-config.tar.gz` and extract alongside the installer.
+          artifacts: ditana-config.tar.gz
+          allowUpdates: true
+          removeArtifacts: true
+          makeLatest: true
