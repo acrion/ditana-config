@@ -85,13 +85,13 @@
           \ // === Ditana helper scripts ===
           "/usr/share/ditana/open-disk-manager.sh" \
           "/usr/share/ditana/copy-path-to-clipboard.sh" \
+          "/usr/share/ditana/first-login.sh" \
           \ // === Pacseek launcher ===
           "/usr/share/applications/pacseek-desktop.desktop" \
           \ // === Logos ===
           "/usr/share/pixmaps/ditana-logo-small.png" \
           "/usr/share/pixmaps/ditana-shakehands.png" \
           \ // === Autostart desktop files (with OnlyShowIn entries) ===
-          "/etc/skel/.config/autostart/xapp-sn-watcher.desktop" \
           "/etc/xdg/autostart/kanshi.desktop" \
           "/etc/xdg/autostart/waybar.desktop" \
           "/etc/xdg/autostart/kalu.desktop" \
