@@ -91,22 +91,6 @@
           \ // === Logos ===
           "/usr/share/pixmaps/ditana-logo-small.png" \
           "/usr/share/pixmaps/ditana-shakehands.png" \
-          \ // === Autostart desktop files (with OnlyShowIn entries) ===
-          "/etc/xdg/autostart/kanshi.desktop" \
-          "/etc/xdg/autostart/waybar.desktop" \
-          "/etc/xdg/autostart/kalu.desktop" \
-          \ // === Waybar config (pre-installed for all DEs) ===
-          "/etc/skel/.config/waybar/config.jsonc" \
-          "/etc/skel/.config/waybar/style.css" \
-          \ // === nwg-launchers config ===
-          "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
-          "/etc/skel/.config/nwg-launchers/nwgbar/bar.json" \
-          \ // === Niri config (pre-installed for all DEs) ===
-          "/etc/skel/.config/niri/config.kdl" \
-          \ // === NVIDIA Niri fix ===
-          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json" \
-          \ // === Wayfire config (pre-installed for all DEs) ===
-          "/etc/skel/.config/wayfire.ini" \
           \ // === Wayfire XDG autostart service ===
           "/usr/lib/systemd/user/ditana-wayfire-xdg-autostart.service"
     chroot-script "systemctl enable lightdm.service" \
@@ -225,17 +209,28 @@
   long-description="Wayfire: A modular Wayland compositor inspired by Compiz. Wayfire provides a stacking/floating window management experience on the modern Wayland display protocol, offering smooth animations, 3D effects, and a plugin-based architecture. It is a good choice for users who want a visually rich desktop without the legacy constraints of Xorg." \
   spdx-identifiers="MIT" \
   default-value=#true {
+    files \ // === Wayfire config ===
+          "/etc/skel/.config/wayfire.ini"
     arch-packages "wayfire" \
                   "wayfire-plugins-extra" \
                   "wf-msg-git" \
                   "wlr-protocols" \
                   "wlr-randr" \
-                  "wdisplays-persistent" \
+                  "wdisplays-persistent" \ // depends on kanshi
                   "wcm" \
                   "wf-config" \
                   "xdg-desktop-portal-wlr" \
                   "xorg-xwayland" \
                   "grim"
+    session-setup-script {
+      - "if systemd-detect-virt -q; then" \
+        "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+        "fi"
+    }
+    autostart {
+        - "wlroots;" "/usr/bin/kanshi"
+        - "wlroots;" "/usr/bin/waybar"
+    }
   }
 - name="install-niri" \
   dialog-name="Desktop Environment" \
@@ -244,14 +239,25 @@
   spdx-identifiers="GPL-3.0-or-later" \
   available="`has-gpu-render-node`" \
   default-value=#false {
-    arch-packages "niri-git" "xwayland-satellite" "swaybg"
+    arch-packages "niri-git" "xwayland-satellite" "swaybg" "monique"
+    files \ // === Niri config ===
+          "/etc/skel/.config/niri/config.kdl" \
+          \ // === NVIDIA Niri fix ===
+          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json" \
   }
 - name="install-wayland" \
   default-value="`install-niri OR install-wayfire`" {
+    files \ // === Waybar config ===
+          "/etc/skel/.config/waybar/config.jsonc" \
+          "/etc/skel/.config/waybar/style.css" \
+          \ // === nwg-launchers config ===
+          "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
+          "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
     arch-packages "xdg-desktop-portal-gtk" \
                   "wayland-display-info" \
                   "wayland-font-dpi" \
                   "rofi" \
+                  "monique" \
                   "wl-clipboard" \
                   "waybar" \
                   "nwg-launchers" \
@@ -260,7 +266,7 @@
                   "mako"
   }
 - name="kitty" \
-  default-value="`install-desktop-environment AND NOT has-gpu-render-node`" {
+  default-value="`install-desktop-environment AND NOT has-gpu-acceleration`" {
     arch-packages "kitty" \
                   "imagemagick" \
                   "python-pygments" \
@@ -276,7 +282,7 @@
   \ // LLVM JIT bug (MGATHER instruction selection), and softpipe only
   \ // supports OpenGL 3.3. Kitty works with OpenGL 3.3, so we use it as
   \ // the default terminal in virtual environments instead.
-  default-value="`install-desktop-environment AND has-gpu-render-node`" {
+  default-value="`install-desktop-environment AND has-gpu-acceleration`" {
     arch-packages "ghostty" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/ghostty/config" \
