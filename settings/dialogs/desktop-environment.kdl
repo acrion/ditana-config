@@ -217,7 +217,6 @@
     autostart {
         - "XFCE;" "/usr/share/ditana/xfce-first-login.sh"
         - "XFCE;" "/usr/bin/kalu"
-        - "XFCE;" "/usr/bin/variety"
     }
   }
 - name="install-wayfire" \

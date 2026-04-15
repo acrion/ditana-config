@@ -114,10 +114,12 @@
   short-description="Install Variety" \
   long-description="Variety is a wallpaper changer that automatically downloads and switches wallpapers on your desktop. It offers a wide range of customization options, allowing users to display random quotes, apply effects, and use images from various online sources." \
   spdx-identifiers="GPL3" \
-  available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment`" {
+  available="`install-xfce`" \
+  default-value="`install-xfce`" {
     arch-packages "variety" \
                   "python-setuptools"
-    files "/etc/skel/.config/variety/variety.conf" \
-          "/etc/skel/.config/autostart/variety.desktop"
+    files "/etc/skel/.config/variety/variety.conf"
+    autostart {
+        - "XFCE;" "/usr/bin/variety"
+    }
   }
