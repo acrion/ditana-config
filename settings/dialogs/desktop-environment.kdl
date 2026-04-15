@@ -243,6 +243,7 @@
   short-description="Niri (Wayland)" \
   long-description="Niri: A scrollable-tiling Wayland compositor. Instead of arranging windows in a fixed grid, Niri places them in an infinite horizontal strip that you scroll through, similar to a panoramic workspace. It is well-suited for keyboard-driven workflows and users who prefer automatic window tiling without manual layout management." \
   spdx-identifiers="GPL-3.0-or-later" \
+  available="`has-gpu-render-node`" \
   default-value=#false {
     arch-packages "niri-git" "xwayland-satellite" "swaybg"
   }
@@ -260,7 +261,7 @@
                   "mako"
   }
 - name="kitty" \
-  default-value="`install-desktop-environment AND virtual-environment`" {
+  default-value="`install-desktop-environment AND NOT has-gpu-render-node`" {
     arch-packages "kitty" \
                   "imagemagick" \
                   "python-pygments" \
@@ -276,7 +277,7 @@
   \ // LLVM JIT bug (MGATHER instruction selection), and softpipe only
   \ // supports OpenGL 3.3. Kitty works with OpenGL 3.3, so we use it as
   \ // the default terminal in virtual environments instead.
-  default-value="`install-desktop-environment AND NOT virtual-environment`" {
+  default-value="`install-desktop-environment AND has-gpu-render-node`" {
     arch-packages "ghostty" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/ghostty/config" \

@@ -12,6 +12,7 @@
 - name="amd-cpu" detect="'/proc/cpuinfo'.IO.lines.first(* ~~ /vendor_id/).contains('AuthenticAMD')"
 - name="virtual-environment" detect="run('systemd-detect-virt', '-q').exitcode eq 0"
 - name="virtualbox" detect="qx{lspci}.contains(/:i virtualbox/)"
+- name="has-gpu-render-node" detect="'/dev/dri'.IO.e && dir('/dev/dri').grep(*.basename.starts-with('renderD')).so"
 - name="display-hardware-in-use" detect="%*ENV<DISPLAY>.defined && %*ENV<DISPLAY>.chars > 0"
 - name="installing-over-ssh" detect="%*ENV<SSH_CONNECTION>.defined && %*ENV<SSH_CONNECTION>.chars > 0"
 - name="virtual-terminal" detect="(%*ENV<TERM>.defined && %*ENV<TERM> eq 'linux') || (%*ENV<PARENT_TERM>.defined && %*ENV<PARENT_TERM> eq 'linux')"

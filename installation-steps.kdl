@@ -1,39 +1,3 @@
-  - name="welcome" type="procedure" text="""
-                             Welcome to Ditana GNU/Linux $version
-______________________________________________________________________________________________
-
-To learn more about Ditana, visit our website at:
-
-                                       https://ditana.org
-
-To view the source code and contribute to the development of Ditana,
-visit our main Git repository (hub for all Ditana-specific repos) at:
-
-                           https://github.com/acrion/ditana-installer
-______________________________________________________________________________________________
-
-Navigate through the settings dialogs using your mouse or these keys:
-
-  - ENTER to confirm selections and proceed to the next dialog
-  - ESCAPE to go back to the previous dialog to review or alter settings
-  - CURSOR KEYS and TAB to navigate between options and buttons, e.g. < Help >
-  - SPACE to toggle an option
-
-No changes will be made to your system until you confirm in the final dialog.
-
-                               A Note on Software Licenses
-
-In the following installation dialogs, we categorize software as either «FOSS» (Free and Open
-Source Software) or «CLOSED» (non-open source software). After this category, the specific
-license identifier for each package is provided, see https://spdx.org/licenses for details.
-
-Please note that some software, including FOSS, may be dual-licensed, but commercial use or
-distribution is still permitted under the FOSS license as long as its terms are met. If you
-plan to use dual-licensed software in a commercial setting, reviewing its full license details
-may offer additional flexibility and benefits.
-
-Enjoy customizing Ditana to your preferences!
-"""
   - name="display-size" type="ask-for-setting" validation="number" instruction="""
 Enter the screen diagonal in inches (only the used area).
 
@@ -222,6 +186,7 @@ Ditana automatically scales your desktop based on your main display’s DPI, ens
 Note: Enter the DPI value of your host display, not the virtual
       environment’s.
 """ available="`virtual-environment AND install-desktop-environment`"
+  - name="switch-on-logging" type="procedure"
   - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
   - name="format-nvme" type="procedure" available="`real-install`"
   - name="partition-drive" type="procedure" available="`real-install`"
