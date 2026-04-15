@@ -167,7 +167,7 @@ For further information, please consult the following URLs:
                   - name="System Allocator" \
                     type="radiolist" \
                     instruction="Choose system memory allocator:" \
-                    help-intro="The system memory allocator handles all dynamic memory requests from applications. Replacing the default glibc allocator can improve performance, security, or both." \
+                    help-intro="The system memory allocator handles all dynamic memory requests from applications. Replacing the default glibc allocator can improve performance or security, but carries a compatibility risk: programs that bundle their own allocator (e.g., applications using jemalloc or tcmalloc) may crash when a different allocator is active system-wide. This affects a small but unpredictable set of software." \
                     help-note="""
 For further information, please consult the following URLs:
  • https://github.com/microsoft/mimalloc (mimalloc)

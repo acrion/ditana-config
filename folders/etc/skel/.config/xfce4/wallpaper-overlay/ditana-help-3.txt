@@ -29,22 +29,3 @@ Ctrl+E replaceall "regex" "str" — replace all "regex" with "str"
 Ctrl+E set softwrap on — Enable word wrap
 Ctrl+E set tabstospaces off — Use TAB characters
 Ctrl+E set filetype shell — Set filetype for syntax highlighting
-
-=== Ranger Terminal File Manager ===
-
-:help — Show help
-:touch <name> — Create new file
-:mkdir <name> — Create new directory
-:chmod <octal number> — Set file or dir permissions
-:delete ENTER — Delete current file or directory
-F2 — Rename current file or directory
-SHIFT+S — Open terminal in current directory
-dd — Cut the current file or directory
-yy — Copy the current file or directory
-pp — Paste a previously copied or cut item
-yp — Copy the path of the current item into the clipboard
-m<letter> — Save bookmark with <letter> as name
-'<letter> — Go to bookmark <letter>
-um<letter> — Delete bookmark <letter>
-"<letter> — Tag or untag file with <letter> as identifier
-q — Quit
