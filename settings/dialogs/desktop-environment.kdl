@@ -226,6 +226,7 @@
       - "if systemd-detect-virt -q; then" \
         "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
         "fi"
+      - #false
     }
     autostart {
         - "wlroots;" "/usr/bin/kanshi"
