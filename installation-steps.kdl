@@ -4,8 +4,8 @@ Enter the screen diagonal in inches (only the used area).
 This is used to determine the terminal font size.
 """ available="`virtual-terminal AND NOT installing-over-ssh AND NOT set-font-hook-exists`"
   - name="update-terminal-font" type="procedure" available="`virtual-terminal AND NOT installing-over-ssh`"
-  - name="keymap-layout" type="procedure"
-  - name="keymap-variant" type="procedure"
+  - name="choose-keymap-layout" type="procedure"
+  - name="choose-keymap-variant" type="procedure"
   - name="test-keymap" type="procedure"
   - name="choose-region-or-timezone" type="procedure"
   - name="choose-specific-timezone" type="procedure"
