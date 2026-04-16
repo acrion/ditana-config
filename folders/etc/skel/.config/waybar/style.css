@@ -105,11 +105,6 @@ button:hover {
   background: linear-gradient(to bottom, #5a5a5a, #454545);
 }
 
-#battery {
-  background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
-  color: #2d2d2d;
-}
-
 #battery.charging,
 #battery.plugged {
   color: #eff0f1;
@@ -207,6 +202,40 @@ button:hover {
 
 #taskbar button.minimized {
   opacity: 0.5;
+}
+
+#custom-file-manager,
+#custom-display-settings,
+#custom-ditana-assistant {
+  background-color: #3a3a3a;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 56px 56px;
+  min-width: 64px;
+  font-size: 0;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  margin: 4px 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: background-color 0.3s ease;
+}
+
+#custom-file-manager:hover,
+#custom-display-settings:hover,
+#custom-ditana-assistant:hover {
+  background-color: #4f4f4f;
+}
+
+#custom-file-manager {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-file-manager.svg");
+}
+
+#custom-display-settings {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/preferences-desktop-display.svg");
+}
+
+#custom-ditana-assistant {
+  background-image: url("/usr/share/icons/hicolor/256x256/apps/ditana-assistant.png");
 }
 
 #custom-start {

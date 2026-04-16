@@ -6,9 +6,15 @@
   //"width": 2500, // Waybar width
   "spacing": 4, // Gaps between modules (4px)
   // Choose the order of the modules
-  "modules-left": ["custom/start"],
-  "modules-center": ["wlr/taskbar"],
+  "modules-left": [
+    "custom/start"
+  ],
+  "modules-center": [
+    "wlr/taskbar"
+  ],
   "modules-right": [
+    "custom/file-manager",
+    "custom/display-settings",
     "mpd",
     "idle_inhibitor",
     "power-profiles-daemon",
@@ -25,6 +31,18 @@
     "clock",
     "custom/shutdown",
   ],
+  "custom/file-manager": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "File Manager",
+    "on-click": "thunar",
+  },
+  "custom/display-settings": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Display Settings",
+    "on-click": "sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wdisplays ;; *) exec monique ;; esac'",
+  },
   "custom/start": {
     "format": " ",
     "tooltip": true,
@@ -121,12 +139,26 @@
     "critical-threshold": 80,
     // "format-critical": "{temperatureC}°C {icon}",
     "format": "{temperatureC}°C {icon}",
-    "format-icons": ["", "", ""],
+    "format-icons": [
+      "",
+      "",
+      ""
+    ],
   },
   "backlight": {
     // "device": "acpi_video1",
     "format": "{percent}% {icon}",
-    "format-icons": ["", "", "", "", "", "", "", "", ""],
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
   },
   "battery": {
     "states": {
@@ -141,7 +173,13 @@
     "format-alt": "{time} {icon}",
     // "format-good": "", // An empty format will hide the module
     // "format-full": "",
-    "format-icons": ["", "", "", "", ""],
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
   },
   "battery#bat2": {
     "bat": "BAT2",
@@ -181,7 +219,11 @@
       "phone": "",
       "portable": "",
       "car": "",
-      "default": ["", "", ""],
+      "default": [
+        "",
+        "",
+        ""
+      ],
     },
     "on-click": "pavucontrol",
   },

@@ -42,6 +42,7 @@
     "git-lfs" \
     "jq" \
     "fakeroot" \
+    "foot-terminfo" \
     "ghostty-terminfo" \
     "grep" \
     "htop" \

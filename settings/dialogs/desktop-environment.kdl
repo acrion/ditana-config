@@ -44,30 +44,8 @@
                   "system-config-printer" \
                   "cups-pk-helper" \
                   "python-pysmbc" \
-                  \ // === Media ===
-                  "ristretto" \
-                  "vlc" \
-                  \ // === PDF viewer ===
-                  "xreader" \
-                  \ // === Browser ===
-                  "librewolf" \
-                  "speech-dispatcher" \
                   \ // === On-screen keyboard ===
-                  "onboard" \
-                  \ // === File manager ===
-                  "thunar" \
-                  "catfish" \
-                  "gvfs" \
-                  "thunar-archive-plugin" \
-                  "thunar-media-tags-plugin" \
-                  "thunar-volman" \
-                  "tumbler" \
-                  \ // === Archive manager ===
-                  "engrampa" \
-                  \ // === Tumbler plugin dependencies ===
-                  "libgepub" \
-                  "libopenraw" \
-                  "libgsf"
+                  "onboard"
     files \ // Marker file for first-login detection. If this file exists when the user logs in,
           \ // session-setup scripts marked with once=true (see "session-setup" below) are executed,
           \ // and the file is then deleted. See generate-session-setup() in Chroot.rakumod.
@@ -76,12 +54,8 @@
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
           "/etc/skel/.config/gtk-3.0/gtk.css" \
-          \ // === Thunar custom actions ===
-          "/etc/skel/.config/Thunar/uca.xml" \
           \ // === LightDM greeter config ===
           "/etc/lightdm/slick-greeter.conf" \
-          \ // === LibreWolf config ===
-          "/etc/skel/.librewolf/librewolf.overrides.cfg" \
           \ // === Ditana helper scripts ===
           "/usr/share/ditana/open-disk-manager.sh" \
           "/usr/share/ditana/copy-path-to-clipboard.sh" \
@@ -98,14 +72,47 @@
                   "cat <<'DITANA_ENV' >> /etc/environment" \
                   "# Fallback for apps not picking up the theme via gsettings" \
                   "GTK_THEME=Dracula" \
-                  "DITANA_ENV" \
-                  "if [ -f /usr/lib/librewolf/distribution/policies.json ]; then" \
-                  #"    sed -i 's/"Default": *"[^"]*"/"Default": "StartPage"/g' /usr/lib/librewolf/distribution/policies.json"# \
-                  #"    sed -i '/"Remove": \[/,/\]/{ /"Google",/d }' /usr/lib/librewolf/distribution/policies.json"# \
-                  "fi"
+                  "DITANA_ENV"
     autostart {
         - "" "/usr/share/ditana/first-login.sh"
     }
+  }
+- name="install-thunar" default-value="`install-desktop-environment`" {
+    arch-packages "thunar" \
+                  "catfish" \
+                  "gvfs" \
+                  "thunar-archive-plugin" \
+                  "thunar-media-tags-plugin" \
+                  "thunar-volman" \
+                  "tumbler" \
+                  \ // === Tumbler thumbnailer plugin dependencies ===
+                  "libgepub" \
+                  "libopenraw" \
+                  "libgsf"
+    files \ // === Thunar custom actions ===
+          "/etc/skel/.config/Thunar/uca.xml"
+  }
+- name="install-vlc" default-value="`install-desktop-environment`" {
+    arch-packages "vlc"
+  }
+- name="install-ristretto" default-value="`install-desktop-environment`" {
+    arch-packages "ristretto"
+  }
+- name="install-xreader" default-value="`install-desktop-environment`" {
+    arch-packages "xreader"
+  }
+- name="install-librewolf" default-value="`install-desktop-environment`" {
+    arch-packages "librewolf" \
+                  "speech-dispatcher"
+    files \ // === LibreWolf config ===
+          "/etc/skel/.librewolf/librewolf.overrides.cfg"
+    chroot-script "if [ -f /usr/lib/librewolf/distribution/policies.json ]; then" \
+                  #"    sed -i 's/"Default": *"[^"]*"/"Default": "StartPage"/g' /usr/lib/librewolf/distribution/policies.json"# \
+                  #"    sed -i '/"Remove": \[/,/\]/{ /"Google",/d }' /usr/lib/librewolf/distribution/policies.json"# \
+                  "fi"
+  }
+- name="install-engrampa" default-value="`install-desktop-environment`" {
+    arch-packages "engrampa"
   }
 - name="install-xfce" \
   dialog-name="Desktop Environment" \
@@ -260,7 +267,6 @@
                   "wayland-display-info" \
                   "wayland-font-dpi" \
                   "rofi" \
-                  "monique" \
                   "wl-clipboard" \
                   "waybar" \
                   "nwg-launchers" \
@@ -268,8 +274,8 @@
                   "hyprpolkitagent" \
                   "mako"
   }
-- name="kitty" \
-  default-value="`install-desktop-environment AND NOT has-gpu-acceleration`" {
+- name="install-kitty" \
+  default-value="`install-xfce`" {
     arch-packages "kitty" \
                   "imagemagick" \
                   "python-pygments" \
@@ -277,18 +283,45 @@
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/kitty/kitty.conf" \
           "/usr/share/pixmaps/ditana-logo-tiny.png"
-    chroot-script "mkdir -p /etc/xdg" "echo kitty.desktop >/etc/xdg/xdg-terminals.list"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
+                  \ // $TERMINAL is consumed by GUI apps via the PAM session env
+                  \ // (xdg-terminal-exec fallback, i3-sensible-terminal, ...).
+                  "sed -i '/^TERMINAL=/d' /etc/environment" \
+                  "echo TERMINAL=kitty >> /etc/environment"
   }
-- name="ghostty" \
-  \ // In VMs without GPU passthrough, Ghostty's OpenGL 4.3+ requirement
-  \ // (compute shaders, SSBOs) cannot be met: llvmpipe crashes due to an
-  \ // LLVM JIT bug (MGATHER instruction selection), and softpipe only
-  \ // supports OpenGL 3.3. Kitty works with OpenGL 3.3, so we use it as
-  \ // the default terminal in virtual environments instead.
-  default-value="`install-desktop-environment AND has-gpu-acceleration`" {
-    arch-packages "ghostty" \
+- name="install-foot" \
+  default-value="`install-wayland AND NOT install-xfce`" { // kitty wins if one of the installed DEs is XFCE (we need to have a single default, because we use xdg-terminals)
+    arch-packages "foot" \
+                  "libnotify" \
                   "xdg-terminal-exec-git"
-    files "/etc/skel/.config/ghostty/config" \
-          "/usr/share/pixmaps/ditana-logo-tiny.png"
-    chroot-script "mkdir -p /etc/xdg" "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list"
+    files "/etc/skel/.config/foot/foot.ini"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo foot.desktop >/etc/xdg/xdg-terminals.list" \
+                  "sed -i '/^TERMINAL=/d' /etc/environment" \
+                  "echo TERMINAL=foot >> /etc/environment"
+  }
+// - name="install-ghostty" \
+//   \ // In VMs without GPU passthrough, Ghostty's OpenGL 4.3+ requirement
+//   \ // (compute shaders, SSBOs) cannot be met: llvmpipe crashes due to an
+//   \ // LLVM JIT bug (MGATHER instruction selection), and softpipe only
+//   \ // supports OpenGL 3.3. Kitty works with OpenGL 3.3, so we use it as
+//   \ // the default terminal in virtual environments instead.
+//   default-value="`install-desktop-environment AND has-gpu-acceleration`" {
+//     arch-packages "ghostty" \
+//                   "xdg-terminal-exec-git"
+//     files "/etc/skel/.config/ghostty/config" \
+//           "/usr/share/pixmaps/ditana-logo-tiny.png"
+//     chroot-script "mkdir -p /etc/xdg" \
+//                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list"
+//   }
+
+- name="install-waybar-ditana-assistant" \
+  default-value="`install-wayland AND install-ditana-assistant`" {
+    chroot-script \
+      "CFG=/etc/skel/.config/waybar/config.jsonc" \
+      #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
+      #"    sed -i 's|"modules-left": \["custom/start"\],|"modules-left": ["custom/start", "custom/ditana-assistant"],|' "$CFG""# \
+      #"    sed -i '/^  "custom\/start": {/i\  "custom/ditana-assistant": {\n    "format": " ",\n    "tooltip": true,\n    "tooltip-format": "Ditana Assistant",\n    "on-click": "ditana-assistant --gui",\n  },' "$CFG""# \
+      "fi"
   }
