@@ -238,8 +238,8 @@
       - #false
     }
     autostart {
-        - "wlroots;" "/usr/bin/kanshi"
-        - "wlroots;" "/usr/bin/waybar"
+        - "Wayfire;wayfire;" "/usr/bin/kanshi"
+        - "Wayfire;wayfire;" "/usr/bin/waybar"
     }
   }
 - name="install-niri" \

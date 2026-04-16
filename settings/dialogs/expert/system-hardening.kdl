@@ -28,6 +28,7 @@
   short-description="Disable kexec (kernel.kexec_load_disabled=1)" \
   long-description="Disable kexec: Prevents loading a replacement kernel at runtime via the kexec system call. An attacker with sufficient privileges could use kexec to boot a malicious kernel, bypassing Secure Boot and other boot-time protections. Once set to 1 at runtime, this cannot be changed back without a reboot." \
   spdx-identifiers="GPL-2.0-only" \
+  available="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" \
   default-value=#true {
     chroot-script "echo 'kernel.kexec_load_disabled=1 # disable kexec' >> /etc/sysctl.d/ditana.conf"
   }
