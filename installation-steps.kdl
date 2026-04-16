@@ -181,11 +181,11 @@ For further information, please consult the following URLs:
   - name="host-dpi" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 102..185" instruction="""
 Virtual Environment Detected: Please enter the DPI of your display.
 
-Ditana automatically scales your desktop based on your main display’s DPI, ensuring optimal visuals when changing resolutions or display connections. This setting allows Ditana to provide the same seamless experience in your virtual setup as it would on physical hardware.
+Ditana automatically scales your XFCE desktop based on your main display’s DPI, ensuring optimal visuals when changing resolutions or display connections. This setting allows Ditana to provide the same seamless experience in your virtual setup as it would on physical hardware.
 
 Note: Enter the DPI value of your host display, not the virtual
       environment’s.
-""" available="`virtual-environment AND install-desktop-environment`"
+""" available="`virtual-environment AND install-xfce AND install-desktop-environment`"
   - name="switch-on-logging" type="procedure"
   - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
   - name="format-nvme" type="procedure" available="`real-install`"
@@ -194,7 +194,7 @@ Note: Enter the DPI value of your host display, not the virtual
   - name="mount-bootimage-partition" type="procedure" available="`real-install AND NOT zfs-filesystem`"
   - name="mount-bootloader-partition" type="procedure" available="`real-install`"
   - name="enable-swap-partition" type="procedure" available="`real-install`"
-  - name="set-host-dpi" type="procedure" available="`real-install AND virtual-environment`"
+  - name="set-host-dpi-for-xfce" type="procedure" available="`real-install AND install-xfce AND virtual-environment`"
 
     // Copy system files that should not be part of packages into the chroot before pacstrap. This
     // includes /usr/lib/os-release, which contains distribution-specific release information

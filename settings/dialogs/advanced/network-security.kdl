@@ -67,6 +67,11 @@ Install Bubblejail, a sandboxing utility that provides application isolation wit
   default-value=#true {
     arch-packages "bubblejail"
   }
+- name="install-bubblewrap-suid" \
+  \ // https://wiki.archlinux.org/title/Bubblewrap
+  default-value="`install-bubblejail AND (kernel-option-duurn OR install-hardened-stable-kernel OR install-hardened-lts-kernel)`" {
+    arch-packages "bubblewrap-suid"
+  }
 - name="install-protonvpn" \
   dialog-name="Network and Security Tools" \
   short-description="Install ProtonVPN" \

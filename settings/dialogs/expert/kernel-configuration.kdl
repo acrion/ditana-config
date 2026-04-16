@@ -82,7 +82,7 @@
   short-description="Disable unprivileged user namespaces (unprivileged_userns_clone=0)" \
   long-description="Disable unprivileged user namespaces: Enhances system security by preventing local privilege escalation attacks through user namespace exploitation. However, this will break application sandboxing tools that rely on unprivileged user namespaces, including Bubblejail, certain containerization tools, and communication software. Consider leaving this disabled if you plan to use these security tools." \
   spdx-identifiers="GPL-2.0-only" \
-  available="`NOT (install-bubblejail OR install-hardened-stable-kernel OR install-hardened-lts-kernel)`" \
+  available="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" \
   default-value=#false {
     \ // https://wiki.archlinux.org/title/Security#Sandboxing_applications
     chroot-script "echo 'kernel.unprivileged_userns_clone=0 # Disable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
