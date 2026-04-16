@@ -322,6 +322,6 @@
       "CFG=/etc/skel/.config/waybar/config.jsonc" \
       #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
       #"    sed -i '/"modules-left"/,/\]/ s|"custom/start"|"custom/start",\n    "custom/ditana-assistant"|' "$CFG""# \
-      #"    sed -i '/^  "custom\/start": {/i\  "custom/ditana-assistant": {\n    "format": " ",\n    "tooltip": true,\n    "tooltip-format": "Ditana Assistant",\n    "on-click": "xdg-terminal-exec -e bash -c \"ditana-assistant --gui\"",\n  },' "$CFG""# \
+      #"    sed -i '/^  "custom\/start": {/i\  "custom/ditana-assistant": {\n    "format": " ",\n    "tooltip": true,\n    "tooltip-format": "Ditana Assistant",\n    "on-click": "xdg-terminal-exec -e bash -c \\"ditana-assistant --gui\\"",\n  },' "$CFG""# \
       "fi"
   }
