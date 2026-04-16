@@ -44,7 +44,8 @@
                   "terminus-font" \     // The terminal font that will be configured.
                   "util-linux" \        // Provides various essential tools, among others it is required to enable the fstrim.timer, depending on value of enable-fstrim
                   "ditana-keyring"      // Provides keyring update for the Ditana Arch repo
-    files "/etc/lsb-release" \
+    files "/var/log/install_ditana.log" \ // This copies the installation log inside the chroot environment, where logging of the chroot steps will continue.
+          "/etc/lsb-release" \
           "/etc/systemd/system/ditana-initialize-system.service" \
           "/etc/profile.d/ditana-java.sh" \
           "/etc/profile.d/ditana-system-paths.sh" \
