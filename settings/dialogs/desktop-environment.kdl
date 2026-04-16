@@ -321,7 +321,7 @@
     early-chroot-script \
       "CFG=/etc/skel/.config/waybar/config.jsonc" \
       #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
-      #"    sed -i 's|"modules-left": \["custom/start"\],|"modules-left": ["custom/start", "custom/ditana-assistant"],|' "$CFG""# \
+      #"    sed -i '/"modules-left"/,/\]/ s|"custom/start"|"custom/start",\n    "custom/ditana-assistant"|' "$CFG""# \
       #"    sed -i '/^  "custom\/start": {/i\  "custom/ditana-assistant": {\n    "format": " ",\n    "tooltip": true,\n    "tooltip-format": "Ditana Assistant",\n    "on-click": "ditana-assistant --gui",\n  },' "$CFG""# \
       "fi"
   }
