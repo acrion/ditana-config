@@ -318,7 +318,7 @@
 
 - name="install-waybar-ditana-assistant" \
   default-value="`install-wayland AND install-ditana-assistant`" {
-    chroot-script \
+    early-chroot-script \
       "CFG=/etc/skel/.config/waybar/config.jsonc" \
       #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
       #"    sed -i 's|"modules-left": \["custom/start"\],|"modules-left": ["custom/start", "custom/ditana-assistant"],|' "$CFG""# \

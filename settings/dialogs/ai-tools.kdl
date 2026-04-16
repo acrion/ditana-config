@@ -50,19 +50,19 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
   available="`install-desktop-environment AND total-ram-gib>=3 AND install-ollama`" \
   default-value="`install-desktop-environment AND avx2-available AND total-ram-gib>=12`" {
     arch-packages "logseq-desktop-bin"
-    chroot-script "pacman -S --noconfirm --needed npm git" \
-                  "cd /tmp" \
-                  "git clone --branch v1.14.2 --depth 1 https://github.com/briansunter/logseq-plugin-gpt3-openai.git" \
-                  "cd logseq-plugin-gpt3-openai" \
-                  #"sed -i 's/return response\.data\[0\]\.url;/return response.data![0].url;/' src/lib/openai.ts"# \
-                  #"sed -i 's/engine.startsWith("gpt-3.5") || engine.startsWith("gpt-4")/true/' src/lib/openai.ts"# \
-                  "npm install" \
-                  "npm run build" \
-                  "mkdir -p /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai" \
-                  "install -Dm644 LICENSE /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/LICENSE" \
-                  "install -Dm644 package.json /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/package.json" \
-                  "cp -r dist /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/dist" \
-                  "rm -rf /tmp/logseq-plugin-gpt3-openai"
+    early-chroot-script "pacman -S --noconfirm --needed npm git" \
+                        "cd /tmp" \
+                        "git clone --branch v1.14.2 --depth 1 https://github.com/briansunter/logseq-plugin-gpt3-openai.git" \
+                        "cd logseq-plugin-gpt3-openai" \
+                        #"sed -i 's/return response\.data\[0\]\.url;/return response.data![0].url;/' src/lib/openai.ts"# \
+                        #"sed -i 's/engine.startsWith("gpt-3.5") || engine.startsWith("gpt-4")/true/' src/lib/openai.ts"# \
+                        "npm install" \
+                        "npm run build" \
+                        "mkdir -p /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai" \
+                        "install -Dm644 LICENSE /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/LICENSE" \
+                        "install -Dm644 package.json /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/package.json" \
+                        "cp -r dist /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/dist" \
+                        "rm -rf /tmp/logseq-plugin-gpt3-openai"
     files "/etc/skel/.logseq/settings/logseq-plugin-gpt3-openai.json" \
           "/etc/skel/.logseq/config/plugins.edn"
   }
