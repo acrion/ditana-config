@@ -625,6 +625,3 @@ binds {
     // moving the mouse or pressing any other key.
     Mod+Shift+P { power-off-monitors; }
 }
-
-// Monitor configuration managed by monique
-include optional=true "monitors.kdl"
