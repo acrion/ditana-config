@@ -194,7 +194,9 @@
                   "# https://doc.qt.io/qt-5/highdpi.html" \
                   "QT_AUTO_SCREEN_SCALE_FACTOR=1" \
                   "QT_ENABLE_HIGHDPI_SCALING=1" \
-                  "DITANA_ENV"
+                  "DITANA_ENV" \
+                  "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry from lightdm
+                  "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
     session-setup {
         - "/usr/share/ditana/pre-xfce-first-login.sh" #true
     }
