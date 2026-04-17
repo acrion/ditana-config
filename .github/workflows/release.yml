@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-- name: Install kdl-fmt
+      - name: Install kdl-fmt
         run: cargo install kdl-fmt
 
       - name: Validate KDL files
