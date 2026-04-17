@@ -13,14 +13,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+- name: Install kdl-fmt
+        run: cargo install kdl-fmt
+
+      - name: Validate KDL files
+        run: |
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! kdl-fmt --no-format "$file" >/dev/null; then
+              echo "::error file=$file::Syntax error in $file"
+              failed=1
+            fi
+          done < <(find . -name "*.kdl" -print0)
+          
+          if[ "$failed" -eq 1 ]; then
+            echo "KDL validation failed."
+            exit 1
+          fi
+
       - name: Create archive
         run: |
           git rev-parse --short HEAD > config_hash.txt
+          git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M %Z' > config_date.txt
           tar czf ditana-config.tar.gz \
             installation-steps.kdl \
             settings/ \
             folders/ \
-            config_hash.txt
+            config_hash.txt \
+            config_date.txt
 
       - name: Update develop release
         uses: ncipollo/release-action@v1
