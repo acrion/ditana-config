@@ -169,17 +169,3 @@ Install CPU Parallel Programming Frameworks:
                   "qt5-tools" \
                   "qt5-script"
   }
-- name="install-clion" \
-  dialog-name="Development Tools and Libraries" \
-  short-description="Install CLion" \
-  long-description="Install CLion: CLion is a powerful Integrated Development Environment (IDE) for C and C++ development, offering smart code analysis, advanced debugging, and support for CMake and other build systems. To ensure full compatibility, CLion and its specific tool versions (separate from those on your system) are installed. A free 30-day trial is available, and the full version can be purchased at https://www.jetbrains.com/clion." \
-  license-category="CLOSED" \
-  spdx-identifiers="" \
-  available="`install-desktop-environment`" \
-  default-value=#false {
-    aur-packages "clion-jre" \
-                 "clion-cmake" \
-                 "clion-gdb" \
-                 "clion-lldb" \
-                 "clion"
-  }
