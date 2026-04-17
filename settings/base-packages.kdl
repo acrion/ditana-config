@@ -56,7 +56,8 @@
           "/etc/skel/.shell.d/readme.md" \
           "/usr/share/pixmaps/ditana-logo.png" \
           "/usr/share/pixmaps/ditana-logo.svg"
-    chroot-script "echo COLORTERM=truecolor >>/etc/environment"
+    chroot-script "echo COLORTERM=truecolor >>/etc/environment" \
+                  #"DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment"#
   }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
