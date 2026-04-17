@@ -105,6 +105,7 @@ button:hover {
   background: linear-gradient(to bottom, #5a5a5a, #454545);
 }
 
+
 #battery.charging,
 #battery.plugged {
   color: #eff0f1;
@@ -206,6 +207,7 @@ button:hover {
 
 #custom-file-manager,
 #custom-display-settings,
+#custom-settings,
 #custom-ditana-assistant,
 #custom-terminal,
 #custom-browser,
@@ -225,6 +227,7 @@ button:hover {
 
 #custom-file-manager:hover,
 #custom-display-settings:hover,
+#custom-settings:hover,
 #custom-ditana-assistant:hover,
 #custom-terminal:hover,
 #custom-browser:hover,
@@ -250,6 +253,10 @@ button:hover {
 
 #custom-display-settings {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/preferences-desktop-display.svg");
+}
+
+#custom-settings {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/computersettings.svg");
 }
 
 #custom-ditana-assistant {
