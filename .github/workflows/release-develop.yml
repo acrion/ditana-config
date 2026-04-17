@@ -1,8 +1,8 @@
-name: Package configuration archive
+name: Package develop configuration archive
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
 
 permissions:
   contents: write
@@ -22,17 +22,17 @@ jobs:
             folders/ \
             config_hash.txt
 
-      - name: Update rolling release
+      - name: Update develop release
         uses: ncipollo/release-action@v1
         with:
-          tag: latest
+          tag: develop
           commit: ${{ github.sha }}
-          name: Latest configuration
+          name: Develop configuration
           body: |
             Automatically built from commit ${{ github.sha }}.
 
-            Download `ditana-config.tar.gz` and extract alongside the installer.
+            This is the testing build configuration.
           artifacts: ditana-config.tar.gz
           allowUpdates: true
           removeArtifacts: true
-          makeLatest: true
+          makeLatest: false
