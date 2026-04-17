@@ -13,10 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install kdl-fmt
-        uses: taiki-e/install-action@v2
-        with:
-          tool: kdl-fmt
+      - name: Install kdlfmt
+        uses: hougesen/kdlfmt@main
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@v3.0.1

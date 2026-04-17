@@ -1,18 +1,20 @@
 repos:
   - repo: local
     hooks:
-      - id: kdl-fmt
+      - id: kdlfmt
         name: KDL syntax validation
         entry: |
           bash -c '
-            if ! command -v kdl-fmt >/dev/null 2>&1; then
-              echo "Info: kdl-fmt is not installed. Skipping KDL validation." >&2
+            # Check if kdlfmt is installed
+            if ! command -v kdlfmt >/dev/null 2>&1; then
+              echo "Info: kdlfmt is not installed. Skipping KDL validation." >&2
               exit 0
             fi
 
             failed=0
             for file in "$@"; do
-              if ! kdl-fmt --no-format "$file" >/dev/null; then
+              # Pure syntax check (no formatting, no style enforcement)
+              if ! kdlfmt format --stdin < "$file" >/dev/null; then
                 echo "❌ Syntax error in KDL file: $file" >&2
                 failed=1
               fi
@@ -25,3 +27,4 @@ repos:
         language: system
         files: \.kdl$
         pass_filenames: true
+        verbose: true
