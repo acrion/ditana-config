@@ -206,7 +206,10 @@ button:hover {
 
 #custom-file-manager,
 #custom-display-settings,
-#custom-ditana-assistant {
+#custom-ditana-assistant,
+#custom-terminal,
+#custom-browser,
+#custom-package-manager {
   background-color: #3a3a3a;
   background-repeat: no-repeat;
   background-position: center;
@@ -222,8 +225,23 @@ button:hover {
 
 #custom-file-manager:hover,
 #custom-display-settings:hover,
-#custom-ditana-assistant:hover {
+#custom-ditana-assistant:hover,
+#custom-terminal:hover,
+#custom-browser:hover,
+#custom-package-manager:hover {
   background-color: #4f4f4f;
+}
+
+#custom-terminal {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/utilities-terminal.svg");
+}
+
+#custom-browser {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/internet-web-browser.svg");
+}
+
+#custom-package-manager {
+  background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-software-install.svg");
 }
 
 #custom-file-manager {

@@ -1,25 +1,29 @@
 // -*- mode: jsonc -*-
 {
-  "layer": "top", // Waybar at top layer
-  "position": "bottom", // Waybar position (top|bottom|left|right)
-  "height": 64, // Waybar height (to be removed for auto height)
-  //"width": 2500, // Waybar width
-  "spacing": 4, // Gaps between modules (4px)
-  // Choose the order of the modules
+  "layer": "top",
+  "position": "bottom",
+  //  "height": 64,
+  "spacing": 4,
   "modules-left": [
-    "custom/start"
+    "custom/start",
+    "custom/file-manager",
+    "custom/browser",
+    "custom/terminal",
+    "custom/package-manager",
+    "custom/display-settings"
   ],
   "modules-center": [
     "wlr/taskbar"
   ],
   "modules-right": [
-    "custom/file-manager",
-    "custom/display-settings",
     "mpd",
     "idle_inhibitor",
     "power-profiles-daemon",
-    "custom/cpu-temp",
-    "custom/cpu-fan",
+    // custom/cpu-temp & custom/cpu-fan are disabled by default in Ditana.
+    // sensors-detect is intentionally not run during automated installation
+    // due to safety warnings in its man page.
+    // "custom/cpu-temp",
+    // "custom/cpu-fan",
     "cpu",
     "memory",
     "disk",
@@ -29,26 +33,44 @@
     "pulseaudio",
     "tray",
     "clock",
-    "custom/shutdown",
+    "custom/shutdown"
   ],
-  "custom/file-manager": {
-    "format": " ",
-    "tooltip": true,
-    "tooltip-format": "File Manager",
-    "on-click": "thunar",
-  },
-  "custom/display-settings": {
-    "format": " ",
-    "tooltip": true,
-    "tooltip-format": "Display Settings",
-    "on-click": "sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wdisplays ;; *) exec monique ;; esac'",
-  },
   "custom/start": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Start",
     "on-click": "nwggrid -p",
     "on-click-right": "nwggrid -f",
+  },
+  "custom/file-manager": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "File Manager",
+    "on-click": "thunar",
+  },
+  "custom/browser": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Web Browser",
+    "on-click": "sh -c 'gtk-launch $(xdg-settings get default-web-browser)'"
+  },
+  "custom/terminal": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Terminal",
+    "on-click": "xdg-terminal-exec"
+  },
+  "custom/package-manager": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Package Manager (Add/Remove Software)",
+    "on-click": "xdg-terminal-exec -e pacseek"
+  },
+  "custom/display-settings": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Display Settings",
+    "on-click": "sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wdisplays ;; *) exec monique ;; esac'",
   },
   "custom/shutdown": {
     "format": " ",

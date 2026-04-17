@@ -50,6 +50,9 @@
           \ // session-setup scripts marked with once=true (see "session-setup" below) are executed,
           \ // and the file is then deleted. See generate-session-setup() in Chroot.rakumod.
           "/etc/skel/.config/ditana/trigger-first-login" \
+          \ // === session-wrapper executed by LightDM before the desktop environment starts ===
+          \ // This executes steps that are configured via session-setup and session-setup-script
+          "/usr/share/ditana/session-wrapper" \
           \ // === Fontconfig ===
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
@@ -250,6 +253,10 @@
   available="`has-gpu-render-node`" \
   default-value=#false {
     arch-packages "niri-git" "xwayland-satellite" "swaybg" "monique"
+    session-setup-script {
+      - "systemctl --user stop niri.service 2>/dev/null"
+      - #false
+    }
     files \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
           \ // === NVIDIA Niri fix ===
@@ -266,6 +273,7 @@
     arch-packages "xdg-desktop-portal-gtk" \
                   "wayland-display-info" \
                   "wayland-font-dpi" \
+                  "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
                   "rofi" \
                   "wl-clipboard" \
                   "waybar" \

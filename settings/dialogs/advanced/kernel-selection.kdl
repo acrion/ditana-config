@@ -15,7 +15,7 @@
 - name="install-hardened-stable-kernel" \
   dialog-name="Kernel Selection" \
   short-description="Hardened Kernel (Stable)" \
-  long-description="Hardened Kernel (linux-hardened) [Stable]: This kernel emphasizes security by applying a set of hardening patches and security-focused compile-time options. It offers enhanced protection against exploits and vulnerabilities but may reduce compatibility with certain software, such as «throttled»." \
+  long-description="Hardened Kernel (linux-hardened) [Stable]: This kernel emphasizes security by applying a set of hardening patches and security-focused compile-time options. It offers enhanced protection against exploits and vulnerabilities but may reduce compatibility with certain software, such as «throttled». Note: linux-hardened also disables unprivileged user namespaces by default, which is why the separate «Disable unprivileged user namespaces» option is shown as unavailable when this kernel is selected — see that option for the full trade-off discussion (browser sandboxing, rootless containers, wrapper-based sandboxing)." \
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT b43-required`" \
   default-value=#false {
@@ -25,7 +25,7 @@
 - name="install-hardened-lts-kernel" \
   dialog-name="Kernel Selection" \
   short-description="Hardened Kernel (LTS)" \
-  long-description="Hardened Kernel (linux-hardened-lts) [LTS]: Combining the security enhancements of the Hardened Kernel with long-term support, this kernel is ideal for users seeking both increased security and extended maintenance." \
+  long-description="Hardened Kernel (linux-hardened-lts) [LTS]: Combining the security enhancements of the Hardened Kernel with long-term support, this kernel is ideal for users seeking both increased security and extended maintenance. Note: linux-hardened-lts also disables unprivileged user namespaces by default, which is why the separate «Disable unprivileged user namespaces» option is shown as unavailable when this kernel is selected — see that option for the full trade-off discussion (browser sandboxing, rootless containers, wrapper-based sandboxing)." \
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT b43-required`" \
   default-value="`NOT b43-required`" {

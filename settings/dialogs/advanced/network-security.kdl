@@ -62,6 +62,7 @@ Install Bubblejail, a sandboxing utility that provides application isolation wit
  • X11/Wayland display server integration
  • Custom home directory isolation per application
  • User-friendly graphical interface for sandbox configuration
+Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for process isolation. When those are disabled — either by selecting a Hardened Kernel or by enabling the «Disable unprivileged user namespaces» option — Ditana automatically installs bubblewrap-suid as a setuid fallback so Bubblejail continues to work.
 """ \
   spdx-identifiers="GPL-3.0-or-later" \
   default-value=#true {
