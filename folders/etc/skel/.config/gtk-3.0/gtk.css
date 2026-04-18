@@ -8,16 +8,15 @@ treeview.view {
   color: #C0C1C6;
 }
 
-.view:selected {
+row:hover,
+menuitem:hover,
+button:hover,
+.view:hover {
   background-color: #FFBB00;
   color: #000000;
 }
 
-*:hover {
-  background-color: #FFBB00;
-  color: #000000;
-}
-
+.view:selected,
 selection {
   background-color: #FFBB00;
   color: #000000;

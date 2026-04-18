@@ -106,10 +106,9 @@ button:hover {
 }
 
 
-#battery.charging,
-#battery.plugged {
+#battery.discharging {
   color: #eff0f1;
-  background: linear-gradient(to bottom, #61c766, #4caf50);
+  background: linear-gradient(to bottom, #c9a228, #a18322);
 }
 
 @keyframes blink {
@@ -216,8 +215,8 @@ button:hover {
   background-color: #3a3a3a;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: contain;
-  min-width: 64px;
+  background-size: 56px 56px;          /* was: 56px 56px */
+  min-width: 64px;                      /* was: 64px */
   font-size: 0;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 6px;
@@ -239,42 +238,51 @@ button:hover {
 
 #custom-terminal {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/utilities-terminal.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/utilities-terminal.svg");
 }
 
 #custom-browser {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/internet-web-browser.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/internet-web-browser.svg");
 }
 
 #custom-package-manager {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-software-install.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/system-software-install.svg");
 }
 
 #custom-resources {
   background-image: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
+  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
 }
 
 #custom-file-manager {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-file-manager.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/system-file-manager.svg");
 }
 
 #custom-display-settings {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/preferences-desktop-display.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/preferences-desktop-display.svg");
 }
 
 #custom-settings {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/computersettings.svg");
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/computersettings.svg");
 }
 
 #custom-ditana-assistant {
   background-image: url("/usr/share/icons/hicolor/256x256/apps/ditana-assistant.png");
+  -gtk-icon-source: url("/usr/share/icons/hicolor/256x256/apps/ditana-assistant.png");
 }
 
 #custom-start {
   background-image: url("/usr/share/pixmaps/ditana-logo.svg");
-  background-size: contain;
+  -gtk-icon-source: url("/usr/share/pixmaps/ditana-logo.svg");
+  background-size: 56px 56px;          /* was: 56px 56px */
   background-repeat: no-repeat;
   background-position: center;
-  min-width: 64px;
+  min-width: 64px;                      /* was: 64px */
   font-size: 0;
 
   background-color: #3a3a3a;
@@ -292,10 +300,11 @@ button:hover {
 #custom-shutdown {
   background-color: #3a3a3a;
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-shutdown.svg");
-  background-size: contain;
+  -gtk-icon-source: url("/usr/share/icons/kora-yellow/apps/scalable/system-shutdown.svg");
+  background-size: 56px 56px;          /* was: 64px 64px — was actually oversized */
   background-repeat: no-repeat;
   background-position: center;
-  min-width: 64px;
+  min-width: 64px;                      /* was: 64px */
   font-size: 0;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 6px;

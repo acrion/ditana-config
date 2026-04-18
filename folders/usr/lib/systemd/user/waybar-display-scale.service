@@ -1,0 +1,15 @@
+[Unit]
+Description=Adjust Waybar config to physical display size and restart on hotplug
+Documentation=file:/usr/lib/ditana/waybar-display-scale
+After=graphical-session.target wayland-display-info.service
+Wants=wayland-display-info.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/ditana/waybar-display-scale
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,139 @@
+#!/bin/bash
+# waybar-display-scale — adjusts waybar config to the largest connected
+# display's physical size, and restarts waybar on display-info changes.
+#
+# Reads /var/cache/wayland-display-info/display-info (maintained by the
+# wayland-display-info service). First line = largest display (sorted by
+# physical size upstream). Only acts if the user has both waybar config
+# files in place. Safe to run even when waybar is not running.
+
+set -u
+shopt -s nullglob
+
+DISPLAY_INFO=/var/cache/wayland-display-info/display-info
+WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
+WAYBAR_STYLE="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/style.css"
+
+REF_DIAGONAL=141
+REF_HEIGHT=64
+SLOPE=0.4
+BG_RATIO=0.875
+
+compute_sizes() {
+    # Outputs: height icon_size bg_size min_width
+    awk -v d="$1" -v rd="$REF_DIAGONAL" -v rh="$REF_HEIGHT" \
+        -v slope="$SLOPE" -v bgr="$BG_RATIO" '
+        BEGIN {
+            h = rh + slope * (d - rd)
+            b = bgr * h
+            printf "%d %d %d %d\n",
+                int(h + 0.5), int(h + 0.5), int(b + 0.5), int(h + 0.5)
+        }'
+}
+
+log() { printf '[waybar-display-scale] %s\n' "$*"; }
+
+restart_waybar() {
+    # Prefer a systemd-managed waybar if present, otherwise fall back to a
+    # detached setsid spawn. Do nothing if waybar is not running (first boot).
+    if systemctl --user is-active --quiet waybar.service 2>/dev/null; then
+        log "restarting waybar via systemd user unit"
+        systemctl --user restart waybar.service
+        return
+    fi
+
+    if ! pgrep -x waybar >/dev/null; then
+        log "waybar not running — skipping restart"
+        return
+    fi
+
+    log "killing and respawning waybar (detached)"
+    pkill -x waybar || true
+    # Wait for it to actually exit (up to ~1s).
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        pgrep -x waybar >/dev/null || break
+        sleep 0.1
+    done
+    setsid -f waybar </dev/null >/dev/null 2>&1 &
+}
+
+patch_file() {
+    # $1: target file, rest: sed expressions
+    local target="$1"; shift
+    local tmp
+    tmp=$(mktemp) || return 1
+    if ! sed "$@" "$target" >"$tmp"; then
+        rm -f "$tmp"
+        return 1
+    fi
+    if cmp -s "$tmp" "$target"; then
+        rm -f "$tmp"
+        return 2  # No change.
+    fi
+    # Preserve original mode; mv is atomic on the same filesystem.
+    cat "$tmp" >"$target" && rm -f "$tmp"
+    return 0
+}
+
+apply_scale() {
+    [[ -r "$DISPLAY_INFO" ]] || { log "no display-info file yet"; return 0; }
+    [[ -f "$WAYBAR_CONFIG" && -f "$WAYBAR_STYLE" ]] || {
+        log "waybar config files missing in \$HOME — nothing to do"
+        return 0
+    }
+
+    local diagonal
+    diagonal=$(awk 'NR==1 {print $2; exit}' "$DISPLAY_INFO")
+    [[ -n "$diagonal" ]] || { log "display-info empty"; return 0; }
+
+    local height icon_size bg_size min_width
+    read -r height icon_size bg_size min_width < <(compute_sizes "$diagonal")
+    log "diagonal=$diagonal → height=$height, icon=$icon_size, bg=$bg_size, min-width=$min_width"
+    local changed=0 rc
+
+    # config.jsonc: patch top-level "height" and "icon-size" scoped to
+    # wlr/taskbar (to avoid touching tray's icon-size).
+    patch_file "$WAYBAR_CONFIG" \
+        -e "s/\"height\": [0-9]\+,/\"height\": ${height},/" \
+        -e "/\"wlr\/taskbar\": {/,/^  }/ s/\"icon-size\": [0-9]\+,/\"icon-size\": ${icon_size},/"
+    rc=$?
+    [[ $rc -eq 0 ]] && changed=1
+    [[ $rc -eq 1 ]] && { log "failed to patch $WAYBAR_CONFIG"; return 1; }
+
+    # style.css: background-size and min-width only appear in start-bar
+    # button rules, so global replacement is safe.
+    patch_file "$WAYBAR_STYLE" \
+        -e "s/background-size: [0-9]\+px [0-9]\+px/background-size: ${bg_size}px ${bg_size}px/g" \
+        -e "s/min-width: [0-9]\+px/min-width: ${min_width}px/g"
+    rc=$?
+    [[ $rc -eq 0 ]] && changed=1
+    [[ $rc -eq 1 ]] && { log "failed to patch $WAYBAR_STYLE"; return 1; }
+
+    if (( changed )); then
+        log "config updated, triggering waybar restart"
+        restart_waybar
+    else
+        log "config already at target values"
+    fi
+}
+
+# Initial apply at startup.
+apply_scale
+
+# Watch the display-info file for changes. Watching the parent directory
+# catches atomic replace (rename-based writes) as well as in-place modify.
+watch_dir=$(dirname "$DISPLAY_INFO")
+watch_name=$(basename "$DISPLAY_INFO")
+
+log "watching $DISPLAY_INFO for changes"
+inotifywait -m -q \
+    -e close_write -e moved_to -e create -e modify \
+    --format '%f' \
+    "$watch_dir" | \
+while IFS= read -r fname; do
+    [[ "$fname" == "$watch_name" ]] || continue
+    # Debounce: coalesce rapid bursts (e.g. a write that triggers both
+    # modify and close_write within the same ms).
+    sleep 0.05
+    apply_scale
+done

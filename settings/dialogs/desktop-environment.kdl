@@ -282,10 +282,10 @@
   spdx-identifiers="GPL-3.0-or-later" \
   available="`has-gpu-render-node`" \
   default-value=#false {
-    arch-packages "niri-git"
-                  "xwayland-satellite"
-                  "swaybg"
-                  "monique"
+    arch-packages "niri-git" \
+                  "xwayland-satellite" \
+                  "swaybg" \
+                  "monique" \
                   "niri-settings-git"
     session-setup-script {
       - "systemctl --user stop niri.service 2>/dev/null"
@@ -320,6 +320,13 @@
                   "hyprpolkitagent" \
                   "mako"
   }
+- name="install-waybar-display-scale" \
+  default-value="`install-wayland`" {
+    files "/usr/lib/systemd/user/waybar-display-scale.service" \
+          "folders/usr/lib/ditana/waybar-display-scale"
+    chroot-script "systemctl --global enable waybar-display-scale.service"
+  }
+
 - name="install-kitty" \
   default-value="`install-xfce`" {
     arch-packages "kitty" \

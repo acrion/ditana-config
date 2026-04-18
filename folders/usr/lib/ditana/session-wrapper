@@ -5,6 +5,6 @@
 systemctl --user stop graphical-session.target xdg-desktop-autostart.target 2>/dev/null
 systemctl --user reset-failed
 
-[ -x /usr/lib/ditana/session-setup.sh ] && . /usr/lib/ditana/session-setup.sh
+[ -x /usr/lib/ditana/session-setup ] && . /usr/lib/ditana/session-setup
 
 exec /etc/lightdm/Xsession "$@"

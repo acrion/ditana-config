@@ -272,18 +272,18 @@
     "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null", // Script in resources folder
     // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
   },
-  "custom/cpu-temp": {
-    "format": "{}",
-    "exec": "sensors | awk '/Package id 0/ {print $4}'",
-    "interval": 10,
-    "tooltip": false,
-    "justify": "center",
-  },
-  "custom/cpu-fan": {
-    "format": "{}",
-    "exec": "sensors | awk '/fan1:/ {print $2 \" \" $3}'",
-    "interval": 10,
-    "tooltip": false,
-    "justify": "center",
-  },
+  // "custom/cpu-temp": {
+  //   "format": "{}",
+  //   "exec": "sensors | awk '/Package id 0/ {print $4}'",
+  //   "interval": 10,
+  //   "tooltip": false,
+  //   "justify": "center",
+  // },
+  // "custom/cpu-fan": {
+  //   "format": "{}",
+  //   "exec": "sensors | awk '/fan1:/ {print $2 \" \" $3}'",
+  //   "interval": 10,
+  //   "tooltip": false,
+  //   "justify": "center",
+  // },
 }
