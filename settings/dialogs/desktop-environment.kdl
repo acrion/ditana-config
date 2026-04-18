@@ -323,7 +323,7 @@
 - name="install-waybar-display-scale" \
   default-value="`install-wayland`" {
     files "/usr/lib/systemd/user/waybar-display-scale.service" \
-          "folders/usr/lib/ditana/waybar-display-scale"
+          "/usr/lib/ditana/waybar-display-scale"
     chroot-script "systemctl --global enable waybar-display-scale.service"
   }
 
