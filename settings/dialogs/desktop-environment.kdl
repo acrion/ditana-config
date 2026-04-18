@@ -52,7 +52,7 @@
           "/etc/skel/.config/ditana/trigger-first-login" \
           \ // === session-wrapper executed by LightDM before the desktop environment starts ===
           \ // This executes steps that are configured via session-setup and session-setup-script
-          "/usr/share/ditana/session-wrapper" \
+          "/usr/lib/ditana/session-wrapper" \
           \ // === Fontconfig ===
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
@@ -60,9 +60,9 @@
           \ // === LightDM greeter config ===
           "/etc/lightdm/slick-greeter.conf" \
           \ // === Ditana helper scripts ===
-          "/usr/share/ditana/open-disk-manager.sh" \
-          "/usr/share/ditana/copy-path-to-clipboard.sh" \
-          "/usr/share/ditana/first-login.sh" \
+          "/usr/lib/ditana/open-disk-manager" \
+          "/usr/lib/ditana/copy-path-to-clipboard" \
+          "/usr/lib/ditana/first-login" \
           \ // === Pacseek launcher ===
           "/usr/share/applications/pacseek-desktop.desktop" \
           \ // === Logos ===
@@ -77,7 +77,7 @@
                   "GTK_THEME=Dracula" \
                   "DITANA_ENV"
     autostart {
-        - "" "/usr/share/ditana/first-login.sh"
+        - "" "/usr/lib/ditana/first-login"
     }
   }
 - name="xkb-environment" \
@@ -105,6 +105,11 @@
                   "libgsf"
     files \ // === Thunar custom actions ===
           "/etc/skel/.config/Thunar/uca.xml"
+  }
+- name="install-ramdisk-thunar-bookmark" \
+  default-value="`install-thunar AND install-ramdisk`" {
+    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
+          "/usr/share/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
   }
 - name="install-vlc" default-value="`install-desktop-environment`" {
     arch-packages "vlc"
@@ -206,8 +211,8 @@
           \ // === XDG dirs init script ===
           "/etc/X11/xinit/xinitrc.d/55-ditana-xdg-dirs.sh" \
           \ // === Ditana XFCE helper scripts ===
-          "/usr/share/ditana/pre-xfce-first-login.sh" \
-          "/usr/share/ditana/xfce-first-login.sh" \
+          "/usr/lib/ditana/pre-xfce-first-login" \
+          "/usr/lib/ditana/xfce-first-login" \
           \ // === Wallpapers ===
           "/usr/share/backgrounds/xfce/ditana-wallpaper.jpg" \
           "/usr/share/backgrounds/xfce/ditana-blue.png"
@@ -224,10 +229,10 @@
                   "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry from lightdm
                   "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
     session-setup {
-        - "/usr/share/ditana/pre-xfce-first-login.sh" #true
+        - "/usr/lib/ditana/pre-xfce-first-login" #true
     }
     autostart {
-        - "XFCE;" "/usr/share/ditana/xfce-first-login.sh"
+        - "XFCE;" "/usr/lib/ditana/xfce-first-login"
         - "XFCE;" "/usr/bin/kalu"
     }
   }

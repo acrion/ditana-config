@@ -57,7 +57,6 @@
     "ncdu" \
     "neovim" \
     "perl-image-exiftool" \
-    "ripgrep" \
     "rsync" \
     "shellcheck" \
     "sed" \
@@ -70,6 +69,12 @@
     files "/etc/skel/.config/bat/config"
     chroot-script "`su - {Settings.instance.get('user-name')} -c 'git lfs install'`"
   }
+- name "install-ripgrep" \
+  default-value="`install-terminal-utilities`" {
+    arch-packages "ripgrep"
+    files "/etc/skel/.config/ripgrep/ripgreprc"
+  }
+  
 - name="install-micro" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install micro editor and set it as default" \
@@ -99,9 +104,13 @@ Install micro editor and set it as default: micro, mirroring the user interface 
           "/etc/sudoers.d/10-ditana-micro"
     arch-packages "micro"
   }
-- name="configure-micro-for-xfce" \
+- name="configure-micro-desktop-entry" \
   default-value="`install-micro AND install-desktop-environment`" {
-    \ // under XFCE, we overrule the default desktop shortcut to use exo-open --launch TerminalEmulator micro %F
+    \ // Override the upstream micro.desktop to use Ditana's standard
+    \ // xdg-terminal-exec mechanism. The upstream file uses Terminal=true,
+    \ // which delegates terminal selection to the file manager's handler
+    \ // (exo-helper under Thunar). Calling xdg-terminal-exec directly is
+    \ // simpler and DE-agnostic.
     files "/etc/skel/.local/share/applications/micro.desktop"
   }
 - name="install-yazi" \

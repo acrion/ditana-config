@@ -27,23 +27,28 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
   dialog-name="Storage & File System Options" \
   short-description="Install RAM Disk" \
   long-description="""
-Make a RAM Disk available: This option creates a dedicated RAM Disk mounted within the user’s runtime directory and symlinked to their home directory, making it easily accessible. Key features include:
+Make a personal RAM directory available: Creates a user-private directory
+inside the session's runtime filesystem (a tmpfs held entirely in memory)
+and links it to ~/RAMDisk for convenient access. In the spirit of the
+classic Amiga RAM: drive, it gives you a dedicated scratch space for
+temporary work — separate from /tmp and free from the sockets, lock files,
+and runtime state that normally clutter the runtime directory.
 
-• A clean, user-exclusive space for temporary data, free from system files, unlike $XDG_RUNTIME_DIR and /tmp.
-• Accessible only to the user, offering a controlled and secure temporary storage.
-• Set up with the $RAMDISK environment variable for easy reference in the terminal.
+- Backed by tmpfs — read/write at memory speed, zero disk wear
+- Private to you (mode 0700) and automatically cleared at logout
+- Exposed via the $RAMDISK environment variable and the ~/RAMDisk symlink
+- Appears naturally in any file manager alongside Documents, Downloads, etc.
 
-Ideal for tasks needing fast, temporary storage, such as video processing or caching, the RAM Disk integrates with the file manager on desktops and clears automatically upon logout.
+Well suited for video editing scratch files, build caches, data-processing
+pipelines, or anything temporary that benefits from zero-latency storage.
 """ \
   spdx-identifiers="AGPL-3.0-or-later" \
   default-value=#true {
-    files \ // Install the systemd user service to launch the RAM disk script located at /usr/share/ditana/ramdisk.sh
-          "/etc/systemd/user/ditana-ramdisk.service" \
-          \ // Install the main RAM disk script that creates and manages the RAM disk directory
-          "/usr/share/ditana/ramdisk.sh" \
-          \ // Install the environment configuration for systemd context to ensure the RAMDISK variable is available
+    files \ // Declarative tmpfiles.d rule: creates the ramdisk directory and the home symlink at user login
+          "/usr/share/user-tmpfiles.d/ditana-ramdisk.conf" \
+          \ // Expose the RAMDISK variable to systemd user services and logind-started sessions
           "/etc/environment.d/90-ditana-ramdisk.conf" \
-          \ // Install the profile script to export the RAMDISK variable for user shell sessions
+          \ // Expose the RAMDISK variable to interactive login shells (TTY, SSH)
           "/etc/profile.d/ditana-ramdisk.sh"
-    chroot-script "systemctl --global enable ditana-ramdisk.service"
+    chroot-script "systemctl --global enable systemd-tmpfiles-setup.service"
   }

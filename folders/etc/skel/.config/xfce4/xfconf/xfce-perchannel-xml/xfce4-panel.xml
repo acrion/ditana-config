@@ -76,7 +76,7 @@
       <property name="expand" type="bool" value="true"/>
     </property>
     <property name="plugin-21" type="string" value="genmon">
-      <property name="command" type="string" value="/usr/share/ditana/print-system-load.sh"/>
+      <property name="command" type="string" value="/usr/lib/ditana/print-system-load.sh"/>
       <property name="use-label" type="bool" value="false"/>
       <property name="text" type="string" value="(genmon)"/>
       <property name="update-period" type="int" value="1000"/>

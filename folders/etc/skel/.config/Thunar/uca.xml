@@ -5,8 +5,8 @@
 	<name>Open Terminal Here</name>
 	<submenu></submenu>
 	<unique-id>1719519426510200-1</unique-id>
-	<command>exo-open --working-directory %f --launch TerminalEmulator</command>
-	<description>Example for a custom action</description>
+	<command>sh -c 'cd "%f"; exec xdg-terminal-exec'</command>
+	<description></description>
 	<range></range>
 	<patterns>*</patterns>
 	<startup-notify/>
@@ -17,7 +17,7 @@
 	<name>Open Disk Management</name>
 	<submenu></submenu>
 	<unique-id>1719573258077667-1</unique-id>
-	<command>/usr/share/ditana/open-disk-manager.sh %f</command>
+	<command>/usr/lib/ditana/open-disk-manager %f</command>
 	<description></description>
 	<range>*</range>
 	<patterns>*</patterns>
@@ -28,7 +28,7 @@
 	<name>Copy Path To Clipboard</name>
 	<submenu></submenu>
 	<unique-id>1719583526794778-1</unique-id>
-	<command>/usr/share/ditana/copy-path-to-clipboard.sh %f</command>
+	<command>/usr/lib/ditana/copy-path-to-clipboard %f</command>
 	<description></description>
 	<range>*</range>
 	<patterns>*</patterns>

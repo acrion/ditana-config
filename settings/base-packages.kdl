@@ -50,7 +50,7 @@
           "/etc/profile.d/ditana-java.sh" \
           "/etc/profile.d/ditana-system-paths.sh" \
           "/etc/profile.d/ditana-bash-setup.sh" \
-          "/usr/share/ditana/create-debug-user.sh" \
+          "/usr/lib/ditana/create-debug-user" \
           "/etc/skel/.bashrc_ditana" \
           "/etc/skel/.shellrc" \
           "/etc/skel/.shell.d/readme.md" \

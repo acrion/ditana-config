@@ -163,7 +163,7 @@
   },
   "disk": {
     "format": "{free}\ndisk space",
-    "on-click": "/usr/share/ditana/open-disks",
+    "on-click": "/usr/lib/ditana/open-disks",
     "justify": "center",
   },
   "temperature": {
