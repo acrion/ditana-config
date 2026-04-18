@@ -80,6 +80,17 @@
         - "" "/usr/share/ditana/first-login.sh"
     }
   }
+- name="xkb-environment" \
+  default-value="`install-desktop-environment`" {
+    files "/etc/environment.d/50-ditana-xkb.conf"
+    chroot-script \
+        "sed -i 's|@@KEYMAP_LAYOUT@@|'$KEYMAP_LAYOUT'|' /etc/environment.d/50-ditana-xkb.conf" \
+        #"if [ -n "$KEYMAP_VARIANT" ]; then"# \
+        "    sed -i 's|@@KEYMAP_VARIANT@@|'$KEYMAP_VARIANT'|' /etc/environment.d/50-ditana-xkb.conf" \
+        "else" \
+        "    sed -i '/@@KEYMAP_VARIANT@@/d' /etc/environment.d/50-ditana-xkb.conf" \
+        "fi"
+  }
 - name="install-thunar" default-value="`install-desktop-environment`" {
     arch-packages "thunar" \
                   "catfish" \

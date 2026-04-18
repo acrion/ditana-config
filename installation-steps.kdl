@@ -217,7 +217,6 @@ Note: Enter the DPI value of your host display, not the virtual
 
   - name="apply-locale" type="procedure" available="`real-install`"
   - name="copy-xorg-keyboard-configuration" type="procedure" available="`real-install AND install-desktop-environment`"
-  - name="write-xkb-environment-config" type="procedure" available="`real-install AND install-desktop-environment`"
   - name="create-hostid" type="procedure" available="`real-install`"
   - name="genfstab" type="procedure" available="`real-install`"
   - name="curate-chroot-files" type="procedure" available="`real-install`"
