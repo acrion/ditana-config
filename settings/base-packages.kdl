@@ -55,9 +55,13 @@
           "/etc/skel/.shellrc" \
           "/etc/skel/.shell.d/readme.md" \
           "/usr/share/pixmaps/ditana-logo.png" \
-          "/usr/share/pixmaps/ditana-logo.svg"
+          "/usr/share/pixmaps/ditana-logo.svg" \
+          "/etc/systemd/system/ditana_kbdrate.service"
     chroot-script "echo COLORTERM=truecolor >>/etc/environment" \
-                  #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment"#
+                  #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment"# \
+                  "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/systemd/system/ditana_kbdrate.service" \
+                  "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/systemd/system/ditana_kbdrate.service" \
+                  "systemctl enable ditana_kbdrate.service"
   }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"

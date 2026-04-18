@@ -180,6 +180,7 @@
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/thunar-volman.xml" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-1.txt" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-2.txt" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-3.txt" \
@@ -199,6 +200,10 @@
           \ // === Wallpapers ===
           "/usr/share/backgrounds/xfce/ditana-wallpaper.jpg" \
           "/usr/share/backgrounds/xfce/ditana-blue.png"
+    early-chroot-script \
+      \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
+      "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
+      "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"
     chroot-script "cat <<'DITANA_ENV' >> /etc/environment" \
                   "# https://wiki.archlinux.org/title/HiDPI#Qt_5" \
                   "# https://doc.qt.io/qt-5/highdpi.html" \
@@ -234,6 +239,15 @@
                   "xdg-desktop-portal-wlr" \
                   "xorg-xwayland" \
                   "grim"
+    \ // Wayfire does not reliably honor XKB_DEFAULT_LAYOUT/VARIANT from
+    \ // /etc/environment.d/ — see upstream issues such as
+    \ // https://github.com/WayfireWM/wayfire/issues/2178. We
+    \ // therefore patch the [input] section of wayfire.ini.
+    early-chroot-script \
+        #"sed -i "s|^xkb_layout[[:space:]]*=.*|xkb_layout = ${KEYMAP_LAYOUT}|" /etc/skel/.config/wayfire.ini"# \
+        #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
+        #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
+        "fi"
     session-setup-script {
       - "if systemd-detect-virt -q; then" \
         "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
@@ -264,7 +278,11 @@
     files \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
           \ // === NVIDIA Niri fix ===
-          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json" \
+          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json"
+    early-chroot-script \
+      \ // Patch the keyboard repeat values in the niri config.
+      #"sed -i -E "s|(repeat-delay[[:space:]]+)[0-9]+|\1${KEYBOARD_DELAY}|" /etc/skel/.config/niri/config.kdl"# \
+      #"sed -i -E "s|(repeat-rate[[:space:]]+)[0-9]+|\1${KEYBOARD_RATE}|" /etc/skel/.config/niri/config.kdl"#
   }
 - name="install-wayland" \
   default-value="`install-niri OR install-wayfire`" {

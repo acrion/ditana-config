@@ -1,0 +1,10 @@
+[Unit]
+Description=Set keyboard repeat rate and delay in tty.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '/usr/bin/kbdrate --silent --delay @@KEYBOARD_DELAY@@ --rate @@KEYBOARD_RATE@@ || echo "VT keyboard repeat settings unchanged - hardware does not support configuration"'
+
+[Install]
+WantedBy=multi-user.target
