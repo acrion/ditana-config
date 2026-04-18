@@ -2,7 +2,7 @@
 {
   "layer": "top",
   "position": "bottom",
-  //  "height": 64,
+  "height": 64,
   "spacing": 4,
   "modules-left": [
     "custom/start",

@@ -216,7 +216,7 @@ button:hover {
   background-color: #3a3a3a;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 56px 56px;
+  background-size: contain;
   min-width: 64px;
   font-size: 0;
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -271,7 +271,7 @@ button:hover {
 
 #custom-start {
   background-image: url("/usr/share/pixmaps/ditana-logo.svg");
-  background-size: 56px 56px;
+  background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   min-width: 64px;
@@ -292,7 +292,7 @@ button:hover {
 #custom-shutdown {
   background-color: #3a3a3a;
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-shutdown.svg");
-  background-size: 64px 64px;
+  background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   min-width: 64px;
