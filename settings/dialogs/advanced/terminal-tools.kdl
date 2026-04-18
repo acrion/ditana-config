@@ -69,7 +69,7 @@
     files "/etc/skel/.config/bat/config"
     chroot-script "`su - {Settings.instance.get('user-name')} -c 'git lfs install'`"
   }
-- name "install-ripgrep" \
+- name="install-ripgrep" \
   default-value="`install-terminal-utilities`" {
     arch-packages "ripgrep"
     files "/etc/skel/.config/ripgrep/ripgreprc"
