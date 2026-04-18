@@ -10,6 +10,7 @@
     "custom/browser",
     "custom/terminal",
     "custom/package-manager",
+    "custom/resources",
     "custom/display-settings",
     "custom/settings"
   ],
@@ -63,6 +64,12 @@
     "tooltip": true,
     "tooltip-format": "Package Manager (Add/Remove Software)",
     "on-click": "xdg-terminal-exec -e pacseek"
+  },
+  "custom/resources": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "System Monitor",
+    "on-click": "resources"
   },
   "custom/display-settings": {
     "format": " ",

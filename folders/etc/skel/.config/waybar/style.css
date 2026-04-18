@@ -211,7 +211,8 @@ button:hover {
 #custom-ditana-assistant,
 #custom-terminal,
 #custom-browser,
-#custom-package-manager {
+#custom-package-manager,
+#custom-resources {
   background-color: #3a3a3a;
   background-repeat: no-repeat;
   background-position: center;
@@ -231,7 +232,8 @@ button:hover {
 #custom-ditana-assistant:hover,
 #custom-terminal:hover,
 #custom-browser:hover,
-#custom-package-manager:hover {
+#custom-package-manager:hover,
+#custom-resources:hover {
   background-color: #4f4f4f;
 }
 
@@ -245,6 +247,10 @@ button:hover {
 
 #custom-package-manager {
   background-image: url("/usr/share/icons/kora-yellow/apps/scalable/system-software-install.svg");
+}
+
+#custom-resources {
+  background-image: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
 }
 
 #custom-file-manager {
