@@ -71,26 +71,54 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   default-value=#false {
     arch-packages "zed" \
                   "eslint" \ // optional dependency of zed
-                  "pyright" \ // optional dependency of zed
-                  "rust-analyzer" \ // optional dependency of zed
                   "org.freedesktop.secrets" // optional dependency of zed
   }
 - name="install-diffuse" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Diffuse and configure as git diff/merge tool" \
-  long-description="Install Diffuse. A sophisticated graphical diff and merge tool. Features include advanced merge functionality, separate display of all versions (base, local, and remote), manual correction of misaligned lines, n-way merging capabilities, syntax highlighting, direct file editing during comparison, and easy block copying between windows." \
+  long-description="Install Diffuse, a sophisticated graphical diff and merge tool. Features include advanced merge functionality, separate display of all versions (base, local, and remote) in four panes, manual correction of misaligned lines, n-way merging capabilities, syntax highlighting, direct file editing during comparison, and easy block copying between windows. Diffuse automatically resolves non-conflicting changes, showing only actual conflicts. If both Diffuse and Meld are installed, Diffuse is used as the merge tool (leveraging its four-pane view with separate base display) while Meld serves as the diff tool." \
   spdx-identifiers="GPL-2.0-only" \
   available="`install-desktop-environment AND install-terminal-utilities`" \ // install-terminal-utilities provides git (through git-lfs)
   default-value=#false {
     arch-packages "diffuse"
-    first-login-commands \
-        "git config --global merge.tool diffuse" \
-        "git config --global diff.tool diffuse" \
-        "git config --global difftool.prompt false"
     login-commands \
         "if command -v diffuse &> /dev/null; then" \
         "    export DIFFPROG=diffuse" \
         "fi"
+  }
+- name="install-meld" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Install Meld and configure as git diff/merge tool" \
+  long-description="Install Meld, a visual diff and merge tool with three-way comparison support. When used as git merge tool, Meld is configured with --auto-merge to automatically resolve non-conflicting changes (similar to KDiff3 and Diffuse), and mergetool.hideResolved is enabled to reduce visual noise from already-resolved hunks. Without these settings, Meld would show the unmodified base version and require manual transfer of every change — even non-conflicting ones. If both Meld and Diffuse are installed, Meld is used as the diff tool while Diffuse serves as the merge tool, combining Meld's clean visual diffs with Diffuse's superior four-pane merge workflow." \
+  spdx-identifiers="GPL-2.0-or-later" \
+  available="`install-desktop-environment AND install-terminal-utilities`" \ // install-terminal-utilities provides git (through git-lfs)
+  default-value=#false {
+    arch-packages "meld"
+  }
+- name="configure-diffuse-only" \
+  default-value="`install-diffuse AND NOT install-meld`" {
+    first-login-commands \
+        "git config --global merge.tool diffuse" \
+        "git config --global diff.tool diffuse" \
+        "git config --global difftool.prompt false"
+  }
+- name="configure-meld-only" \
+  default-value="`install-meld AND NOT install-diffuse`" {
+    first-login-commands \
+        "git config --global merge.tool meld" \
+        "git config --global diff.tool meld" \
+        "git config --global difftool.prompt false" \
+        "git config --global mergetool.hideResolved true" \
+        "git config --global mergetool.meld.useAutoMerge true"
+  }
+- name="configure-meld-and-diffuse" \
+  default-value="`install-meld AND install-diffuse`" {
+    first-login-commands \
+        "git config --global merge.tool diffuse" \
+        "git config --global diff.tool meld" \
+        "git config --global difftool.prompt false" \
+        "git config --global mergetool.hideResolved true" \
+        "git config --global mergetool.meld.useAutoMerge true"
   }
 - name="install-java-jdk" \
   dialog-name="Development Tools and Libraries" \
@@ -130,6 +158,26 @@ Install Tools for Arch package maintainers:
     arch-packages "auracle-git" \
                   "devtools" \ // optional dependency of pikaur
                   "perl-locale-gettext" // translation support in makepkg-template
+  }
+- name="install-python-dev" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Install Python development packages" \
+  long-description="Install Python development packages: $packages. Poetry pulls in python-virtualenv as a dependency. Pyright provides static type checking and is also used as a language server by editors like Zed and VS Code." \
+  spdx-identifiers="MIT" \
+  default-value=#false {
+    arch-packages "python-pip" \
+                  "python-pytest" \
+                  "python-poetry" \
+                  "ruff" \
+                  "pyright"
+  }
+- name="install-rust-dev" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Install Rust toolchain via rustup" \
+  long-description="Install the Rust toolchain manager ($packages). Rustup provides the Rust compiler, Cargo, rustfmt, rust-src, and rust-analyzer, making them available to editors like Zed and VS Code for code completion and inline diagnostics." \
+  spdx-identifiers="MIT,Apache-2.0" \
+  default-value=#false {
+    arch-packages "rustup"
   }
 - name="install-cpp-dev" \
   dialog-name="Development Tools and Libraries" \
