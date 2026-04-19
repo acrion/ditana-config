@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Ditana user folders update
+Comment=Create XDG user directories
+TryExec=xdg-user-dirs-update
+Exec=xdg-user-dirs-update
+StartupNotify=false
+NoDisplay=true

@@ -53,6 +53,23 @@
           \ // === session-wrapper executed by LightDM before the desktop environment starts ===
           \ // This executes steps that are configured via session-setup and session-setup-script
           "/usr/lib/ditana/session-wrapper" \
+          \ // XDG user dirs. The upstream /etc/xdg/autostart/xdg-user-dirs.desktop
+          \ // sets X-systemd-skip=true and X-GNOME-Autostart-Phase=EarlyInitialization;
+          \ // both keys cause systemd-xdg-autostart-generator to skip the entry (see
+          \ // systemd-xdg-autostart-generator(8) and upstream issue systemd/systemd#18791).
+          \ // As a result the upstream entry does not run on compositors that rely on
+          \ // systemd for XDG autostart (Niri, Wayfire via graphical-session.target).
+          \ // XFCE4 has its own autostart handler that ignores those keys, so the
+          \ // upstream entry works there. We ship an additional entry without the skip
+          \ // keys so xdg-user-dirs-update runs on every DE; it is idempotent, so
+          \ // running twice on XFCE is harmless.
+          "/etc/xdg/autostart/ditana-xdg-user-dirs.desktop" \
+          \ // XDG Base Directory Specification defaults, set explicitly for visibility
+          \ // and robustness against spec-nonconforming apps. environment.d covers
+          \ // systemd user services and logind-started sessions; the matching
+          \ // /etc/profile.d/ditana-xdg.sh below covers interactive login shells.
+          "/etc/environment.d/50-ditana-xdg.conf" \
+          "/etc/profile.d/ditana-xdg.sh"
           \ // === Fontconfig ===
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
@@ -208,8 +225,6 @@
           "/etc/skel/Desktop/Best Practices.desktop" \
           \ // === LibreWolf XFCE helper ===
           "/etc/skel/.local/share/xfce4/helpers/librewolf.desktop" \
-          \ // === XDG dirs init script ===
-          "/etc/X11/xinit/xinitrc.d/55-ditana-xdg-dirs.sh" \
           \ // === Ditana XFCE helper scripts ===
           "/usr/lib/ditana/pre-xfce-first-login" \
           "/usr/lib/ditana/xfce-first-login" \
