@@ -177,7 +177,6 @@
                   "xdg-desktop-portal-gtk" \
                   \ // === XFCE Ditana specific ===
                   "xfce-display-config-observer" \
-                  "ditana-print-system-load" \
                   "xfce-wallpaper-overlay" \
                   "kalu" \
                   "pciutils" \
@@ -195,6 +194,7 @@
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-terminal.xml" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/thunar-volman.xml" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
+          "/usr/lib/ditana/print-system-load" \ // configured in xfce4-panel.xml
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-1.txt" \
