@@ -90,8 +90,8 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
           \ // (exo-helper under Thunar). Calling xdg-terminal-exec directly is
           \ // simpler and DE-agnostic.
           "/etc/skel/.local/share/applications/fresh.desktop"
-    chroot-script "mkdir /etc/profile.d" \
-                  "mkdir /etc/environment.d" \
+    chroot-script "mkdir -p /etc/profile.d" \
+                  "mkdir -p /etc/environment.d" \
                   "cat <<'DITANA_ENV' >> /etc/profile.d/ditana-set-default-editor.sh" \
                   "export EDITOR=/usr/bin/fresh" \
                   "export VISUAL=/usr/bin/fresh" \
