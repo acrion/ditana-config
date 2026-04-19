@@ -38,24 +38,16 @@ REF_DIAGONAL=141
 REF_HEIGHT=64
 SLOPE=0.4
 BG_RATIO=0.875
-# Minimum bar height below which wlr/taskbar grows the bar at runtime once
-# a window exists, causing visible resize jitter when windows open/close.
-# Empirically determined (see Waybar log: "minimum height: 59 required by
-# the modules"). icon_size, bg_size, min_width remain proportional to the
-# computed (not floored) height so the visual balance stays intact.
-MIN_HEIGHT=59
 
 compute_sizes() {
     # Outputs: height icon_size bg_size min_width
     awk -v d="$1" -v rd="$REF_DIAGONAL" -v rh="$REF_HEIGHT" \
-        -v slope="$SLOPE" -v bgr="$BG_RATIO" -v mh="$MIN_HEIGHT" '
+        -v slope="$SLOPE" -v bgr="$BG_RATIO" '
         BEGIN {
             h = rh + slope * (d - rd)
             b = bgr * h
-            hr = int(h + 0.5)
-            if (hr < mh) hr = mh
             printf "%d %d %d %d\n",
-                hr, int(h + 0.5), int(b + 0.5), int(h + 0.5)
+                int(h + 0.5), int(h + 0.5), int(b + 0.5), int(h + 0.5)
         }'
 }
 
