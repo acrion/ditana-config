@@ -56,7 +56,10 @@
           "/etc/skel/.shell.d/readme.md" \
           "/usr/share/pixmaps/ditana-logo.png" \
           "/usr/share/pixmaps/ditana-logo.svg" \
-          "/etc/systemd/system/ditana_kbdrate.service"
+          "/etc/systemd/system/ditana_kbdrate.service" \
+          \ // Install the custom sudoers configuration to preserve the EDITOR and VISUAL environment variables in the sudo context,
+          \ // ensuring that the default editor is used even when elevated permissions are required.
+          "/etc/sudoers.d/10-ditana-editor"
     chroot-script "echo COLORTERM=truecolor >>/etc/environment" \
                   #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment"# \
                   "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/systemd/system/ditana_kbdrate.service" \

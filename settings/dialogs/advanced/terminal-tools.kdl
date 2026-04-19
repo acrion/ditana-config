@@ -75,43 +75,35 @@
     files "/etc/skel/.config/ripgrep/ripgreprc"
   }
   
-- name="install-micro" \
+- name="install-fresh" \
   dialog-name="Terminal Tools and Utilities" \
-  short-description="Install micro editor and set it as default" \
+  short-description="Install fresh editor and set it as default" \
   long-description="""
-Install micro editor and set it as default: micro, mirroring the user interface of GUI editors, supports shortcuts and mouse interactions, offering a familiar editing environment within the terminal. It is installed with the following settings:
-
- • Display git diff indicators next to lines
- • Save and restore cursor position when opening files
- • Retain undo history even after closing and reopening files
- • Use spaces for the tab key instead of tabs
- • Use a subtle visual indicator for indentations
- • Automatically remove trailing whitespace at the end of lines
- • Automatically re-use existing superuser privileges to save if possible
- • Automatically create missing parent directories when saving
- • Highlight all instances of searched text after a successful search
- • Open multiple files side-by-side in vertical splits
- • Wrap long lines at word boundaries (when softwrap is enabled)
- • Display a scroll bar
+Install fresh editor and set it as default: fresh is a lightweight, fast terminal-based text editor with LSP support, mirroring the user interface of GUI editors.
 """ \
-  spdx-identifiers="MIT" \
+  spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    files "/etc/skel/.config/micro/settings.json" \
-          "/etc/profile.d/ditana-set-micro-as-default-editor.sh" \
-          "/etc/environment.d/90-ditana-micro-editor.conf" \
-          \ // Install the custom sudoers configuration to preserve the EDITOR and VISUAL environment variables in the sudo context,
-          \ // ensuring that 'micro' is used as the default editor even when elevated permissions are required.
-          "/etc/sudoers.d/10-ditana-micro"
-    arch-packages "micro"
+    files "/etc/skel/.config/fresh/config.json" \
+          \ // Override the upstream fresh.desktop to use Ditana's standard
+          \ // xdg-terminal-exec mechanism. The upstream file uses Terminal=true,
+          \ // which delegates terminal selection to the file manager's handler
+          \ // (exo-helper under Thunar). Calling xdg-terminal-exec directly is
+          \ // simpler and DE-agnostic.
+          "/etc/skel/.local/share/applications/fresh.desktop"
+    chroot-script "mkdir /etc/profile.d" \
+                  "mkdir /etc/environment.d" \
+                  "cat <<'DITANA_ENV' >> /etc/profile.d/ditana-set-default-editor.sh" \
+                  "export EDITOR=/usr/bin/fresh" \
+                  "export VISUAL=/usr/bin/fresh" \
+                  "DITANA_ENV" \
+                  "cat <<'DITANA_ENV' >> /etc/environment.d/90-ditana-default-editor.conf" \
+                  "export EDITOR=/usr/bin/fresh" \
+                  "export VISUAL=/usr/bin/fresh" \
+                  "DITANA_ENV"
+    arch-packages "fresh-editor-bin"
   }
-- name="configure-micro-desktop-entry" \
-  default-value="`install-micro AND install-desktop-environment`" {
-    \ // Override the upstream micro.desktop to use Ditana's standard
-    \ // xdg-terminal-exec mechanism. The upstream file uses Terminal=true,
-    \ // which delegates terminal selection to the file manager's handler
-    \ // (exo-helper under Thunar). Calling xdg-terminal-exec directly is
-    \ // simpler and DE-agnostic.
-    files "/etc/skel/.local/share/applications/micro.desktop"
+- name="configure-fresh-desktop-entry" \
+  default-value="`install-fresh AND install-desktop-environment`" {
   }
 - name="install-yazi" \
   dialog-name="Terminal Tools and Utilities" \
