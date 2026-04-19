@@ -79,15 +79,12 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
 - name="install-codegpt" \
   dialog-name="AI Tools and Libraries" \
   short-description="Install codegpt" \
-  long-description="Install codegpt to write git commit messages or do a code review for you using ChatGPT. For this, you need to copy your OpenAI API Key from https://platform.openai.com/api-keys to ~/.shell.d/openai.sh" \
+  long-description="Install codegpt to write git commit messages or do a code review for you using an OpenAI compatible LLM API. For this, you need to copy your API Key to ~/.shell.d/openai.sh" \
   spdx-identifiers="MIT" \
   default-value=#false {
     aur-packages "codegpt-bin"
     files "/etc/skel/.shell.d/openai.sh"
-    session-setup-script {
-        - "chmod 600 $HOME/.shell.d/openai.sh"
-        - #true
-    }
+    first-login-commands "chmod 600 $HOME/.shell.d/openai.sh"
   }
 - name="install-gpu-libraries" \
   dialog-name="AI Tools and Libraries" \

@@ -44,11 +44,12 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   available="`install-terminal-utilities`" \
   default-value=#true {
     arch-packages ""
-    chroot-script "`su - {Settings.instance.get('user-name')} -c 'git config --global init.defaultBranch main'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global pull.rebase false'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global credential.helper store'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global protocol.file.allow always'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global push.autoSetupRemote true'`"
+    first-login-commands \
+        "git config --global init.defaultBranch main" \
+        "git config --global pull.rebase false" \
+        "git config --global credential.helper store" \
+        "git config --global protocol.file.allow always" \
+        "git config --global push.autoSetupRemote true"
   }
 - name="install-vscode" \
   dialog-name="Development Tools and Libraries" \
@@ -61,6 +62,19 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "code-marketplace"
     files "/etc/skel/.config/Code - OSS/User/settings.json"
   }
+- name="install-zed" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Install the Zed code editor" \
+  long-description="Install Zed, a high-performance, multiplayer code editor from the creators of Atom and Tree-sitter. Written in Rust with GPU-accelerated rendering for a low-latency editing experience. Includes packages for language support and to keep you logged into your Zed account: $packages" \
+  spdx-identifiers="GPL-3.0-or-later,AGPL-3.0-or-later,Apache-2.0" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+    arch-packages "zed" \
+                  "eslint" \ // optional dependency of zed
+                  "pyright" \ // optional dependency of zed
+                  "rust-analyzer" \ // optional dependency of zed
+                  "org.freedesktop.secrets" // optional dependency of zed
+  }
 - name="install-diffuse" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Diffuse and configure as git diff/merge tool" \
@@ -69,15 +83,14 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   available="`install-desktop-environment AND install-terminal-utilities`" \ // install-terminal-utilities provides git (through git-lfs)
   default-value=#false {
     arch-packages "diffuse"
-    chroot-script "`su - {Settings.instance.get('user-name')} -c 'git config --global merge.tool diffuse'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global diff.tool diffuse'`" \
-                  "`su - {Settings.instance.get('user-name')} -c 'git config --global difftool.prompt false'`"
-    session-setup-script {
-        - "if command -v diffuse &> /dev/null; then" \
-          "    export DIFFPROG=diffuse" \
-          "fi"
-        - #false
-    }
+    first-login-commands \
+        "git config --global merge.tool diffuse" \
+        "git config --global diff.tool diffuse" \
+        "git config --global difftool.prompt false"
+    login-commands \
+        "if command -v diffuse &> /dev/null; then" \
+        "    export DIFFPROG=diffuse" \
+        "fi"
   }
 - name="install-java-jdk" \
   dialog-name="Development Tools and Libraries" \

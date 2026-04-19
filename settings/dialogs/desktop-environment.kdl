@@ -228,9 +228,7 @@
                   "DITANA_ENV" \
                   "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry from lightdm
                   "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
-    session-setup {
-        - "/usr/lib/ditana/pre-xfce-first-login" #true
-    }
+    first-login-scripts "/usr/lib/ditana/pre-xfce-first-login"
     autostart {
         - "XFCE;" "/usr/lib/ditana/xfce-first-login"
         - "XFCE;" "/usr/bin/kalu"
@@ -264,12 +262,9 @@
         #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
         #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
         "fi"
-    session-setup-script {
-      - "if systemd-detect-virt -q; then" \
-        "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
-        "fi"
-      - #false
-    }
+    login-commands "if systemd-detect-virt -q; then" \
+                   "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+                   "fi"
     autostart {
         - "Wayfire;wayfire;" "/usr/bin/kanshi"
         - "Wayfire;wayfire;" "/usr/bin/waybar"
@@ -287,10 +282,7 @@
                   "swaybg" \
                   "monique" \
                   "niri-settings-git"
-    session-setup-script {
-      - "systemctl --user stop niri.service 2>/dev/null"
-      - #false
-    }
+    login-commands "systemctl --user stop niri.service 2>/dev/null"
     files \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
           \ // === NVIDIA Niri fix ===
