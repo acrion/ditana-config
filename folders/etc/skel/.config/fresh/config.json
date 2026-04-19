@@ -1,6 +1,6 @@
 {
   "theme": "dark",
   "editor": {
-    "use_terminal_bg": true,
-  },
+    "use_terminal_bg": true
+  }
 }

@@ -242,7 +242,7 @@
   default-value=#true {
     files \ // === Wayfire config ===
           "/etc/skel/.config/wayfire.ini" \
-          "/usr/share/slick-greeter/wayfire.svg"
+          "/usr/share/slick-greeter/badges/wayfire.svg"
     arch-packages "wayfire" \
                   "wayfire-plugins-extra" \
                   "wf-msg-git" \
@@ -286,7 +286,7 @@
     login-commands "systemctl --user stop niri.service 2>/dev/null"
     files \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
-          "/usr/share/slick-greeter/niri.svg" \
+          "/usr/share/slick-greeter/badges/niri.svg" \
           \ // === NVIDIA Niri fix ===
           "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json"
     early-chroot-script \
