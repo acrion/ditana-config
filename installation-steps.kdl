@@ -10,6 +10,12 @@ This is used to determine the terminal font size.
   - name="choose-sub-locale" type="procedure"
   - name="choose-keymap-layout" type="procedure"
   - name="choose-keymap-variant" type="procedure"
+  - name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 200..500" instruction="""
+Please enter the key repeat delay in milliseconds.
+
+Please enter a value between 200 and 500. A smaller value will result in a faster repeat start, while a larger value will delay the repeat start.
+"""
+  - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
   - name="test-keymap" type="procedure"
   - name="generate-host-name" type="procedure"
   - name="user-name" \
@@ -66,11 +72,6 @@ This sets how long sudo remembers your password before asking again. The default
 • Higher values are more convenient but less secure, as any process running in your terminal can use the cached credentials.
 
 If unsure, it's recommended to keep the default value.
-"""
-                  - name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 200..500" instruction="""
-Please enter the key repeat delay in milliseconds.
-
-Please enter a value between 200 and 500. A smaller value will result in a faster repeat start, while a larger value will delay the repeat start.
 """
                   - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
 ID of user «$user-name».
@@ -191,7 +192,6 @@ Note: Enter the DPI value of your host display, not the virtual
       environment’s.
 """ available="`virtual-environment AND install-xfce AND install-desktop-environment`"
   - name="switch-on-logging" type="procedure"
-  - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
   - name="format-nvme" type="procedure" available="`real-install`"
   - name="partition-drive" type="procedure" available="`real-install`"
   - name="create-kernel-configuration" type="procedure" available="`real-install`"
