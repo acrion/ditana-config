@@ -38,19 +38,9 @@ repos:
             json-kdl-converter/target/release/json-kdl-converter kdlset2json . /tmp/ditana-config.json
 
             echo "🔍 Validating JSON against ditana-schema.json..."
-            python -c "
-            import json, sys
-            from jsonschema import validate, ValidationError
-            try:
-                with open('\''ditana-schema.json'\'') as s, open('\''/tmp/ditana-config.json'\'') as d:
-                    validate(instance=json.load(d), schema=json.load(s))
-                print('\''✅ Validation successful!'\'')
-            except ValidationError as e:
-                print(f'\''❌ Validation failed: {e.message}'\'', file=sys.stderr)
-                path = '\''.'\''.join([str(p) for p in e.absolute_path])
-                print(f'\''Path: {path}'\'', file=sys.stderr)
-                sys.exit(1)
-            "
+
+            # Use a strict Python one-liner to avoid any YAML indentation issues on GitHub Actions
+            python -c "import json; from jsonschema import validate; validate(instance=json.load(open('\''/tmp/ditana-config.json'\'')), schema=json.load(open('\''ditana-schema.json'\''))); print('\''✅ Validation successful!'\'')"
           ' --
         pass_filenames: false
         always_run: true
