@@ -394,7 +394,6 @@
   default-value="`install-xfce`" {
     arch-packages "alacritty" \
                   "xdg-terminal-exec-git"
-    files "/etc/skel/.config/alacritty/alacritty.toml"
     chroot-script "mkdir -p /etc/xdg" \
                   "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
                   "sed -i '/^TERMINAL=/d' /etc/environment" \
