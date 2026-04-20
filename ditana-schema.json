@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["installation-steps", "settings"],
+  "properties": {
+    "installation-steps": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/installation-step" }
+    },
+    "settings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/setting" }
+    }
+  },
+  "definitions": {
+    "installation-step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum":["ask-for-setting", "procedure", "ask-for-yes-no", "categories", "checklist", "radiolist"] },
+        "validation": { "type": "string" },
+        "extra-validation": { "type": "string" },
+        "instruction": { "type": "string" },
+        "available": { "type": "string" },
+        "help-intro": { "type": "string" },
+        "help-note": { "type": "string" },
+        "suppress-license": { "type": "boolean" },
+        "categories": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/installation-step" }
+        }
+      }
+    },
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "detect": { "type": "string" },
+        "default-value": {},
+        "dialog-name": { "type": "string" },
+        "short-description": { "type": "string" },
+        "long-description": { "type": "string" },
+        "spdx-identifiers": { "type": "string" },
+        "license-category": { "type": "string" },
+        "available": { "type": "string" },
+        "required-by-chroot": { "type": "boolean" },
+        "arch-packages": { "type": "array", "items": { "type": "string" } },
+        "aur-packages": { "type": "array", "items": { "type": "string" } },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "early-chroot-script": { "type": "array", "items": { "type": "string" } },
+        "chroot-script": { "type": "array", "items": { "type": "string" } },
+        "root-script": { "type": "array", "items": { "type": "string" } },
+        "first-login-scripts": { "type": "array", "items": { "type": "string" } },
+        "login-scripts": { "type": "array", "items": { "type": "string" } },
+        "first-login-commands": { "type": "array", "items": { "type": "string" } },
+        "login-commands": { "type": "array", "items": { "type": "string" } },
+        "autostart": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  }
+}

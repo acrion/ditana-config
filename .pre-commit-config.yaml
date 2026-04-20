@@ -5,7 +5,6 @@ repos:
         name: KDL syntax validation
         entry: |
           bash -c '
-            # Check if kdlfmt is installed
             if ! command -v kdlfmt >/dev/null 2>&1; then
               echo "Info: kdlfmt is not installed. Skipping KDL validation." >&2
               exit 0
@@ -13,18 +12,45 @@ repos:
 
             failed=0
             for file in "$@"; do
-              # Pure syntax check (no formatting, no style enforcement)
               if ! kdlfmt format --stdin < "$file" >/dev/null; then
                 echo "❌ Syntax error in KDL file: $file" >&2
                 failed=1
               fi
             done
-
-            if [ "$failed" -eq 1 ]; then
-              exit 1
-            fi
+            exit $failed
           ' --
         language: system
         files: \.kdl$
         pass_filenames: true
         verbose: true
+
+      - id: validate-kdl-via-json
+        name: Validate KDL data against JSON Schema
+        language: python
+        additional_dependencies: ['jsonschema']
+        entry: |
+          bash -c '
+            set -e
+            echo "⚙️  Building json-kdl-converter..."
+            cargo build --manifest-path json-kdl-converter/Cargo.toml --release -q
+
+            echo "🔄 Converting KDL to JSON..."
+            json-kdl-converter/target/release/json-kdl-converter kdlset2json . /tmp/ditana-config.json
+
+            echo "🔍 Validating JSON against ditana-schema.json..."
+            python -c "
+            import json, sys
+            from jsonschema import validate, ValidationError
+            try:
+                with open('\''ditana-schema.json'\'') as s, open('\''/tmp/ditana-config.json'\'') as d:
+                    validate(instance=json.load(d), schema=json.load(s))
+                print('\''✅ Validation successful!'\'')
+            except ValidationError as e:
+                print(f'\''❌ Validation failed: {e.message}'\'', file=sys.stderr)
+                path = '\''.'\''.join([str(p) for p in e.absolute_path])
+                print(f'\''Path: {path}'\'', file=sys.stderr)
+                sys.exit(1)
+            "
+          ' --
+        pass_filenames: false
+        always_run: true

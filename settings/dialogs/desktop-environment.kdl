@@ -69,7 +69,7 @@
           \ // systemd user services and logind-started sessions; the matching
           \ // /etc/profile.d/ditana-xdg.sh below covers interactive login shells.
           "/etc/environment.d/50-ditana-xdg.conf" \
-          "/etc/profile.d/ditana-xdg.sh"
+          "/etc/profile.d/ditana-xdg.sh" \
           \ // === Fontconfig ===
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
@@ -336,33 +336,88 @@
     chroot-script "systemctl --global enable waybar-display-scale.service"
   }
 
-- name="install-kitty" \
-  default-value="`install-xfce`" {
-    arch-packages "kitty" \
-                  "imagemagick" \
-                  "python-pygments" \
-                  "libcanberra" \
-                  "xdg-terminal-exec-git"
-    files "/etc/skel/.config/kitty/kitty.conf" \
-          "/usr/share/pixmaps/ditana-logo-tiny.png"
-    chroot-script "mkdir -p /etc/xdg" \
-                  "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
-                  \ // $TERMINAL is consumed by GUI apps via the PAM session env
-                  \ // (xdg-terminal-exec fallback, i3-sensible-terminal, ...).
-                  "sed -i '/^TERMINAL=/d' /etc/environment" \
-                  "echo TERMINAL=kitty >> /etc/environment"
-  }
+// Terminal emulator philosophy: Ditana follows "Write programs that do
+// one thing and do it well" (Doug McIlroy). The terminal emulates a
+// terminal; tabs, panes, layouts, and session persistence are delegated
+// to zellij, which is installed by default. This gives users rich
+// multiplexing that works identically across emulators, hosts, and SSH
+// sessions.
+//
+// A single default must be configured via xdg-terminal-exec and
+// $TERMINAL, so there is no per-DE differentiation. Two emulators ship
+// depending on the installed desktop stack:
+//
+//   - foot:      Wayland-native, default when only Wayland compositors
+//                (Wayfire, Niri) are installed. Beyond Wayland being
+//                the designated X11 successor, foot provides practical
+//                features that upstream Alacritty intentionally omits.
+//                  * OSC 133 semantic prompt markers — jump between
+//                    prompts in scrollback, select full command output.
+//                    Ditana ships shell hooks in /etc/skel/.shellrc
+//                    that emit these markers in bash and zsh, scoped
+//                    to foot via $TERM / $TERMINAL, because Starship
+//                    does not emit OSC 133 natively.
+//                  * OSC 9 / OSC 777 desktop notifications — any shell
+//                    script or CLI tool can raise "build finished"
+//                    style alerts with a single printf, no notify-send
+//                    dependency, no D-Bus plumbing.
+//                  * Sixel graphics — inline image previews in TUIs
+//                    such as yazi, lf, gnuplot, matplotlib.
+//                  * Server/daemon mode (foot --server) — near-instant
+//                    window spawn, noticeable under tiling compositors
+//                    where terminals are opened frequently.
+//                  * Very small memory footprint per instance.
+//
+//   - alacritty: GPU-accelerated, works on both X11 and Wayland.
+//                Becomes the default as soon as XFCE is part of the
+//                installation, since foot is Wayland-only. Alacritty
+//                explicitly declines tabs, panes, graphics protocols,
+//                ligatures, and most OSC extensions as a design
+//                principle — delegating to external tools. This keeps
+//                the emulator layer minimal and makes it a clean
+//                counterpart to zellij on both display servers.
+
 - name="install-foot" \
-  default-value="`install-wayland AND NOT install-xfce`" { // kitty wins if one of the installed DEs is XFCE (we need to have a single default, because we use xdg-terminals)
+  default-value="`install-wayland AND NOT install-xfce`" { // alacritty wins if one of the installed DEs is XFCE (we need to have a single default, because we use xdg-terminals)
     arch-packages "foot" \
                   "libnotify" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/foot/foot.ini"
-    chroot-script "mkdir -p /etc/xdg" \
+    chroot-script "systemctl --global enable foot-server.service" \
+                  "mkdir -p /etc/xdg" \
                   "echo foot.desktop >/etc/xdg/xdg-terminals.list" \
                   "sed -i '/^TERMINAL=/d' /etc/environment" \
                   "echo TERMINAL=foot >> /etc/environment"
   }
+  
+- name="install-alacritty" \
+  default-value="`install-xfce`" {
+    arch-packages "alacritty" \
+                  "xdg-terminal-exec-git"
+    files "/etc/skel/.config/alacritty/alacritty.toml"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
+                  "sed -i '/^TERMINAL=/d' /etc/environment" \
+                  "echo TERMINAL=alacritty >> /etc/environment"
+  }
+  
+// - name="install-kitty" \
+//   default-value="`install-xfce`" {
+//     arch-packages "kitty" \
+//                   "imagemagick" \
+//                   "python-pygments" \
+//                   "libcanberra" \
+//                   "xdg-terminal-exec-git"
+//     files "/etc/skel/.config/kitty/kitty.conf" \
+//           "/usr/share/pixmaps/ditana-logo-tiny.png"
+//     chroot-script "mkdir -p /etc/xdg" \
+//                   "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
+//                   \ // $TERMINAL is consumed by GUI apps via the PAM session env
+//                   \ // (xdg-terminal-exec fallback, i3-sensible-terminal, ...).
+//                   "sed -i '/^TERMINAL=/d' /etc/environment" \
+//                   "echo TERMINAL=kitty >> /etc/environment"
+//   }
+
 // - name="install-ghostty" \
 //   \ // In VMs without GPU passthrough, Ghostty's OpenGL 4.3+ requirement
 //   \ // (compute shaders, SSBOs) cannot be met: llvmpipe crashes due to an

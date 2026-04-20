@@ -13,8 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install kdlfmt
         uses: hougesen/kdlfmt@main
+
+      - name: Build json-kdl-converter (for schema validation)
+        run: cargo build --manifest-path json-kdl-converter/Cargo.toml --release
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@v3.0.1
@@ -23,10 +29,16 @@ jobs:
         run: |
           git rev-parse --short HEAD > config_hash.txt
           git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M %Z' > config_date.txt
+          
+          # Clean compiled binaries to keep the archive small
+          cargo clean --manifest-path json-kdl-converter/Cargo.toml
+          
+          # Pack the Rust source folder, not the binary.
           tar czf ditana-config.tar.gz \
             installation-steps.kdl \
             settings/ \
             folders/ \
+            json-kdl-converter/ \
             config_hash.txt \
             config_date.txt
 
@@ -38,8 +50,9 @@ jobs:
           name: Develop configuration
           body: |
             Automatically built from commit ${{ github.sha }}.
+            Contains the KDL data and the Rust source code for the converter.
 
-            This is the testing build configuration.
+            This is the develop build configuration.
           artifacts: ditana-config.tar.gz
           allowUpdates: true
           removeArtifacts: true
