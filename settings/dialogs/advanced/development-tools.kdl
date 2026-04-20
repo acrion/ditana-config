@@ -78,7 +78,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   short-description="Install Diffuse and configure as git diff/merge tool" \
   long-description="Install Diffuse, a sophisticated graphical diff and merge tool. Features include advanced merge functionality, separate display of all versions (base, local, and remote) in four panes, manual correction of misaligned lines, n-way merging capabilities, syntax highlighting, direct file editing during comparison, and easy block copying between windows. Diffuse automatically resolves non-conflicting changes, showing only actual conflicts. If both Diffuse and Meld are installed, Diffuse is used as the merge tool (leveraging its four-pane view with separate base display) while Meld serves as the diff tool." \
   spdx-identifiers="GPL-2.0-only" \
-  available="`install-desktop-environment AND install-terminal-utilities`" \ // install-terminal-utilities provides git (through git-lfs)
+  available="`install-desktop-environment`" \
   default-value=#false {
     arch-packages "diffuse"
     login-commands \
@@ -91,19 +91,19 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   short-description="Install Meld and configure as git diff/merge tool" \
   long-description="Install Meld, a visual diff and merge tool with three-way comparison support. When used as git merge tool, Meld is configured with --auto-merge to automatically resolve non-conflicting changes (similar to KDiff3 and Diffuse), and mergetool.hideResolved is enabled to reduce visual noise from already-resolved hunks. Without these settings, Meld would show the unmodified base version and require manual transfer of every change — even non-conflicting ones. If both Meld and Diffuse are installed, Meld is used as the diff tool while Diffuse serves as the merge tool, combining Meld's clean visual diffs with Diffuse's superior four-pane merge workflow." \
   spdx-identifiers="GPL-2.0-or-later" \
-  available="`install-desktop-environment AND install-terminal-utilities`" \ // install-terminal-utilities provides git (through git-lfs)
+  available="`install-desktop-environment`" \
   default-value=#false {
     arch-packages "meld"
   }
 - name="configure-diffuse-only" \
-  default-value="`install-diffuse AND NOT install-meld`" {
+  default-value="`install-git AND install-diffuse AND NOT install-meld`" {
     first-login-commands \
         "git config --global merge.tool diffuse" \
         "git config --global diff.tool diffuse" \
         "git config --global difftool.prompt false"
   }
 - name="configure-meld-only" \
-  default-value="`install-meld AND NOT install-diffuse`" {
+  default-value="`install-git AND install-meld AND NOT install-diffuse`" {
     first-login-commands \
         "git config --global merge.tool meld" \
         "git config --global diff.tool meld" \
@@ -112,7 +112,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "git config --global mergetool.meld.useAutoMerge true"
   }
 - name="configure-meld-and-diffuse" \
-  default-value="`install-meld AND install-diffuse`" {
+  default-value="`install-git AND install-meld AND install-diffuse`" {
     first-login-commands \
         "git config --global merge.tool diffuse" \
         "git config --global diff.tool meld" \
@@ -142,7 +142,18 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "patchelf" \
                   "strace" \
                   "stress-ng" \
-                  "ditana-update-from-skel"
+                  "shellcheck" \
+                  "shfmt" \ // format shell programs
+                  \ // language servers, used e.g. by fresh
+                  "marksman" \
+                  "vscode-json-languageserver" \
+                  "vscode-html-languageserver" \
+                  "bash-language-server" \
+                  "lua-language-server" \
+                  "yaml-language-server" \
+                  "typescript-language-server" \ // JavaScript + TypeScript
+                  "gopls" \
+                  "taplo-cli" // toml
   }
 - name="install-pacman-additional-tools" \
   dialog-name="Development Tools and Libraries" \
@@ -169,7 +180,8 @@ Install Tools for Arch package maintainers:
                   "python-pytest" \
                   "python-poetry" \
                   "ruff" \
-                  "pyright"
+                  "pyright" \
+                  "python-lsp-server" // language server, used e.g. by fresh
   }
 - name="install-rust-dev" \
   dialog-name="Development Tools and Libraries" \
@@ -177,7 +189,7 @@ Install Tools for Arch package maintainers:
   long-description="Install the Rust toolchain manager ($packages). Rustup provides the Rust compiler, Cargo, rustfmt, rust-src, and rust-analyzer, making them available to editors like Zed and VS Code for code completion and inline diagnostics." \
   spdx-identifiers="MIT,Apache-2.0" \
   default-value=#false {
-    arch-packages "rustup"
+    arch-packages "rustup" // also provides the language server, used e.g. by fresh
   }
 - name="install-cpp-dev" \
   dialog-name="Development Tools and Libraries" \
@@ -190,7 +202,7 @@ Install Tools for Arch package maintainers:
                   "gdb" \
                   "lldb" \
                   "gcc" \
-                  "clang" \
+                  "clang" \ // also provides the languages server, used e.g. by fresh
                   "gtest" \
                   "doxygen" \
                   "vcpkg" \

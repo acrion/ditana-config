@@ -24,6 +24,10 @@
     arch-packages "cronie"
     chroot-script "systemctl enable cronie"
   }
+- name="install-git" \
+  default-value="`install-terminal-utilities" {
+    arch-packages "git-lfs"
+  }
 - name="install-terminal-utilities" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install essential terminal utilities like grep, rsync, bc..." \
@@ -58,7 +62,6 @@
     "neovim" \
     "perl-image-exiftool" \
     "rsync" \
-    "shellcheck" \
     "sed" \
     "starship" \ // used by bash and zsh configuration (if installed)
     "systemctl-tui" \
@@ -102,8 +105,9 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
                   "DITANA_ENV"
     arch-packages "fresh-editor-bin"
   }
-- name="configure-fresh-desktop-entry" \
-  default-value="`install-fresh AND install-desktop-environment`" {
+- name="configure-git-to-use-fresh" \
+  default-value="`install-fresh AND install-git`" {
+    first-login-commands "git config --global core.editor 'fresh --cmd session open-file . --wait'"
   }
 - name="install-yazi" \
   dialog-name="Terminal Tools and Utilities" \
