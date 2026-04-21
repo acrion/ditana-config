@@ -10,10 +10,10 @@ This is used to determine the terminal font size.
   - name="choose-sub-locale" type="procedure"
   - name="choose-keymap-layout" type="procedure"
   - name="choose-keymap-variant" type="procedure"
-  - name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 200..500" instruction="""
+  - name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 50..2000" instruction="""
 Please enter the key repeat delay in milliseconds.
 
-Please enter a value between 200 and 500. A smaller value will result in a faster repeat start, while a larger value will delay the repeat start.
+Please enter a value between 50 and 2000. A smaller value will result in a faster repeat start, while a larger value will delay the repeat start.
 """
   - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
   - name="test-keymap" type="procedure"

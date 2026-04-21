@@ -96,18 +96,14 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
     chroot-script "mkdir -p /etc/profile.d" \
                   "mkdir -p /etc/environment.d" \
                   "cat <<'DITANA_ENV' >> /etc/profile.d/ditana-set-default-editor.sh" \
-                  "export EDITOR=/usr/bin/fresh" \
-                  "export VISUAL=/usr/bin/fresh" \
+                  "export EDITOR=/usr/lib/ditana-fresh-edit" \
+                  "export VISUAL=/usr/lib/ditana-fresh-edit" \
                   "DITANA_ENV" \
                   "cat <<'DITANA_ENV' >> /etc/environment.d/90-ditana-default-editor.conf" \
-                  "export EDITOR=/usr/bin/fresh" \
-                  "export VISUAL=/usr/bin/fresh" \
+                  "EDITOR=/usr/lib/ditana-fresh-edit" \
+                  "VISUAL=/usr/lib/ditana/fresh-edit" \
                   "DITANA_ENV"
     arch-packages "fresh-editor-bin"
-  }
-- name="configure-git-to-use-fresh" \
-  default-value="`install-fresh AND install-git`" {
-    first-login-commands "git config --global core.editor 'fresh --cmd session open-file . --wait'"
   }
 - name="install-yazi" \
   dialog-name="Terminal Tools and Utilities" \
