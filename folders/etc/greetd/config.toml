@@ -1,5 +1,5 @@
 [default_session]
-command = "tuigreet --time --remember --asterisks --sessions /usr/share/ditana/sessions --cmd uwsm-start-detect"
+command = "tuigreet --time --remember --asterisks --sessions /usr/share/ditana/sessions --xsessions /usr/share/ditana/sessions"
 user = "greeter"
 
 [terminal]

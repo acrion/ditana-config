@@ -86,6 +86,7 @@
           \ // === Wayfire XDG autostart service ===
           "/usr/lib/systemd/user/ditana-wayfire-xdg-autostart.service"
     chroot-script "systemctl enable greetd.service" \
+                  "usermod -aG video,input greeter" \
                   "fc-cache -fv" \
                   "cat <<'DITANA_ENV' >> /etc/environment" \
                   "# Fallback for apps not picking up the theme via gsettings" \
@@ -331,7 +332,6 @@
                   "swaylock" \
                   "hyprpolkitagent" \
                   "mako"
-    chroot-script "usermod -aG video,input greeter"
   }
 - name="install-waybar-display-scale" \
   default-value="`install-wayland`" {
