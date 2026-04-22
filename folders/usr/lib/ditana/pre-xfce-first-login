@@ -18,9 +18,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ditana-config-xfce. If not, see <https://www.gnu.org/licenses/>.
 
-# This script is executed once for each user via $HOME/.xprofile
+# This script is executed once for each user via /usr/lib/ditana/session-setup
 
 shopt -s dotglob
+
+if [[ "$XDG_SESSION_DESKOP" != "xfce-ditana" ]]; then
+    exit 0
+fi
 
 if command -v ditana-assistant &> /dev/null; then
     PINNED_APPS_FRONT="ditana-assistant;"

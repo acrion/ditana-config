@@ -1,0 +1,7 @@
+#!/bin/sh
+if [[ "${DESKTOP_SESSION}" = "xfce-ditana" ]]; then
+    # https://wiki.archlinux.org/title/HiDPI#Qt_5
+    # https://doc.qt.io/qt-5/highdpi.html
+    echo "QT_AUTO_SCREEN_SCALE_FACTOR=1"
+    echo "QT_ENABLE_HIGHDPI_SCALING=1"
+fi

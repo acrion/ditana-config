@@ -92,8 +92,10 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
           \ // which delegates terminal selection to the file manager's handler
           \ // (exo-helper under Thunar). Calling xdg-terminal-exec directly is
           \ // simpler and DE-agnostic.
-          "/etc/skel/.local/share/applications/fresh.desktop"
-    chroot-script "mkdir -p /etc/profile.d" \
+          "/etc/skel/.local/share/applications/fresh.desktop" \
+          "/usr/lib/ditana/editor-fresh"
+    chroot-script "mv /usr/lib/ditana/editor-fresh /usr/lib/ditana/editor" \
+                  "mkdir -p /etc/profile.d" \
                   "mkdir -p /etc/environment.d" \
                   "cat <<'DITANA_ENV' >> /etc/profile.d/ditana-set-default-editor.sh" \
                   "export EDITOR=/usr/lib/ditana/editor" \
@@ -102,12 +104,7 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
                   "cat <<'DITANA_ENV' >> /etc/environment.d/90-ditana-default-editor.conf" \
                   "EDITOR=/usr/lib/ditana/editor" \
                   "VISUAL=/usr/lib/ditana/editor" \
-                  "DITANA_ENV" \
-                  "cat <<'DITANA_ENV' >> /usr/lib/ditana/editor" \
-                  "#!/usr/bin/env bash" \
-                  #"exec /usr/bin/fresh --config "${XDG_CONFIG_HOME:-$HOME/.config}/fresh/config.json" --cmd session open-file . --wait "$@""# \
-                  "DITANA_ENV" \
-                  "chmod +x /usr/lib/ditana/editor"
+                  "DITANA_ENV"
     arch-packages "fresh-editor-bin"
   }
 - name="install-yazi" \

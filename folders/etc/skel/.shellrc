@@ -161,7 +161,7 @@ fi
 #
 # The guard matches both a direct foot session ($TERM starts with
 # "foot") and a foot session reached through a multiplexer that
-# rewrites $TERM but preserves Ditana's $TERMINAL from /etc/environment
+# rewrites $TERM but preserves Ditana's $TERMINAL from /etc/environment.d
 # (e.g., zellij running inside foot). In the multiplexer case, the
 # outer foot still sees the sequences provided the multiplexer passes
 # OSC through, which zellij does by default.

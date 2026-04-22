@@ -24,7 +24,25 @@ dbus-update-activation-environment --systemd --all
 source /usr/lib/ditana/session-setup
 
 env | sort
-journalctl --user -b -u graphical-session.target --no-pager
+
+if systemctl --user is-active --quiet graphical-session.target; then
+    echo ">>> WARNING: graphical-session.target is already active! <<<"
+    echo "This indicates a flaw in the systemd user session lifecycle. A service pulled the target too early."
+    echo "While startxfce4 won't abort, this can cause GUI services to fail because they start before the X server is ready."
+    echo "Units configured to pull in graphical-session.target (reverse dependencies):"
+
+    systemctl --user list-dependencies --reverse --plain --no-legend graphical-session.target 2>/dev/null | \
+        sed '/^graphical-session.target$/d' | \
+        while read -r unit; do
+            if systemctl --user is-active --quiet "$unit"; then
+                echo "  -> [ACTIVE]   $unit"
+            else
+                echo "  -> [INACTIVE] $unit"
+            fi
+        done || echo "  (unable to list dependencies)"
+
+    echo ">>> End of pre-login diagnostic <<<"
+fi
 
 if [ -n "$XDG_VTNR" ]; then
     exec startxfce4 -- "vt$XDG_VTNR" -keeptty

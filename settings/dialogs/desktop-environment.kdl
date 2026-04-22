@@ -88,10 +88,17 @@
     chroot-script "systemctl enable greetd.service" \
                   "usermod -aG video,input greeter" \
                   "fc-cache -fv" \
-                  "cat <<'DITANA_ENV' >> /etc/environment" \
+                  "mkdir -p /etc/environment.d" \
+                  "cat <<'DITANA_ENV' >> /etc/environment.d/ditana-set-theme.conf" \
                   "# Fallback for apps not picking up the theme via gsettings" \
                   "GTK_THEME=Dracula" \
-                  "DITANA_ENV"
+                  "DITANA_ENV" \
+                  "sudo mkdir -p /var/cache/tuigreet" \
+                  "sudo chmod 755 /var/cache/tuigreet" \
+                  "sudo chown greeter:greeter /var/cache/tuigreet" \
+                  #"printf "%s" "$USER_NAME" > /var/cache/tuigreet/lastuser"# \
+                  "sudo chmod 640 /var/cache/tuigreet/lastuser" \
+                  "sudo chown greeter:greeter /var/cache/tuigreet/lastuser"
     autostart {
         - "" "/usr/lib/ditana/first-login"
     }
@@ -233,18 +240,14 @@
           "/usr/lib/ditana/xfce-first-login" \
           \ // === Wallpapers ===
           "/usr/share/backgrounds/xfce/ditana-wallpaper.jpg" \
-          "/usr/share/backgrounds/xfce/ditana-blue.png"
+          "/usr/share/backgrounds/xfce/ditana-blue.png" \
+          \ // === Qt Scaling ===
+          "/etc/skel/.config/systemd/user-environment-generators/50-qt-hidpi-xfce-ditana"
     early-chroot-script \
       \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
       "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
       "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"
-    chroot-script "cat <<'DITANA_ENV' >> /etc/environment" \
-                  "# https://wiki.archlinux.org/title/HiDPI#Qt_5" \
-                  "# https://doc.qt.io/qt-5/highdpi.html" \
-                  "QT_AUTO_SCREEN_SCALE_FACTOR=1" \
-                  "QT_ENABLE_HIGHDPI_SCALING=1" \
-                  "DITANA_ENV" \
-                  "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry from lightdm
+    chroot-script "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry
                   "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
     first-login-scripts "/usr/lib/ditana/pre-xfce-first-login"
     autostart {
@@ -283,7 +286,7 @@
         #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
         #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
         "fi"
-    login-commands "if systemd-detect-virt -q; then" \
+    login-commands #"if systemd-detect-virt -q && [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
                    "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
                    "fi"
     autostart {
@@ -303,7 +306,7 @@
                   "swaybg" \
                   "monique" \
                   "niri-settings-git"
-    login-commands "systemctl --user stop niri.service 2>/dev/null"
+    login-commands "systemctl --user stop niri.service 2>/dev/null" // note that we do that for all DEs (independent from $XDG_SESSION_DESKOP)
     files "/usr/lib/ditana/start-niri-greetd" \
           "/usr/share/ditana/wayland-sessions/niri-ditana.desktop" \
           \ // === Niri config ===
@@ -394,8 +397,8 @@
     chroot-script "systemctl --global enable foot-server.service" \
                   "mkdir -p /etc/xdg" \
                   "echo foot.desktop >/etc/xdg/xdg-terminals.list" \
-                  "sed -i '/^TERMINAL=/d' /etc/environment" \
-                  "echo TERMINAL=foot >> /etc/environment"
+                  "mkdir -p /etc/environment.d" \
+                  "echo TERMINAL=foot >> /etc/environment.d/set-terminal.conf"
   }
   
 - name="install-alacritty" \
@@ -404,8 +407,8 @@
                   "xdg-terminal-exec-git"
     chroot-script "mkdir -p /etc/xdg" \
                   "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
-                  "sed -i '/^TERMINAL=/d' /etc/environment" \
-                  "echo TERMINAL=alacritty >> /etc/environment"
+                  "mkdir -p /etc/environment.d" \
+                  "echo TERMINAL=alacritty >> /etc/environment.d/set-terminal.conf"
   }
   
 // - name="install-kitty" \
@@ -421,8 +424,8 @@
 //                   "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
 //                   \ // $TERMINAL is consumed by GUI apps via the PAM session env
 //                   \ // (xdg-terminal-exec fallback, i3-sensible-terminal, ...).
-//                   "sed -i '/^TERMINAL=/d' /etc/environment" \
-//                   "echo TERMINAL=kitty >> /etc/environment"
+//                   "mkdir -p /etc/environment.d" \
+//                   "echo TERMINAL=kitty >> /etc/environment.d/set-terminal.conf"
 //   }
 
 // - name="install-ghostty" \
@@ -437,7 +440,9 @@
 //     files "/etc/skel/.config/ghostty/config" \
 //           "/usr/share/pixmaps/ditana-logo-tiny.png"
 //     chroot-script "mkdir -p /etc/xdg" \
-//                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list"
+//                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list" \
+//                   "mkdir -p /etc/environment.d" \
+//                   "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
 //   }
 
 - name="install-waybar-ditana-assistant" \

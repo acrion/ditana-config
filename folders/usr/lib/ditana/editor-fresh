@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+export GIT_OPTIONAL_LOCKS=0
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+
+SESSION_NAME="scratch-$$"
+
+/usr/bin/fresh \
+  --config "${XDG_CONFIG_HOME:-$HOME/.config}/fresh/config.json" \
+  --cmd session open-file "$SESSION_NAME" --wait "$@" < /dev/tty > /dev/tty
+
+/usr/bin/fresh \
+  --config "${XDG_CONFIG_HOME:-$HOME/.config}/fresh/config.json" \
+  --cmd session kill "$SESSION_NAME" >/dev/null 2>&1 || true

@@ -60,8 +60,9 @@
           \ // Install the custom sudoers configuration to preserve the EDITOR and VISUAL environment variables in the sudo context,
           \ // ensuring that the default editor is used even when elevated permissions are required.
           "/etc/sudoers.d/10-ditana-editor"
-    chroot-script "echo COLORTERM=truecolor >>/etc/environment" \
-                  #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment"# \
+    chroot-script "mkdir -p /etc/environment.d" \
+                  "echo COLORTERM=truecolor >>/etc/environment.d/ditana-set-colorterm.conf" \
+                  #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment.d/ditana-set-arch-debuginfo.conf"# \
                   "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/systemd/system/ditana_kbdrate.service" \
                   "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/systemd/system/ditana_kbdrate.service" \
                   "systemctl enable ditana_kbdrate.service"
