@@ -1,4 +1,4 @@
 [Desktop Entry]
-Name=Niri (uwsm)
-Exec=uwsm start niri.desktop
+Name=Niri
+Exec=uwsm stop 2>/dev/null || true; uwsm start niri.desktop
 Type=Application

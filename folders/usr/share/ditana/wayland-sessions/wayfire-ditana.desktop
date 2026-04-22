@@ -1,4 +1,4 @@
 [Desktop Entry]
-Name=Wayfire (uwsm)
-Exec=uwsm start wayfire.desktop
+Name=Wayfire
+Exec=uwsm stop 2>/dev/null || true; uwsm start wayfire.desktop
 Type=Application

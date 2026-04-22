@@ -11,4 +11,8 @@ done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-g
 
 dbus-update-activation-environment --systemd --all
 
-exec startxfce4
+if [ -n "$XDG_VTNR" ]; then
+    exec startxfce4 -- "vt$XDG_VTNR" -keeptty
+else
+    exec startxfce4
+fi

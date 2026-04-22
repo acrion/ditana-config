@@ -1,4 +1,4 @@
 [Desktop Entry]
-Name=Xfce (Ditana)
+Name=Xfce
 Exec=/usr/lib/ditana/startxfce4-greetd
 Type=Application
