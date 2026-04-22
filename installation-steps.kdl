@@ -228,7 +228,7 @@ Note: Enter the DPI value of your host display, not the virtual
   - name="generate-session-setup" type="procedure" available="`install-desktop-environment`"
   - name="generate-session-setup-script" type="procedure" available="`install-desktop-environment`"
   - name="generate-autostart-entries" type="procedure" available="`install-desktop-environment`"
-  - name="patch-lightdm-conf" type="procedure" available="`real-install AND install-desktop-environment`"
+  - name="configure-greetd" type="procedure" available="`real-install AND install-desktop-environment`"
   - name="generate-chroot-settings-file" type="procedure"
   - name="configure-bind-mounts" type="procedure" available="`real-install`"
   - name="chroot-installation" type="procedure" available="`real-install`"

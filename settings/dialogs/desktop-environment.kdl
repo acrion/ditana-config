@@ -14,9 +14,10 @@
                   \ // === Theming ===
                   "dracula-gtk-theme" \
                   "kora-yellow-icon-theme" \
-                  \ // === LightDM ===
-                  "lightdm" \
-                  "lightdm-settings" \
+                  \ // === greetd ===
+                  "greetd" \
+                  "greetd-tuigreet" \
+                  "uwsm" \
                   \ // === XDG utilities ===
                   "xdg-user-dirs" \
                   "xdg-utils" \
@@ -50,9 +51,8 @@
           \ // session-setup scripts marked with once=true (see "session-setup" below) are executed,
           \ // and the file is then deleted. See generate-session-setup() in Chroot.rakumod.
           "/etc/skel/.config/ditana/trigger-first-login" \
-          \ // === session-wrapper executed by LightDM before the desktop environment starts ===
-          \ // This executes steps that are configured via session-setup and session-setup-script
-          "/usr/lib/ditana/session-wrapper" \
+          \ // === Greetd configuration ===
+          "/etc/greetd/config.toml" \
           \ // XDG user dirs. The upstream /etc/xdg/autostart/xdg-user-dirs.desktop
           \ // sets X-systemd-skip=true and X-GNOME-Autostart-Phase=EarlyInitialization;
           \ // both keys cause systemd-xdg-autostart-generator to skip the entry (see
@@ -74,8 +74,6 @@
           "/etc/skel/.config/fontconfig/fonts.conf" \
           \ // === GTK customization ===
           "/etc/skel/.config/gtk-3.0/gtk.css" \
-          \ // === LightDM greeter config ===
-          "/etc/lightdm/slick-greeter.conf" \
           \ // === Ditana helper scripts ===
           "/usr/lib/ditana/open-disk-manager" \
           "/usr/lib/ditana/copy-path-to-clipboard" \
@@ -87,7 +85,7 @@
           "/usr/share/pixmaps/ditana-shakehands.png" \
           \ // === Wayfire XDG autostart service ===
           "/usr/lib/systemd/user/ditana-wayfire-xdg-autostart.service"
-    chroot-script "systemctl enable lightdm.service" \
+    chroot-script "systemctl enable greetd.service" \
                   "fc-cache -fv" \
                   "cat <<'DITANA_ENV' >> /etc/environment" \
                   "# Fallback for apps not picking up the theme via gsettings" \
@@ -202,6 +200,8 @@
                   "bc" \
                   "zenity"
     files \ // === XFCE configuration ===
+          "/usr/lib/ditana/startxfce4-greet" \
+          "/usr/share/xsessions/xfce-greetd.desktop" \
           "/etc/skel/.config/xfce4/helpers.rc" \
           "/etc/skel/.config/xfce4/panel/docklike-2.rc" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml" \
@@ -317,7 +317,8 @@
           \ // === nwg-launchers config ===
           "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
           "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
-    arch-packages "xdg-desktop-portal-gtk" \
+    arch-packages "uwsm" \
+                  "xdg-desktop-portal-gtk" \
                   "wayland-display-info" \
                   "wayland-font-dpi" \
                   "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+export XDG_SESSION_TYPE=x11
+export XDG_SESSION_DESKTOP=xfce
+export XDG_CURRENT_DESKTOP=XFCE
+
+while read -r line; do
+    [[ -z "$line" ]] || [[ "${line:0:1}" = "#" ]] && continue
+    export "${line?}"
+done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+
+dbus-update-activation-environment --systemd --all
+
+exec startxfce4
