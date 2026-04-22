@@ -155,7 +155,9 @@
   long-description="XFCE: A mature, lightweight desktop environment running on Xorg (X11). XFCE offers a traditional desktop paradigm with a panel, application menu, and window management. It is highly customizable, resource-efficient, and has broad hardware and software compatibility. Ditana ships a preconfigured XFCE setup with the Dracula theme, Kitty or Ghostty terminal, and curated panel plugins." \
   spdx-identifiers="GPL-2.0-or-later" \
   default-value=#false {
-    arch-packages \ // === group xfce4 without xfce4-terminal ===
+    arch-packages "xorg-server" \
+                  "xorg-xinit" \
+                  \ // === group xfce4 without xfce4-terminal ===
                   "exo" \
                   "garcon" \
                   "xfce4-appfinder" \
