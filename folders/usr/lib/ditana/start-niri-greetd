@@ -3,17 +3,18 @@
 # This script is executed by /usr/share/ditana/wayland-sessions/niri-ditana.desktop,
 # whose directory is referenced by /etc/greetd/config.toml.
 
-{
-    uwsm stop || true
+exec > >(systemd-cat -t ditana-pre-niri-login -p info) 2>&1
 
-    # /usr/lib/ditana/session-setup is composed of the following kdl entries:
-    # - login-scripts
-    # - login-commands
-    # - first-login-scripts
-    # - first-login-commands
-    source /usr/lib/ditana/session-setup
+uwsm stop || true
 
-    env | sort
-} 2>&1 | systemd-cat -t ditana-pre-niri-login -p info
+# /usr/lib/ditana/session-setup is composed of the following kdl entries:
+# - login-scripts
+# - login-commands
+# - first-login-scripts
+# - first-login-commands
+source /usr/lib/ditana/session-setup
+
+env | sort
+journalctl --user -b -u graphical-session.target --no-pager
 
 uwsm start niri.desktop

@@ -3,27 +3,28 @@
 # This script is executed by /usr/share/ditana/xsessions/xfce-ditana.desktop,
 # whose directory is referenced by /etc/greetd/config.toml.
 
-{
-    export XDG_SESSION_TYPE=x11
-    export XDG_SESSION_DESKTOP=xfce
-    export XDG_CURRENT_DESKTOP=XFCE
+exec > >(systemd-cat -t ditana-pre-xfce-login -p info) 2>&1
 
-    while read -r line; do
-        [[ -z "$line" ]] || [[ "${line:0:1}" = "#" ]] && continue
-        export "${line?}"
-    done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+export XDG_SESSION_TYPE=x11
+export XDG_SESSION_DESKTOP=xfce
+export XDG_CURRENT_DESKTOP=XFCE
 
-    dbus-update-activation-environment --systemd --all
+while read -r line; do
+    [[ -z "$line" ]] || [[ "${line:0:1}" = "#" ]] && continue
+    export "${line?}"
+done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
 
-    # /usr/lib/ditana/session-setup is composed of the following kdl entries:
-    # - login-scripts
-    # - login-commands
-    # - first-login-scripts
-    # - first-login-commands
-    source /usr/lib/ditana/session-setup
+dbus-update-activation-environment --systemd --all
 
-    env | sort
-} 2>&1 | systemd-cat -t ditana-pre-xfce-login -p info
+# /usr/lib/ditana/session-setup is composed of the following kdl entries:
+# - login-scripts
+# - login-commands
+# - first-login-scripts
+# - first-login-commands
+source /usr/lib/ditana/session-setup
+
+env | sort
+journalctl --user -b -u graphical-session.target --no-pager
 
 if [ -n "$XDG_VTNR" ]; then
     exec startxfce4 -- "vt$XDG_VTNR" -keeptty
