@@ -1,4 +1,5 @@
 [Desktop Entry]
+# The directory of this desktop file is referenced by /etc/greetd/config.toml
 Name=Wayfire
-Exec=uwsm stop 2>/dev/null || true; uwsm start wayfire.desktop
+Exec=/usr/lib/ditana/start-wayfire-greetd
 Type=Application

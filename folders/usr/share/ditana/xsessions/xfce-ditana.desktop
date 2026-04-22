@@ -1,4 +1,5 @@
 [Desktop Entry]
+# The directory of this desktop file is referenced by /etc/greetd/config.toml
 Name=Xfce
-Exec=/usr/lib/ditana/startxfce4-greetd
+Exec=/usr/lib/ditana/start-xfce4-greetd
 Type=Application
