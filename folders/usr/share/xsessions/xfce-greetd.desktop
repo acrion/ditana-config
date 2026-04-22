@@ -1,5 +1,5 @@
 [Desktop Entry]
 Name=Xfce Session (Ditana Optimised)
 Comment=Use this for X11 Xfce
-Exec=startx /usr/lib/ditana/startxfce4-greet
+Exec=startx /usr/lib/ditana/startxfce4-greetd
 Type=Application
