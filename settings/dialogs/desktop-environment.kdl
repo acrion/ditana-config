@@ -306,7 +306,7 @@
                   "swaybg" \
                   "monique" \
                   "niri-settings-git"
-    login-commands "systemctl --user stop niri.service 2>/dev/null" // note that we do that for all DEs (independent from $XDG_SESSION_DESKOP)
+    login-commands "systemctl --user stop niri.service 2>/dev/null" // note that we do that for all DEs (independent from $XDG_SESSION_DESKTOP)
     files "/usr/lib/ditana/start-niri-greetd" \
           "/usr/share/ditana/wayland-sessions/niri-ditana.desktop" \
           \ // === Niri config ===
