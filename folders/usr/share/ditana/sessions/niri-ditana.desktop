@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=Niri (uwsm)
+Exec=uwsm start niri.desktop
+Type=Application

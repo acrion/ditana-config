@@ -201,7 +201,7 @@
                   "zenity"
     files \ // === XFCE configuration ===
           "/usr/lib/ditana/startxfce4-greetd" \
-          "/usr/share/xsessions/xfce-greetd.desktop" \
+          "/usr/share/ditana/sessions/xfce-ditana.desktop" \
           "/etc/skel/.config/xfce4/helpers.rc" \
           "/etc/skel/.config/xfce4/panel/docklike-2.rc" \
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml" \
@@ -257,7 +257,8 @@
   default-value=#true {
     files \ // === Wayfire config ===
           "/etc/skel/.config/wayfire.ini" \
-          "/usr/share/slick-greeter/badges/wayfire.svg"
+          "/usr/share/slick-greeter/badges/wayfire.svg" \
+          "/usr/share/ditana/sessions/wayfire-ditana.desktop"
     arch-packages "wayfire" \
                   "wayfire-plugins-extra" \
                   "wf-msg-git" \
@@ -299,7 +300,8 @@
                   "monique" \
                   "niri-settings-git"
     login-commands "systemctl --user stop niri.service 2>/dev/null"
-    files \ // === Niri config ===
+    files "/usr/share/ditana/sessions/niri-ditana.desktop" \
+          \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
           "/usr/share/slick-greeter/badges/niri.svg" \
           \ // === NVIDIA Niri fix ===
@@ -329,6 +331,7 @@
                   "swaylock" \
                   "hyprpolkitagent" \
                   "mako"
+    chroot-script "usermod -aG video,input greeter"
   }
 - name="install-waybar-display-scale" \
   default-value="`install-wayland`" {

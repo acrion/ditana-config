@@ -1,5 +1,6 @@
 [default_session]
-command = "tuigreet --time --remember --cmd uwsm-start-detect --sessions /usr/share/xsessions:/usr/share/wayland-sessions"
+command = "tuigreet --time --remember --asterisks --sessions /usr/share/ditana/sessions --cmd uwsm-start-detect"
 user = "greeter"
 
-[initial_session]
+[terminal]
+vt = 1

@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=Wayfire (uwsm)
+Exec=uwsm start wayfire.desktop
+Type=Application
