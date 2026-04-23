@@ -72,18 +72,19 @@ restart_waybar() {
         sleep 0.1
     done
 
-    # Respawn via `uwsm app -t service` so the new waybar lives in a
-    # user-level service unit under app-graphical.slice. uwsm injects
-    # the session-transient vars (XDG_SESSION_ID, XDG_SEAT, XDG_VTNR,
-    # ...) that uwsm >= 0.26 no longer exports to the systemd user
-    # manager activation environment. Service type (not the default
-    # scope type) detaches cleanly: `uwsm app` returns as soon as
-    # systemd accepts the request, so this function does not block
-    # the inotify loop, and the respawned waybar survives the service
-    # script being restarted or exiting.
-    if command -v uwsm >/dev/null 2>&1 && \
-       systemctl --user is-active --quiet wayland-wm@*.service; then
-        log "respawning waybar via uwsm app (service)"
+    # Respawn via uwsm app (as a service unit) when a uwsm-managed
+    # graphical session is active. This puts the new waybar into its
+    # own unit under app-graphical.slice and makes uwsm inject the
+    # session-transient vars (XDG_SESSION_ID, XDG_SEAT, XDG_VTNR,
+    # XDG_SEAT_PATH, XDG_SESSION_PATH) which uwsm >= 0.26 no longer
+    # exports into the systemd user manager's activation environment.
+    # A raw `setsid -f waybar` would inherit this service's environment
+    # and therefore lack those vars; any child spawned from waybar
+    # (nwgbar menu entries running `loginctl terminate-session
+    # ${XDG_SESSION_ID}`, terminals launched from taskbar items, ...)
+    # would lose them too.
+    if command -v uwsm >/dev/null 2>&1 && uwsm check is-active 2>/dev/null; then
+        log "respawning waybar via 'uwsm app -t service'"
         uwsm app -t service -- waybar
     else
         log "respawning waybar via setsid (no uwsm session detected)"
