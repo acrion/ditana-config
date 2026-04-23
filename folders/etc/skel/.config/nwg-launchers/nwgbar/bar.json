@@ -21,7 +21,7 @@
   },
   {
     "name": "Logout",
-    "exec": "sh -c 'loginctl terminate-session ${XDG_SESSION_ID}'",
+    "exec": "uwsm stop",
     "icon": "system-log-out"
   },
   {

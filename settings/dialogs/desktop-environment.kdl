@@ -394,9 +394,9 @@
                   "libnotify" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/foot/foot.ini"
-    chroot-script "systemctl --global enable foot-server.service" \
+    chroot-script "systemctl --global enable foot-server.socket" \
                   "mkdir -p /etc/xdg" \
-                  "echo foot.desktop >/etc/xdg/xdg-terminals.list"
+                  "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
   }
   
 - name="install-alacritty" \

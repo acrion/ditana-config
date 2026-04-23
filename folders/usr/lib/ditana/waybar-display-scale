@@ -54,12 +54,25 @@ compute_sizes() {
 log() { printf '[waybar-display-scale] %s\n' "$*"; }
 
 restart_waybar() {
+    # Case 1: Waybar is running as an explicitly activated systemd user service
     if systemctl --user is-active --quiet waybar.service 2>/dev/null; then
-        log "restarting waybar via systemd user unit"
+        log "restarting waybar via systemd user unit (waybar.service)"
         systemctl --user restart waybar.service
         return
     fi
 
+    # Case 2 (default for Ditana): Waybar was started via XDG autostart.
+    # Systemd generates a unit for this (usually app-waybar@autostart.service).
+    # This is the cleanest way for the restart, completely without pkill.
+    local autostart_unit
+    autostart_unit=$(systemctl --user list-units --full --all | grep -o 'app-waybar@autostart.service' | head -n 1)
+    if [[ -n "$autostart_unit" ]] && systemctl --user is-active --quiet "$autostart_unit"; then
+        log "restarting waybar via XDG autostart unit ($autostart_unit)"
+        systemctl --user restart "$autostart_unit"
+        return
+    fi
+
+    # Case 3: Fallback: Waybar is running manually / orphaned
     if ! pgrep -x waybar >/dev/null; then
         log "waybar not running — skipping restart"
         return
@@ -72,17 +85,13 @@ restart_waybar() {
         sleep 0.1
     done
 
-    # Respawn via uwsm app (as a service unit) when a uwsm-managed
-    # graphical session is active. This puts the new waybar into its
-    # own unit under app-graphical.slice and makes uwsm inject the
-    # session-transient vars (XDG_SESSION_ID, XDG_SEAT, XDG_VTNR,
-    # XDG_SEAT_PATH, XDG_SESSION_PATH) which uwsm >= 0.26 no longer
-    # exports into the systemd user manager's activation environment.
-    # A raw `setsid -f waybar` would inherit this service's environment
-    # and therefore lack those vars; any child spawned from waybar
-    # (nwgbar menu entries running `loginctl terminate-session
-    # ${XDG_SESSION_ID}`, terminals launched from taskbar items, ...)
-    # would lose them too.
+    # Respawn via uwsm app. Even though Waybar no longer needs session-specific
+    # variables (XDG_SESSION_ID) for buttons like 'Logout' (since we
+    # use 'uwsm stop' for this), 'uwsm app -t service' is essential
+    # for the lifecycle management. It encapsulates the new Waybar in a
+    # transient systemd unit within the app-graphical.slice. 
+    # This ensures that Waybar is cleanly terminated by systemd upon logout (session end)
+    # and does not remain as an orphaned process in RAM.
     if command -v uwsm >/dev/null 2>&1 && uwsm check is-active 2>/dev/null; then
         log "respawning waybar via 'uwsm app -t service'"
         uwsm app -t service -- waybar
