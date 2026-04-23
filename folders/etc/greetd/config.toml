@@ -1,5 +1,5 @@
 [default_session]
-command = "tuigreet --time --remember --asterisks --sessions /usr/share/ditana/wayland-sessions --xsessions /usr/share/ditana/xsessions"
+command = "tuigreet --time --time-format '%H:%M' --remember --asterisks --asterisks-char • --greeting \"Ditana GNU/Linux\" --theme 'border=lightyellow;greet=lightyellow;prompt=gray;time=gray;action=lightyellow;button=white;container=black;text=gray;input=white' --sessions /usr/share/ditana/wayland-sessions --xsessions /usr/share/ditana/xsessions"
 user = "greeter"
 
 [terminal]
