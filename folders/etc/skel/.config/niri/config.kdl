@@ -365,10 +365,10 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
-    Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
-    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "rofi" "-show" "combi" "-modes" "combi" "-combi-modes" "drun,run" "-theme" "fancy"; }
-    Alt+F3 hotkey-overlay-title="Run an Application: fuzzel" { spawn "rofi" "-show" "combi" "-modes" "combi" "-combi-modes" "drun,run" "-theme" "fancy"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock" "-f" "-c" "000000"; }
+    Mod+T hotkey-overlay-title="Open a Terminal" { spawn "xdg-terminal-exec"; }
+    Mod+D hotkey-overlay-title="Run an Application" { spawn "rofi" "-show" "combi" "-modes" "combi" "-combi-modes" "drun,run" "-theme" "fancy"; }
+    Alt+F3 hotkey-overlay-title="Run an Application" { spawn "rofi" "-show" "combi" "-modes" "combi" "-combi-modes" "drun,run" "-theme" "fancy"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen" { spawn "swaylock" "-f" "-c" "000000"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.

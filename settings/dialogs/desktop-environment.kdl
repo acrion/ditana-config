@@ -389,16 +389,14 @@
 //                counterpart to zellij on both display servers.
 
 - name="install-foot" \
-  default-value="`install-wayland AND NOT install-xfce`" { // alacritty wins if one of the installed DEs is XFCE (we need to have a single default, because we use xdg-terminals)
+  default-value=#true {
     arch-packages "foot" \
                   "libnotify" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/foot/foot.ini"
     chroot-script "systemctl --global enable foot-server.service" \
                   "mkdir -p /etc/xdg" \
-                  "echo foot.desktop >/etc/xdg/xdg-terminals.list" \
-                  "mkdir -p /etc/environment.d" \
-                  "echo TERMINAL=foot >> /etc/environment.d/set-terminal.conf"
+                  "echo foot.desktop >/etc/xdg/xdg-terminals.list"
   }
   
 - name="install-alacritty" \
@@ -406,9 +404,8 @@
     arch-packages "alacritty" \
                   "xdg-terminal-exec-git"
     chroot-script "mkdir -p /etc/xdg" \
-                  "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
-                  "mkdir -p /etc/environment.d" \
-                  "echo TERMINAL=alacritty >> /etc/environment.d/set-terminal.conf"
+                  \ // we use alacritty only for XFCE, because foot runs only under Wayland
+                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
   }
   
 // - name="install-kitty" \

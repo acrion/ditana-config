@@ -54,8 +54,6 @@ compute_sizes() {
 log() { printf '[waybar-display-scale] %s\n' "$*"; }
 
 restart_waybar() {
-    # Prefer a systemd-managed waybar if present, otherwise fall back to a
-    # detached setsid spawn. Do nothing if waybar is not running (first boot).
     if systemctl --user is-active --quiet waybar.service 2>/dev/null; then
         log "restarting waybar via systemd user unit"
         systemctl --user restart waybar.service
@@ -67,14 +65,30 @@ restart_waybar() {
         return
     fi
 
-    log "killing and respawning waybar (detached)"
+    log "killing waybar"
     pkill -x waybar || true
-    # Wait for it to actually exit (up to ~1s).
     for _ in 1 2 3 4 5 6 7 8 9 10; do
         pgrep -x waybar >/dev/null || break
         sleep 0.1
     done
-    setsid -f waybar </dev/null >/dev/null 2>&1 &
+
+    # Respawn via `uwsm app -t service` so the new waybar lives in a
+    # user-level service unit under app-graphical.slice. uwsm injects
+    # the session-transient vars (XDG_SESSION_ID, XDG_SEAT, XDG_VTNR,
+    # ...) that uwsm >= 0.26 no longer exports to the systemd user
+    # manager activation environment. Service type (not the default
+    # scope type) detaches cleanly: `uwsm app` returns as soon as
+    # systemd accepts the request, so this function does not block
+    # the inotify loop, and the respawned waybar survives the service
+    # script being restarted or exiting.
+    if command -v uwsm >/dev/null 2>&1 && \
+       systemctl --user is-active --quiet wayland-wm@*.service; then
+        log "respawning waybar via uwsm app (service)"
+        uwsm app -t service -- waybar
+    else
+        log "respawning waybar via setsid (no uwsm session detected)"
+        setsid -f waybar </dev/null >/dev/null 2>&1
+    fi
 }
 
 patch_file() {
