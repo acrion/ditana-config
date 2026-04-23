@@ -82,9 +82,7 @@
           "/usr/share/applications/pacseek-desktop.desktop" \
           \ // === Logos ===
           "/usr/share/pixmaps/ditana-logo-small.png" \
-          "/usr/share/pixmaps/ditana-shakehands.png" \
-          \ // === Wayfire XDG autostart service ===
-          "/usr/lib/systemd/user/ditana-wayfire-xdg-autostart.service"
+          "/usr/share/pixmaps/ditana-shakehands.png"
     chroot-script "systemctl enable greetd.service" \
                   "usermod -aG video,input greeter" \
                   "fc-cache -fv" \
