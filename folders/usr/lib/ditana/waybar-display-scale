@@ -170,11 +170,34 @@ watch_dir=$(dirname "$DISPLAY_INFO")
 watch_name=$(basename "$DISPLAY_INFO")
 
 log "watching $DISPLAY_INFO for changes"
-inotifywait -m -q \
+
+# We use inotifywait instead of systemd .path units because systemd natively
+# lacks a proper debouncing mechanism for path events. Wayland compositors
+# often trigger rapid bursts of file modifications on display hotplugs.
+# Without debouncing, this would result in multiple redundant Waybar restarts.
+
+# To avoid a Time-of-Check to Time-of-Use (TOCTOU) race condition where the
+# file is written exactly between our initial check and the start of inotifywait,
+# we start the watcher asynchronously FIRST and bind its output to file
+# descriptor 3. This ensures the watch mechanism is active beforehand.
+exec 3< <(inotifywait -m -q \
     -e close_write -e moved_to -e create -e modify \
     --format '%f' \
-    "$watch_dir" | \
-while IFS= read -r fname; do
+    "$watch_dir")
+
+# Give the kernel ample time to actually register the inotify watches.
+# 0.3s is a deliberate buffer window where no events can be lost (since they
+# are safely queued in FD 3).
+sleep 0.3
+
+# Now perform the initial run.
+# If the file was written BEFORE inotifywait started, apply_scale handles it here.
+# If the file was written AFTER inotifywait started, it's queued in FD 3
+# and the while-loop below will handle it shortly after. No events are lost.
+apply_scale
+
+# Process events from file descriptor 3
+while IFS= read -r fname <&3; do
     [[ "$fname" == "$watch_name" ]] || continue
     # Debounce: coalesce rapid bursts (e.g. a write that triggers both
     # modify and close_write within the same ms).
