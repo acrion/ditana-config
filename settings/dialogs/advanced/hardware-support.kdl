@@ -8,6 +8,7 @@
     arch-packages "pipewire" \
                   "pipewire-alsa" \
                   "pipewire-pulse" \
+                  "pipewire-jack" \
                   "wireplumber"
     chroot-script "`usermod -aG audio {Settings.instance.get('user-name')}`"
   }
