@@ -352,10 +352,6 @@
 // multiplexing that works identically across emulators, hosts, and SSH
 // sessions.
 //
-// A single default must be configured via xdg-terminal-exec and
-// $TERMINAL, so there is no per-DE differentiation. Two emulators ship
-// depending on the installed desktop stack:
-//
 //   - foot:      Wayland-native, default when only Wayland compositors
 //                (Wayfire, Niri) are installed. Beyond Wayland being
 //                the designated X11 successor, foot provides practical
@@ -402,7 +398,7 @@
     arch-packages "alacritty" \
                   "xdg-terminal-exec-git"
     chroot-script "mkdir -p /etc/xdg" \
-                  \ // we use alacritty only for XFCE, because foot runs only under Wayland
+                  \ // we use alacritty for XFCE, because foot runs only under Wayland
                   "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
   }
   

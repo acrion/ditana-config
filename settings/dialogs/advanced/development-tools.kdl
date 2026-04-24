@@ -179,6 +179,7 @@ Install Tools for Arch package maintainers:
     arch-packages "python-pip" \
                   "python-pytest" \
                   "python-poetry" \
+                  "uv" \
                   "ruff" \
                   "pyright" \
                   "python-lsp-server" // language server, used e.g. by fresh
