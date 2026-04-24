@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# This script is used by /etc/systemd/system/ditana-flatpak-finalize.service
+set -euo pipefail
+# Everything is already in the local OSTree repo; this is a pure deploy pass.
+# Network is only consulted for eventual small delta-updates, not for full refs.
+while read -r ref; do
+    flatpak install --system -y --or-update flathub "$ref"
+done < /var/lib/ditana/flatpak-preinstalled.list

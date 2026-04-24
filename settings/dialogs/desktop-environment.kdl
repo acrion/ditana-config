@@ -142,14 +142,8 @@
     arch-packages "xreader"
   }
 - name="install-librewolf" default-value="`install-desktop-environment`" {
-    arch-packages "librewolf" \
-                  "speech-dispatcher"
-    files \ // === LibreWolf config ===
-          "/etc/skel/.librewolf/librewolf.overrides.cfg"
-    chroot-script "if [ -f /usr/lib/librewolf/distribution/policies.json ]; then" \
-                  #"    sed -i 's/"Default": *"[^"]*"/"Default": "StartPage"/g' /usr/lib/librewolf/distribution/policies.json"# \
-                  #"    sed -i '/"Remove": \[/,/\]/{ /"Google",/d }' /usr/lib/librewolf/distribution/policies.json"# \
-                  "fi"
+    files "/etc/skel/.librewolf/librewolf.overrides.cfg"
+    chroot-script  "flatpak install --system --no-deploy -y flathub io.gitlab.librewolf-community"
   }
 - name="install-engrampa" default-value="`install-desktop-environment`" {
     arch-packages "engrampa"

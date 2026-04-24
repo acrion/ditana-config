@@ -67,6 +67,16 @@
                   "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/systemd/system/ditana_kbdrate.service" \
                   "systemctl enable ditana_kbdrate.service"
   }
+- name="flatpak" default-value=#true {
+    // Ditana enables Flatpak support for software that meets these criteria:
+    // (1) not available in the official Arch or Ditana repositories,
+    // (2) a local aurto build would be resource-intensive or unreliable, and
+    // (3) the application benefits from sandboxing.
+    arch-packages "flatpak"
+    files "/etc/systemd/system/ditana-flatpak-finalize.service" \
+          "/usr/lib/ditana/flatpak-finalize"
+    chroot-script "flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+}
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
   }

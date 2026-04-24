@@ -1,0 +1,14 @@
+[Unit]
+Description=Finalize pre-downloaded Flatpaks (Ditana first-boot)
+After=network-online.target
+ConditionPathExists=/var/lib/ditana/flatpak-finalize-pending
+Before=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ditana/flatpak-finalize
+ExecStartPost=/usr/bin/rm /var/lib/ditana/flatpak-finalize-pending
+RemainAfterExit=no
+
+[Install]
+WantedBy=graphical.target
