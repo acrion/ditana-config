@@ -143,7 +143,16 @@
   }
 - name="install-librewolf" default-value="`install-desktop-environment`" {
     files "/etc/skel/.librewolf/librewolf.overrides.cfg"
-    chroot-script  "flatpak install --system --no-deploy -y flathub io.gitlab.librewolf-community"
+    chroot-script  "flatpak install --system --no-deploy -y flathub io.gitlab.librewolf-community" \
+    #"echo "--- /proc state right after flatpak ---" >> /var/log/install_ditana.log"# \
+    "ls /proc/self >> /var/log/install_ditana.log 2>&1" \
+    "ps >> /var/log/install_ditana.log 2>&1" \
+    #"echo "exit: $?" >> /var/log/install_ditana.log"# \
+    #"echo "--- Remounting /proc ---" >> /var/log/install_ditana.log"# \
+    "mount -o remount /proc >> /var/log/install_ditana.log 2>&1" \
+    "ls /proc/self >> /var/log/install_ditana.log 2>&1" \
+    "ps >> /var/log/install_ditana.log 2>&1" \
+    #"echo "exit after remount: $?" >> /var/log/install_ditana.log"#
   }
 - name="install-engrampa" default-value="`install-desktop-environment`" {
     arch-packages "engrampa"
