@@ -82,10 +82,8 @@
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
           "/etc/systemd/system/greetd.service.d/wait-for-flatpaks.conf" \
           "/usr/lib/ditana/flatpak-finalize" \
-          "/usr/lib/ditana/flatpak-show-progress" \
-          "/usr/lib/ditana/flatpak-finalize-notify"
+          "/usr/lib/ditana/flatpak-show-progress"
     chroot-script "systemctl enable ditana-flatpak-finalize.service"
-    login-commands "/usr/lib/ditana/flatpak-finalize-notify"
 }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
