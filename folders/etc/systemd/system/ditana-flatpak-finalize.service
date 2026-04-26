@@ -1,5 +1,5 @@
 [Unit]
-Description=Finalize prefetched Flatpak applications (Ditana first-boot)
+Description=Ditana sandboxed app setup
 Documentation=https://github.com/acrion/ditana-installer
 After=network-online.target
 Wants=network-online.target
@@ -11,8 +11,12 @@ Type=oneshot
 ExecStartPre=/usr/lib/ditana/flatpak-show-progress start
 ExecStart=/usr/lib/ditana/flatpak-finalize
 ExecStartPost=/usr/lib/ditana/flatpak-show-progress stop
-StandardOutput=journal+console
-StandardError=journal+console
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
 
 [Install]
 WantedBy=multi-user.target
