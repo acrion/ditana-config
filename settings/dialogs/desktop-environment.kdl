@@ -143,7 +143,7 @@
   }
 - name="install-librewolf" default-value="`install-desktop-environment`" {
     files "/etc/skel/.librewolf/librewolf.overrides.cfg"
-    chroot-script  "flatpak install --system --no-deploy -y flathub io.gitlab.librewolf-community"
+    flatpak-packages "io.gitlab.librewolf-community"
   }
 - name="install-engrampa" default-value="`install-desktop-environment`" {
     arch-packages "engrampa"
