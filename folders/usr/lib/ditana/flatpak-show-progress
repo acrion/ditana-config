@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Display a one-time first-boot progress message on the greeter VT
+# while ditana-flatpak-finalize.service deploys prefetched Flatpaks.
+# Without this, the user sees a blank/black screen for several minutes.
+
+set -u
+
+VT_DEV=/dev/tty1
+
+case "${1:-}" in
+    start)
+        # Make sure the VT is in graphic-friendly text mode and clear it
+        if [ -w "$VT_DEV" ]; then
+            {
+                # Clear screen, move cursor home, hide cursor
+                printf '\033[2J\033[H\033[?25l'
+                # Center the message vertically (rough estimate, terminal-agnostic)
+                for _ in $(seq 1 8); do printf '\n'; done
+                printf '    Ditana — first-boot setup\n\n'
+                printf '    Setting up sandboxed applications...\n'
+                printf '    This is a one-time process and may take a few minutes.\n\n'
+                printf '    Login will be available once setup completes.\n'
+            } > "$VT_DEV"
+        fi
+        ;;
+    stop)
+        if [ -w "$VT_DEV" ]; then
+            # Show cursor again, clear screen — greetd will take over from here
+            printf '\033[?25h\033[2J\033[H' > "$VT_DEV"
+        fi
+        ;;
+esac
+
+exit 0

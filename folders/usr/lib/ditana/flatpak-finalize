@@ -1,44 +1,38 @@
 #!/usr/bin/env bash
-# Finalize Flatpak application installations on first boot.
-#
-# All OSTree objects were prefetched into /var/lib/ditana/flatpak-sideload
-# during installation. This script performs only the deploy phase, which
-# requires functional user namespaces (unavailable in arch-chroot) but is
-# fast because no network downloads are needed.
-
 set -euo pipefail
 
 PENDING=/var/lib/ditana/flatpak-pending
 SIDELOAD=/var/lib/ditana/flatpak-sideload
+STATUS_OK=/var/lib/ditana/flatpak-finalize.success
+STATUS_FAIL=/var/lib/ditana/flatpak-finalize.failed
 
 [ -f "$PENDING" ] || exit 0
+
+# Clean any stale status from previous attempts
+rm -f "$STATUS_OK" "$STATUS_FAIL"
 
 failed_apps=()
 
 while IFS= read -r app; do
     [ -z "$app" ] && continue
     echo "Deploying Flatpak: $app"
-    if ! flatpak install --system --or-update -y --no-pull flathub "$app"; then
+    if ! flatpak install --system --or-update -y "$app"; then
         echo "Warning: failed to deploy $app" >&2
         failed_apps+=("$app")
     fi
 done < "$PENDING"
 
-# Am Ende, im if-Branch für failed_apps:
 if [ ${#failed_apps[@]} -gt 0 ]; then
     echo "The following Flatpak apps failed to deploy: ${failed_apps[*]}" >&2
-    # Keep pending file so the service retries on next boot
-    echo "${failed_apps[*]}" > "${PENDING}.failed"
+    printf '%s\n' "${failed_apps[@]}" > "$STATUS_FAIL"
+    # Keep pending file so we retry on next boot
     exit 1
 fi
 
-# Im Erfolgs-Cleanup zusätzlich:
-rm -f "${PENDING}.failed"
-
-# All apps deployed — clean up the sideload repository to free disk space
+# Success: clean up everything, write success marker for login notifier
 rm -f "$PENDING"
-rm -rf "$SIDELOAD"
-rm -f "${PENDING}.failed"
-rm -f /var/lib/flatpak/sideload-repos/ditana-bootstrap
+rm -rf "$SIDELOAD" 2>/dev/null || true
+rm -f /var/lib/flatpak/sideload-repos/ditana-bootstrap 2>/dev/null || true
+touch "$STATUS_OK"
 
 echo "All prefetched Flatpak applications deployed successfully."

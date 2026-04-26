@@ -4,15 +4,15 @@ Documentation=https://github.com/acrion/ditana-installer
 After=network-online.target
 Wants=network-online.target
 ConditionPathExists=/var/lib/ditana/flatpak-pending
-Before=display-manager.service
+Before=greetd.service
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/lib/ditana/flatpak-show-progress start
 ExecStart=/usr/lib/ditana/flatpak-finalize
-RemainAfterExit=no
-StandardOutput=journal
-StandardError=journal
-TimeoutStartSec=15min
+ExecStartPost=/usr/lib/ditana/flatpak-show-progress stop
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target

@@ -80,7 +80,9 @@
     // ditana-flatpak-finalize.service systemd unit.
     arch-packages "flatpak"
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
+          "/etc/systemd/system/greetd.service.d/wait-for-flatpaks.conf" \
           "/usr/lib/ditana/flatpak-finalize" \
+          "/usr/lib/ditana/flatpak-show-progress" \
           "/usr/lib/ditana/flatpak-finalize-notify"
     chroot-script "systemctl enable ditana-flatpak-finalize.service"
     login-commands "/usr/lib/ditana/flatpak-finalize-notify"

@@ -1,40 +1,25 @@
 #!/usr/bin/env bash
-# Show a notification about the prefetched Flatpak finalization status,
-# then mark itself as done. Skips silently if everything is already deployed.
+# Show notification at login about Flatpak finalize result.
+# Called via login-commands. Runs in user context.
 
 MARKER="$HOME/.config/ditana/flatpak-notification-shown"
-PENDING=/var/lib/ditana/flatpak-pending
+STATUS_OK=/var/lib/ditana/flatpak-finalize.success
+STATUS_FAIL=/var/lib/ditana/flatpak-finalize.failed
 
-# Already notified previously, or no Flatpaks were configured at all
 [ -f "$MARKER" ] && exit 0
-[ ! -f "$PENDING" ] && [ ! -f "${PENDING}.failed" ] && {
-    mkdir -p "$(dirname "$MARKER")"
-    touch "$MARKER"
-    exit 0
-}
 
-# Determine notify command — works under XFCE, Niri, Wayfire (all use libnotify)
 command -v notify-send >/dev/null 2>&1 || exit 0
 
-if [ -f "$PENDING" ]; then
-    # Service hasn't run successfully yet — still pending or failed
-    if [ -f "${PENDING}.failed" ]; then
-        notify-send -u critical -i dialog-warning \
-            "Sandboxed apps: install failed" \
-            "Some Flatpak apps could not be installed. Run 'sudo systemctl start ditana-flatpak-finalize.service' to retry."
-    else
-        notify-send -u low -i dialog-information \
-            "Sandboxed apps: still installing" \
-            "Your Flatpak applications are being deployed in the background."
-    fi
-    # Don't set marker — we want to notify again on next login if still pending
-    exit 0
+if [ -f "$STATUS_FAIL" ]; then
+    failed=$(tr '\n' ', ' < "$STATUS_FAIL" | sed 's/, $//')
+    notify-send -u critical -i dialog-warning \
+        "Sandboxed apps: install failed" \
+        "Failed: $failed. Run 'sudo systemctl start ditana-flatpak-finalize.service' to retry."
+elif [ -f "$STATUS_OK" ]; then
+    notify-send -u low -i dialog-information \
+        "Sandboxed apps: ready" \
+        "Your Flatpak applications were installed successfully during first boot."
+    # Only mark as shown after success — we want to keep nagging on failure
+    mkdir -p "$(dirname "$MARKER")"
+    touch "$MARKER"
 fi
-
-# Pending file gone → service succeeded
-notify-send -u low -i dialog-information \
-    "Sandboxed apps: ready" \
-    "Your Flatpak applications have been installed successfully."
-
-mkdir -p "$(dirname "$MARKER")"
-touch "$MARKER"
