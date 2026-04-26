@@ -76,7 +76,6 @@
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
           "/usr/lib/ditana/flatpak-finalize" \
           "/var/lib/ditana/flatpak-finalize-pending"
-    chroot-script "flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo </dev/null >/dev/null 2>&1"
 }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
