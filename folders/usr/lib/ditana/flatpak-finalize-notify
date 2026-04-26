@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Show a notification about the prefetched Flatpak finalization status,
+# then mark itself as done. Skips silently if everything is already deployed.
+
+MARKER="$HOME/.config/ditana/flatpak-notification-shown"
+PENDING=/var/lib/ditana/flatpak-pending
+
+# Already notified previously, or no Flatpaks were configured at all
+[ -f "$MARKER" ] && exit 0
+[ ! -f "$PENDING" ] && [ ! -f "${PENDING}.failed" ] && {
+    mkdir -p "$(dirname "$MARKER")"
+    touch "$MARKER"
+    exit 0
+}
+
+# Determine notify command — works under XFCE, Niri, Wayfire (all use libnotify)
+command -v notify-send >/dev/null 2>&1 || exit 0
+
+if [ -f "$PENDING" ]; then
+    # Service hasn't run successfully yet — still pending or failed
+    if [ -f "${PENDING}.failed" ]; then
+        notify-send -u critical -i dialog-warning \
+            "Sandboxed apps: install failed" \
+            "Some Flatpak apps could not be installed. Run 'sudo systemctl start ditana-flatpak-finalize.service' to retry."
+    else
+        notify-send -u low -i dialog-information \
+            "Sandboxed apps: still installing" \
+            "Your Flatpak applications are being deployed in the background."
+    fi
+    # Don't set marker — we want to notify again on next login if still pending
+    exit 0
+fi
+
+# Pending file gone → service succeeded
+notify-send -u low -i dialog-information \
+    "Sandboxed apps: ready" \
+    "Your Flatpak applications have been installed successfully."
+
+mkdir -p "$(dirname "$MARKER")"
+touch "$MARKER"

@@ -24,15 +24,21 @@ while IFS= read -r app; do
     fi
 done < "$PENDING"
 
+# Am Ende, im if-Branch für failed_apps:
 if [ ${#failed_apps[@]} -gt 0 ]; then
     echo "The following Flatpak apps failed to deploy: ${failed_apps[*]}" >&2
     # Keep pending file so the service retries on next boot
+    echo "${failed_apps[*]}" > "${PENDING}.failed"
     exit 1
 fi
+
+# Im Erfolgs-Cleanup zusätzlich:
+rm -f "${PENDING}.failed"
 
 # All apps deployed — clean up the sideload repository to free disk space
 rm -f "$PENDING"
 rm -rf "$SIDELOAD"
+rm -f "${PENDING}.failed"
 rm -f /var/lib/flatpak/sideload-repos/ditana-bootstrap
 
 echo "All prefetched Flatpak applications deployed successfully."

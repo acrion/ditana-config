@@ -80,7 +80,10 @@
     // ditana-flatpak-finalize.service systemd unit.
     arch-packages "flatpak"
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
-          "/usr/lib/ditana/flatpak-finalize"
+          "/usr/lib/ditana/flatpak-finalize" \
+          "/usr/lib/ditana/flatpak-finalize-notify"
+    chroot-script "systemctl enable ditana-flatpak-finalize.service"
+    login-commands "/usr/lib/ditana/flatpak-finalize-notify"
 }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
