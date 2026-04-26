@@ -72,10 +72,15 @@
     // (1) not available in the official Arch or Ditana repositories,
     // (2) a local aurto build would be resource-intensive or unreliable, and
     // (3) the application benefits from sandboxing.
+    //
+    // The flathub remote is registered in chroot-install.sh (not here) because
+    // chroot-script entries are executed in undefined order, but the remote
+    // must exist before the sideload-repo symlink is registered. The actual
+    // application deployment happens at first boot via the
+    // ditana-flatpak-finalize.service systemd unit.
     arch-packages "flatpak"
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
-          "/usr/lib/ditana/flatpak-finalize" \
-          "/var/lib/ditana/flatpak-finalize-pending"
+          "/usr/lib/ditana/flatpak-finalize"
 }
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"

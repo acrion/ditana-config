@@ -1,8 +1,38 @@
 #!/usr/bin/env bash
-# This script is used by /etc/systemd/system/ditana-flatpak-finalize.service
+# Finalize Flatpak application installations on first boot.
+#
+# All OSTree objects were prefetched into /var/lib/ditana/flatpak-sideload
+# during installation. This script performs only the deploy phase, which
+# requires functional user namespaces (unavailable in arch-chroot) but is
+# fast because no network downloads are needed.
+
 set -euo pipefail
-# Everything is already in the local OSTree repo; this is a pure deploy pass.
-# Network is only consulted for eventual small delta-updates, not for full refs.
-while read -r ref; do
-    flatpak install --system -y --or-update flathub "$ref"
-done < /var/lib/ditana/flatpak-preinstalled.list
+
+PENDING=/var/lib/ditana/flatpak-pending
+SIDELOAD=/var/lib/ditana/flatpak-sideload
+
+[ -f "$PENDING" ] || exit 0
+
+failed_apps=()
+
+while IFS= read -r app; do
+    [ -z "$app" ] && continue
+    echo "Deploying Flatpak: $app"
+    if ! flatpak install --system --or-update -y --no-pull flathub "$app"; then
+        echo "Warning: failed to deploy $app" >&2
+        failed_apps+=("$app")
+    fi
+done < "$PENDING"
+
+if [ ${#failed_apps[@]} -gt 0 ]; then
+    echo "The following Flatpak apps failed to deploy: ${failed_apps[*]}" >&2
+    # Keep pending file so the service retries on next boot
+    exit 1
+fi
+
+# All apps deployed — clean up the sideload repository to free disk space
+rm -f "$PENDING"
+rm -rf "$SIDELOAD"
+rm -f /var/lib/flatpak/sideload-repos/ditana-bootstrap
+
+echo "All prefetched Flatpak applications deployed successfully."

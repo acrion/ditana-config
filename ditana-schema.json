@@ -52,6 +52,7 @@
         "required-by-chroot": { "type": "boolean" },
         "arch-packages": { "type": "array", "items": { "type": "string" } },
         "aur-packages": { "type": "array", "items": { "type": "string" } },
+        "flatpak-packages": { "type": "array", "items": { "type": "string" } },
         "files": { "type": "array", "items": { "type": "string" } },
         "early-chroot-script": { "type": "array", "items": { "type": "string" } },
         "chroot-script": { "type": "array", "items": { "type": "string" } },

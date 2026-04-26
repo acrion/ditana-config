@@ -212,6 +212,12 @@ Note: Enter the DPI value of your host display, not the virtual
   - name="configure-terminal-font" type="procedure" available="`real-install AND virtual-terminal AND NOT installing-over-ssh`"
   - name="pacstrap" type="procedure" available="`real-install`"
 
+  // Pre-fetch Flatpak applications into the target system. The actual
+  // deployment happens at first boot via ditana-flatpak-finalize.service
+  // because bwrap (used by Flatpak for apply_extra hooks) cannot reliably
+  // create user namespaces inside arch-chroot.
+  - name="prefetch-flatpaks" type="procedure" available="`real-install`"
+
   // Copy system files that should not be part of packages into the chroot after pacstrap. This
   // includes /etc/lsb-release, overriding the version that was installed by package lsb-release.
   - name="copy-files-into-chroot-after-pacstrap" type="procedure" available="`real-install`"
