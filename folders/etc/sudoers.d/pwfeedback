@@ -1,0 +1,14 @@
+# Enable visual feedback (asterisks) during sudo password entry.
+#
+# Rationale: Sudo's silent default is intended to hide password length
+# from shoulder surfers, but an observer who can see the screen
+# typically can also hear the keystrokes, exposing both length and
+# timing rhythm. Meanwhile, silent input introduces a tangible risk in
+# desktop environments: users may believe the terminal has focus while
+# another window (chat, meeting client, editor) is actually receiving
+# input, leading to inadvertent password disclosure. Visible feedback
+# makes such focus mishaps immediately apparent.
+#
+# Note: CVE-2019-18634 (stack buffer overflow in pwfeedback) was fixed
+# in sudo 1.8.31 (January 2020) and does not affect current versions.
+Defaults pwfeedback

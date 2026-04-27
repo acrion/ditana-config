@@ -1,0 +1,17 @@
+// Settings that correspond to "Configuration Categories" → "Advanced Settings" → "Sudo Configuration"
+- name="sudo-timeout" \
+  short-description="Sudo password timeout (minutes)" \
+  long-description="Configure how many minutes sudo remembers the password before prompting again. Creates a sudoers override file in /etc/sudoers.d/ with correct permissions." \
+  spdx-identifiers="ISC" \
+  default-value=5 {
+    chroot-script "`echo 'Defaults timestamp_timeout={Settings.instance.get('sudo-timeout')}' > /etc/sudoers.d/99-timeout`" \
+                  "chmod 440 /etc/sudoers.d/99-timeout" \
+                  "chown root:root /etc/sudoers.d/99-timeout"
+  }
+- name="sudo-password-feedback" \
+  short-description="Show visual feedback during password entry" \
+  long-description="Enable visual feedback (asterisks) when entering the sudo password. Sudo's silent default is intended to hide password length from shoulder surfers, but an observer who can see the screen typically can also hear the keystrokes, exposing both length and timing rhythm. Silent input also creates a tangible risk in desktop environments: users may believe the terminal has focus while another window (chat, meeting client, editor) is actually receiving input, leading to inadvertent password disclosure. Visible feedback makes such focus mishaps immediately apparent. Note: CVE-2019-18634 (a stack buffer overflow in pwfeedback) was fixed in sudo 1.8.31 (January 2020) and does not affect current versions." \
+  spdx-identifiers="ISC" \
+  default-value=#true {
+      files "/etc/sudoers.d/pwfeedback"
+  }

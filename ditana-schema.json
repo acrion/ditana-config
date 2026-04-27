@@ -40,7 +40,6 @@
       "required": ["name"],
       "properties": {
         "name": { "type": "string" },
-        "category": { "type": "string" },
         "detect": { "type": "string" },
         "default-value": {},
         "dialog-name": { "type": "string" },

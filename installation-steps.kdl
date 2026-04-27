@@ -63,7 +63,9 @@ Enter a lowercase name for your computer. While DNS servers don’t distinguish 
                   - name="File System" type="radiolist" instruction="Select the file system for your root partition using the [SPACE] key. If you are unsure, leave it at the default." help-intro="Choose the appropriate file system for your root partition." help-note="Note: Timeshift is enabled by default for BTRFS, XFS, and EXT4. For ZFS, a native snapshot solution is pre-configured instead of using Timeshift. You can configure automatic system snapshots in the Advanced Settings → System Maintenance Tools menu, available for selection later."
                   - name="swap-size" type="procedure"
                   - name="Storage & File System Options" type="checklist" instruction="Choose Storage & File System Options:" help-intro="" help-note=""
-                  - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" instruction="""
+- name="Sudo Configuration" type="categories" instruction="Configure sudo password handling:" {
+                      categories {
+                          - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" instruction="""
 Sudo password timeout in minutes.
 
 This sets how long sudo remembers your password before asking again. The default (5 minutes) is a common balance between security and convenience.
@@ -73,6 +75,17 @@ This sets how long sudo remembers your password before asking again. The default
 
 If unsure, it's recommended to keep the default value.
 """
+                          - name="sudo-password-feedback" type="ask-for-yes-no" instruction="""
+Show visual feedback during sudo password entry?
+
+By default, sudo displays nothing as you type your password. This is intended to hide password length from observers, but in practice anyone who can see the screen can usually also hear the keystrokes, exposing both length and timing rhythm.
+
+Silent input also creates a tangible risk in desktop environments: if terminal focus is unclear, the password may inadvertently be typed into another window — a chat client, an editor, or a browser — without immediate indication. Visible feedback (an asterisk per keystroke) makes such focus mishaps apparent at once.
+
+Note: A historical buffer overflow in this feature (CVE-2019-18634) was fixed in sudo 1.8.31 (January 2020) and does not affect current versions.
+"""
+                      }
+                  }
                   - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
 ID of user «$user-name».
 
