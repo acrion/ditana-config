@@ -3,4 +3,4 @@ Description=Update pacman mirrorlist via rate-mirrors
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/rate-mirrors --allow-root --save=/etc/pacman.d/mirrorlist arch
+ExecStart=/usr/bin/rate-mirrors --allow-root --protocol=https --save=/etc/pacman.d/mirrorlist arch
