@@ -55,11 +55,40 @@ For further information, please consult the following URLs:
           - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant is enabled by default, it means that your hardware supports running a local AI (CPU with AVX2 & sufficient RAM). Ditana Assistant relies on KoboldCpp to handle AI interactions locally, ensuring your privacy and data security. If your hardware does not support running KoboldCpp, it will not be available in this list. You can still activate Ditana Assistant, but you will need to configure it in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
           - name="Advanced Settings" type="categories" {
               categories {
-                    - name="host-name" type="ask-for-setting" validation="name" instruction="""
+- name="host-name" type="ask-for-setting" validation="name" instruction="""
 Computer name for new system
 
 Enter a lowercase name for your computer. While DNS servers don’t distinguish case, using lowercase simplifies system management and prevents potential conflicts.
 """
+                  - name="User Configuration" type="categories" instruction="Configure user identification:" {
+                      categories {
+                          - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
+ID of user «$user-name».
+
+The user ID (UID) is a unique number assigned to each user on a Linux system. The default value (1000) is suitable for most cases and ensures compatibility with standard system settings.
+
+You might want to change this if:
+
+- You’re mounting existing Linux-formatted drives with data owned by a user with a different UID.
+- You’re setting up a multi-user system and want to align UIDs with an existing network structure.
+
+If unsure, it’s recommended to keep the default value.
+"""
+                          - name="user-group" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
+Group of user «$user-name».
+
+In Linux, every user belongs to at least one group. Groups help manage permissions for shared resources. The default value (1000) creates a private group for the user, which is suitable for most personal systems.
+
+You might want to change this if:
+
+- You’re integrating this system into an existing network with predefined group structures.
+- You’re mounting drives with data owned by a specific group and want to maintain access permissions.
+- You’re setting up a multi-user system and want to implement a specific group-based access control.
+
+If unsure, it’s recommended to keep the default value.
+"""
+                      }
+                  }
                   - name="File System" type="radiolist" instruction="Select the file system for your root partition using the [SPACE] key. If you are unsure, leave it at the default." help-intro="Choose the appropriate file system for your root partition." help-note="Note: Timeshift is enabled by default for BTRFS, XFS, and EXT4. For ZFS, a native snapshot solution is pre-configured instead of using Timeshift. You can configure automatic system snapshots in the Advanced Settings → System Maintenance Tools menu, available for selection later."
                   - name="swap-size" type="procedure"
                   - name="Storage & File System Options" type="checklist" instruction="Choose Storage & File System Options:" help-intro="" help-note=""
@@ -86,31 +115,6 @@ Note: A historical buffer overflow in this feature (CVE-2019-18634) was fixed in
 """
                       }
                   }
-                  - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
-ID of user «$user-name».
-
-The user ID (UID) is a unique number assigned to each user on a Linux system. The default value (1000) is suitable for most cases and ensures compatibility with standard system settings.
-
-You might want to change this if:
-
-• You’re mounting existing Linux-formatted drives with data owned by a user with a different UID.
-• You’re setting up a multi-user system and want to align UIDs with an existing network structure.
-
-If unsure, it’s recommended to keep the default value.
-"""
-                  - name="user-group" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
-Group of user «$user-name».
-
-In Linux, every user belongs to at least one group. Groups help manage permissions for shared resources. The default value (1000) creates a private group for the user, which is suitable for most personal systems.
-
-You might want to change this if:
-
-• You’re integrating this system into an existing network with predefined group structures.
-• You’re mounting drives with data owned by a specific group and want to maintain access permissions.
-• You’re setting up a multi-user system and want to implement a specific group-based access control.
-
-If unsure, it’s recommended to keep the default value.
-"""
                   - name="Kernel Selection" type="radiolist" instruction="Choose kernel:" help-intro="You may choose one of the following kernels:" help-note="""
 For further information, please consult the following URLs:
  • https://www.kernel.org (Default Kernel)
