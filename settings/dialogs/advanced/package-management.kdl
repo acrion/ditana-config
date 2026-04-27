@@ -29,4 +29,3 @@ Install core package management tools:
     arch-packages "pkgstats"
   }
 - name="enable-multilib" required-by-chroot=#true default-value=#true
-- name="enable-chaotic-aur" required-by-chroot=#true default-value="`install-desktop-environment`"
