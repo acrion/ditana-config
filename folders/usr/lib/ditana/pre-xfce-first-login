@@ -75,10 +75,6 @@ if command -v backintime &> /dev/null; then
     PINNED_APPS_BACK+="backintime-qt;"
 fi
 
-if command -v stable-diffusion-ui-server &> /dev/null && [[ -f /usr/share/applications/stable-diffusion.desktop ]]; then
-    PINNED_APPS_BACK+="stable-diffusion;"
-fi
-
 sed -i "/^pinned=/ s/pinned=/pinned=$PINNED_APPS_FRONT/" "$HOME/.config/xfce4/panel/docklike-2.rc"
 sed -i "/^pinned=/ s/$/$PINNED_APPS_BACK/" "$HOME/.config/xfce4/panel/docklike-2.rc"
 

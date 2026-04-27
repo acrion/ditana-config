@@ -66,16 +66,6 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
     files "/etc/skel/.logseq/settings/logseq-plugin-gpt3-openai.json" \
           "/etc/skel/.logseq/config/plugins.edn"
   }
-- name="install-stable-diffusion" \
-  dialog-name="AI Tools and Libraries" \
-  short-description="Install Stable Diffusion" \
-  long-description="Install Stable Diffusion: Stable Diffusion is a powerful tool for generating high-quality images from textual descriptions. By installing this tool, you can create stunning visual content by simply providing text prompts. It’s useful for artists, designers, and anyone interested in AI-powered image generation." \
-  spdx-identifiers="easydiffusion" \
-  available="`install-desktop-environment AND avx2-available AND total-ram-gib>=6`" \
-  default-value=#false {
-    aur-packages "stable-diffusion-ui"
-    files "/usr/share/applications/stable-diffusion.desktop"
-  }
 - name="install-gpu-libraries" \
   dialog-name="AI Tools and Libraries" \
   short-description="Install GPU libraries" \
