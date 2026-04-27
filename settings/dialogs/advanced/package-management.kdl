@@ -14,7 +14,6 @@ Install core package management tools:
   spdx-identifiers="MIT GPL-2.0-or-later GPL-3.0-only LGPL-2.1-or-later" \
   default-value=#true {
     arch-packages "arch-audit" \
-                  "pacman-contrib" \ // optional dependency of pikaur
                   "pacseek" \
                   "fwupd" \ // daemon to allow session software to update firmware
                   "pkgfile"

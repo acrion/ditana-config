@@ -67,6 +67,10 @@
                   "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/systemd/system/ditana_kbdrate.service" \
                   "systemctl enable ditana_kbdrate.service"
   }
+- name="enable-paccache" default-value=#true {
+    arch-packages "pacman-contrib"
+    chroot-script "systemctl enable paccache.timer"
+}
 - name="flatpak" default-value=#true {
     // Ditana enables Flatpak support for software that meets these criteria:
     // (1) not available in the official Arch or Ditana repositories,
