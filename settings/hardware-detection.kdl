@@ -30,7 +30,7 @@
 - name="is-gds-vulnerable" detect="given '/sys/devices/system/cpu/vulnerabilities/gather_data_sampling'.IO { .e && .slurp.chomp ne 'Not affected' }"
 - name="is-rfds-vulnerable" detect="given '/sys/devices/system/cpu/vulnerabilities/reg_file_data_sampling'.IO { .e && .slurp.chomp ne 'Not affected' }"
 - name="set-font-hook-exists" detect="'/tmp/ditana-set-font.sh'.IO.e"
-- name="display-size" detect="%*ENV<DISPLAY_SIZE>.defined ?? %*ENV<DISPLAY_SIZE> !! 11"
+- name="display-size" detect="%*ENV<DISPLAY_SIZE>.defined ?? %*ENV<DISPLAY_SIZE> !! 11" // DISPLAY_SIZE is set by /tmp/ditana-set-font.sh, which is created by Raku function update-terminal-font and sourced by run-ditana-installer.sh
 - name="terminal-columns" detect="%*ENV<TERMINAL_COLUMNS>.defined ?? %*ENV<TERMINAL_COLUMNS> !! 0"
 - name="terminal-lines" detect="%*ENV<TERMINAL_LINES>.defined ?? %*ENV<TERMINAL_LINES> !! 0"
 - name="tmux" detect="%*ENV<TMUX>.so"
