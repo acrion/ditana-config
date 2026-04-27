@@ -72,15 +72,6 @@
   default-value="`install-desktop-environment`" {
     arch-packages "font-manager"
   }
-- name="install-etcher" \
-  dialog-name="Desktop Applications" \
-  short-description="Install Etcher" \
-  long-description="Etcher: Flash OS images to SD cards & USB drives, safely and easily." \
-  spdx-identifiers="Apache" \
-  available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment`" {
-    aur-packages "etcher-bin"
-  }
 - name="install-bitwarden" \
   dialog-name="Desktop Applications" \
   short-description="Install Bitwarden" \
@@ -90,15 +81,14 @@
   default-value=#false {
     arch-packages "bitwarden"
   }
-- name="install-nomachine" \
+- name="install-rustdesk" \
   dialog-name="Desktop Applications" \
-  short-description="Install NoMachine" \
-  long-description="NoMachine is a remote desktop application that uses NX technology to provide a highly efficient and low-latency remote desktop experience. It supports multimedia capabilities, including audio and video streaming, USB forwarding, and file transfer. NoMachine is platform-independent and ensures secure connections through SSH encryption, making it suitable for both personal and professional remote access needs." \
-  license-category="CLOSED" \
-  spdx-identifiers="NoMachine EULA" \
+  short-description="Install RustDesk" \
+  long-description="RustDesk is a full-featured open-source remote desktop application that provides a secure and convenient way to remotely access and control other computers. It serves as a fast and privacy-friendly alternative to proprietary solutions like TeamViewer, AnyDesk, and NoMachine. With its easy-to-use ID and password system, RustDesk offers low-latency screen sharing, file transfer, clipboard synchronization, audio forwarding, multi-monitor support, and built-in chat. The application runs on Windows, Linux, macOS, Android, and iOS. You can use the public relay servers or self-host your own server for maximum privacy and data control." \
+  spdx-identifiers="AGPL-3.0-only" \
   available="`install-desktop-environment`" \
   default-value=#false {
-    aur-packages "nomachine"
+    flatpak-packages "com.rustdesk.RustDesk"
   }
 - name="install-fluffychat" \
   dialog-name="Desktop Applications" \

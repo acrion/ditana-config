@@ -82,12 +82,3 @@ Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for p
   default-value=#false {
     arch-packages "proton-vpn-gtk-app"
   }
-- name="install-expressvpn" \
-  dialog-name="Network and Security Tools" \
-  short-description="Install ExpressVPN" \
-  long-description="Install ExpressVPN, offering a robust VPN service with optional filtering of ads, trackers and malicious sites even before they arrive at your browser. An Activation Code from https://expressvpn.com is required to use ExpressVPN." \
-  license-category="CLOSED" \
-  available="`enable-network`" \
-  default-value=#false {
-    aur-packages "expressvpn"
-  }
