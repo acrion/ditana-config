@@ -36,6 +36,7 @@
                   "glibc-locales" \     // Required for localized output and locale-dependent functions in various applications (even for users who choose en_US.UTF-8 for LC_MESSAGES).
                   "libpwquality" \      // Provides pwscore which we use in chroot-install.sh to validate user passwort quality
                   "lsb-release" \       // Provides the lsb_release command, as referenced at https://refspecs.linuxfoundation.org/lsb.shtml.
+                  "mkinitcpio" \        // Provides initramfs (alternatives: dracut, booster)
                   "os-prober" \         // See https://wiki.archlinux.org/title/GRUB/Detecting_other_operating_systems
                   "pikaur" \            // Ditana’s chosen AUR helper for enhanced security
                   "python-defusedxml" \ // Enables pikaur to safeguard against XML-related vulnerabilities.
