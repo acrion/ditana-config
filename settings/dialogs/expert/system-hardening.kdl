@@ -38,7 +38,7 @@
   long-description="Restrict ptrace to Root: Limits the ptrace system call to processes running as root. ptrace allows inspecting and modifying the memory of running processes, which can be used to extract passwords or inject code. This setting will prevent non-root users from using debuggers such as gdb and strace. Developers who need debugging tools should disable this option. The Linux default (0) allows unrestricted ptrace between processes of the same user." \
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT sysctl-ptrace-unrestricted`" \
-  default-value="`NOT install-desktop-environment`" {
+  default-value=#true {
     chroot-script "echo 'kernel.yama.ptrace_scope=2 # restrict ptrace to root' >> /etc/sysctl.d/ditana.conf"
   }
 - name="sysctl-ptrace-unrestricted" \
@@ -51,7 +51,7 @@ This restores the classic Linux behavior where any process of the same user can 
 """ \
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT sysctl-ptrace-restrict`" \
-  default-value="`install-desktop-environment`" {
+  default-value=#false {
     chroot-script "echo 'kernel.yama.ptrace_scope=0 # unrestricted ptrace - important for developers' >> /etc/sysctl.d/ditana.conf"
   }
 - name="sysctl-net-hardening" \
