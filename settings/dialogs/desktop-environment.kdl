@@ -310,7 +310,17 @@
       #"sed -i -E "s|(repeat-delay[[:space:]]+)[0-9]+|\1${KEYBOARD_DELAY}|" /etc/skel/.config/niri/config.kdl"# \
       #"sed -i -E "s|(repeat-rate[[:space:]]+)[0-9]+|\1${KEYBOARD_RATE}|" /etc/skel/.config/niri/config.kdl"#
   }
-- name="install-wayland" \
+- name="install-cosmic" \
+  dialog-name="Desktop Environment" \
+  short-description="Cosmic (Wayland)" \
+  long-description="TODO" \
+  spdx-identifiers="GPL-3.0-only" \
+  default-value=#false {
+    arch-packages "cosmic"
+    files "/usr/lib/ditana/start-cosmic-greetd" \
+          "/usr/share/ditana/wayland-sessions/cosmic-ditana.desktop" \
+  }
+- name="install-niri-or-wayfire" \
   default-value="`install-niri OR install-wayfire`" {
     files \ // === Waybar config ===
           "/etc/skel/.config/waybar/config.jsonc" \
@@ -318,10 +328,7 @@
           \ // === nwg-launchers config ===
           "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
           "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
-    arch-packages "uwsm" \
-                  "xdg-desktop-portal-gtk" \
-                  "wayland-display-info" \
-                  "wayland-font-dpi" \
+    arch-packages "xdg-desktop-portal-gtk" \
                   "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
                   "rofi" \
                   "wl-clipboard" \
@@ -331,14 +338,20 @@
                   "hyprpolkitagent" \
                   "mako"
   }
+- name="install-wayland" \
+  default-value="`install-niri OR install-wayfire OR install-cosmic`" {
+    arch-packages "uwsm" \
+                  "wayland-display-info" \
+                  "wayland-font-dpi"
+  }
 - name="install-waybar-display-scale" \
-  default-value="`install-wayland`" {
+  default-value="`install-niri-or-wayfire`" {
     files "/usr/lib/systemd/user/waybar-display-scale.service" \
           "/usr/lib/ditana/waybar-display-scale"
     chroot-script "systemctl --global enable waybar-display-scale.service"
   }
 - name="install-waybar-ditana-assistant" \
-  default-value="`install-wayland AND install-ditana-assistant`" {
+  default-value="`install-niri-or-wayfire AND install-ditana-assistant`" {
     early-chroot-script \
       "CFG=/etc/skel/.config/waybar/config.jsonc" \
       #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
