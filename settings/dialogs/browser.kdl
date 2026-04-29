@@ -5,7 +5,7 @@
 
 - name="install-librewolf" \
   dialog-name="Browser" \
-  short-description="LibreWolf - Privacy-hardened Firefox fork (Flatpak)" \
+  short-description="LibreWolf - Privacy-hardened Firefox fork" \
   long-description="LibreWolf is a community-maintained fork of Firefox that ships with stronger default privacy and security settings out of the box (no telemetry, stricter cookie / referrer policy, hardened TLS settings). Distributed as a Flatpak; the download is one of the longest network steps in a default Ditana install." \
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
@@ -16,7 +16,7 @@
 
 - name="install-firefox" \
   dialog-name="Browser" \
-  short-description="Firefox - Mozilla's standard browser (Arch package)" \
+  short-description="Firefox - Mozilla's standard browser" \
   long-description="Firefox from the Arch repository. Significantly faster to install than the Flatpak browsers because it does not require fetching a Flatpak runtime. Includes onnxruntime (smart-tab-group ML features) and speech-dispatcher (text-to-speech) as recommended optional dependencies." \
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
@@ -28,7 +28,7 @@
 
 - name="install-brave" \
   dialog-name="Browser" \
-  short-description="Brave - Chromium-based with built-in ad/tracker blocking (Flatpak)" \
+  short-description="Brave - Chromium-based with built-in ad/tracker blocking" \
   long-description="Brave is a Chromium-based browser with built-in ad and tracker blocking, fingerprinting protections and an optional native tip / rewards system. Useful when site compatibility requires a Blink engine but Chrome itself is not desired." \
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
@@ -38,7 +38,7 @@
 
 - name="install-mullvad-browser" \
   dialog-name="Browser" \
-  short-description="Mullvad Browser - Anti-fingerprinting Tor-style hardening (Flatpak)" \
+  short-description="Mullvad Browser - Anti-fingerprinting Tor-style hardening" \
   long-description="A privacy-focused browser developed by Mullvad VPN in collaboration with the Tor Project, applying many of Tor Browser's anti-fingerprinting and tracking-resistance techniques without routing traffic through Tor itself." \
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \

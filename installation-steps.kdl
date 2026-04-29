@@ -68,7 +68,7 @@ For further information, please consult the following URLs:
  • https://wayfire.org (Wayfire)
  • https://github.com/YaLTeR/niri (Niri)
 """
-          - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or Flatpak." help-note=""
+          - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""
           - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
           - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
           - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""

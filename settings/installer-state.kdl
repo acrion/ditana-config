@@ -2,7 +2,7 @@
 - name="keymap-layout" default-value="" required-by-chroot=#true
 - name="keymap-variant" default-value="" required-by-chroot=#true
 - name="keyboard-rate" default-value=50 required-by-chroot=#true
-- name="keyboard-delay" default-value="`profile-developer ?? 250 !! 500`" required-by-chroot=#true
+- name="keyboard-delay" default-value=250 required-by-chroot=#true
 - name="install-disk" required-by-chroot=#true default-value=""
 - name="install-disk-description" default-value=""
 - name="boot-device" default-value=""

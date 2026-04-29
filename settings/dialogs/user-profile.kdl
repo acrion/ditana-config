@@ -39,7 +39,6 @@ Defaults that change vs. Standard:
  - ONLYOFFICE preselected instead of LibreOffice (ribbon UI, closer to
    MS Office UX).
  - Spotify added to the multimedia selection.
- - Keyboard repeat delay defaults to ~500 ms (Windows-typical).
  - Disk encryption prompt is skipped (encryption defaults to off).
 """ \
   spdx-identifiers="" \
@@ -62,7 +61,6 @@ Defaults that change vs. Standard:
    processes of the same user without extra capabilities; gdb, lldb,
    strace, perf, rr, Valgrind, IDE debuggers all work).
  - Core dumps stay enabled (useful for crash analysis).
- - Keyboard repeat delay defaults to a snappy 200 ms.
  - host-name and sudo-timeout are pulled forward and asked up front
    instead of being hidden under «Advanced Settings» (both stay in
    their normal location too, so you can still revise without «Back»).
