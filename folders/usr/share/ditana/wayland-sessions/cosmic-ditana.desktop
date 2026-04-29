@@ -1,5 +1,5 @@
 [Desktop Entry]
 # The directory of this desktop file is referenced by /etc/greetd/config.toml
-Name=Wayfire
-Exec=/usr/lib/ditana/start-wayfire-greetd
+Name=Cosmic
+Exec=/usr/lib/ditana/start-cosmic-greetd
 Type=Application
