@@ -5,7 +5,7 @@
   long-description="Betterbird is an enhanced version of the popular Thunderbird email client, offering additional features and bug fixes not found in Thunderbird. It includes advanced functionalities such as a multi-line view, vertical tabs, enhanced sorting options, and improved search capabilities, making email management more efficient and customizable. Betterbird also addresses many long-standing issues and user requests, offering a smoother, more reliable email experience. The appropriate language pack for your system will be installed." \
   spdx-identifiers="MPL-2" \
   available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment`" {
+  default-value="`install-desktop-environment AND NOT profile-quick`" {
     arch-packages ""
     chroot-script "`MAIN_LOCALE={Settings.instance.get('main-locale')}`" \
                   #"BETTERBIRD="betterbird-$MAIN_LOCALE-bin""# \

@@ -8,7 +8,7 @@
   long-description="LibreOffice is a powerful open-source office suite that includes applications for word processing, spreadsheets, presentations, vector graphics, databases, and more. With comprehensive file format compatibility and robust support for extensions, it is a versatile alternative to proprietary office software. The appropriate language pack for your system will be installed (falling back to English if no localized package is available)." \
   spdx-identifiers="LGPL-3.0-or-later" \
   available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment AND NOT profile-windows`" {
+  default-value="`install-desktop-environment AND NOT (profile-windows OR profile-quick)`" {
     arch-packages ""
     chroot-script "`MAIN_LOCALE={Settings.instance.get('main-locale')}`" \
                   #"LIBREOFFICE="libreoffice-still-$MAIN_LOCALE""# \
@@ -28,7 +28,7 @@
   long-description="ONLYOFFICE Desktop Editors offers a ribbon-style interface familiar to Microsoft Office users, with strong .docx / .xlsx / .pptx compatibility for documents, spreadsheets and presentations. Distributed as a Flatpak (~1.3 GB)." \
   spdx-identifiers="AGPL-3.0-only" \
   available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment AND profile-windows`" {
+  default-value="`install-desktop-environment AND (profile-windows OR profile-quick)`" {
     flatpak-packages "org.onlyoffice.desktopeditors"
 }
 

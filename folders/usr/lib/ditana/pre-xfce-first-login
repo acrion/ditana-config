@@ -30,9 +30,9 @@ if [[ -f /var/lib/flatpak/exports/share/applications/io.gitlab.librewolf-communi
     PINNED_APPS_FRONT+="io.gitlab.librewolf-community;"
 elif [[ -f /var/lib/flatpak/exports/share/applications/net.mullvad.MullvadBrowser.desktop ]]; then
     PINNED_APPS_FRONT+="net.mullvad.MullvadBrowser;"
-elif [[ -f /var/lib/flatpak/exports/share/applications/com.brave.Browser.desktop ]]; then
-    PINNED_APPS_FRONT+="com.brave.Browser;"
-elif pacman -Qi firefox &> /dev/null; then
+elif command -v brave &> /dev/null; then
+    PINNED_APPS_FRONT+="brave-browser;"
+elif command -v firefox &> /dev/null; then
     PINNED_APPS_FRONT+="firefox;"
 fi
 
