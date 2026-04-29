@@ -24,7 +24,7 @@
 
 - name="install-onlyoffice" \
   dialog-name="Office Suite" \
-  short-description="ONLYOFFICE - MS-Office-style ribbon UI (Flatpak)" \
+  short-description="ONLYOFFICE - MS-Office-style ribbon UI" \
   long-description="ONLYOFFICE Desktop Editors offers a ribbon-style interface familiar to Microsoft Office users, with strong .docx / .xlsx / .pptx compatibility for documents, spreadsheets and presentations. Distributed as a Flatpak (~1.3 GB)." \
   spdx-identifiers="AGPL-3.0-only" \
   available="`install-desktop-environment`" \

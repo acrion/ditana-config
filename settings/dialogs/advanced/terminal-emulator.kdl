@@ -72,7 +72,7 @@
 - name="install-alacritty" \
   dialog-name="Terminal Emulator" \
   short-description="Alacritty - GPU-accelerated, X11 + Wayland, minimalist" \
-  long-description="GPU-accelerated terminal emulator. Explicitly declines tabs, panes, graphics protocols, ligatures and most OSC extensions as a design principle, delegating to external tools such as zellij. Works on both X11 and Wayland - default when only XFCE is installed." \
+  long-description="Install Alacritty, a GPU-accelerated terminal emulator. Explicitly declines tabs, panes, graphics protocols, ligatures and most OSC extensions as a design principle, delegating to external tools such as zellij. Works on both X11 and Wayland - default when only XFCE is installed." \
   spdx-identifiers="Apache-2.0" \
   available="`install-desktop-environment`" \
   default-value="`install-xfce AND NOT install-wayland`" {
@@ -86,7 +86,7 @@
 - name="install-kitty" \
   dialog-name="Terminal Emulator" \
   short-description="kitty - GPU-accelerated (OpenGL 3.3), X11 + Wayland, full-featured" \
-  long-description="GPU-accelerated terminal emulator with built-in tabs, splits, image protocol and configurable shaders. Works with OpenGL 3.3, so it also runs in VMs without GPU passthrough where Ghostty fails. Pick this if you want a feature-rich, batteries-included terminal across X11 and Wayland." \
+  long-description="Install kitty, a GPU-accelerated terminal emulator with built-in tabs, splits, image protocol and configurable shaders. Works with OpenGL 3.3, so it also runs in VMs without GPU passthrough where Ghostty fails. Pick this if you want a feature-rich, batteries-included terminal across X11 and Wayland." \
   spdx-identifiers="GPL-3.0-only" \
   available="`install-desktop-environment`" \
   default-value=#false {
@@ -107,7 +107,7 @@
 - name="install-ghostty" \
   dialog-name="Terminal Emulator" \
   short-description="Ghostty - GPU-accelerated, modern, requires OpenGL 4.3+" \
-  long-description="Modern, GPU-accelerated terminal emulator. Requires OpenGL 4.3+ (compute shaders, SSBOs); in VMs without GPU passthrough, llvmpipe / softpipe cannot satisfy this requirement, so Ghostty is unavailable in pure-software-rendering environments." \
+  long-description="Install Ghostty, a modern, GPU-accelerated terminal emulator. Requires OpenGL 4.3+ (compute shaders, SSBOs); in VMs without GPU passthrough, llvmpipe / softpipe cannot satisfy this requirement, so Ghostty is unavailable in pure-software-rendering environments." \
   spdx-identifiers="MIT" \
   available="`install-desktop-environment AND has-gpu-acceleration`" \
   default-value=#false {
