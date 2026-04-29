@@ -10,7 +10,7 @@
 
 - name="profile-default" \
   dialog-name="User Profile" \
-  short-description="Standard - Typical Linux user (recommended)" \
+  short-description="Standard - Typical Linux user" \
   long-description="""
 The recommended profile for most users.
 
