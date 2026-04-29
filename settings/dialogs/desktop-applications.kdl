@@ -1,23 +1,4 @@
 // Settings that correspond to the dialog "Configuration Categories" → "Desktop Applications"
-- name="install-libreoffice" \
-  dialog-name="Desktop Applications" \
-  short-description="Install Libre Office" \
-  long-description="LibreOffice is a powerful open-source office suite that includes applications for word processing, spreadsheets, presentations, vector graphics, databases, and more. It provides a wide range of tools and features, making it a versatile alternative to proprietary office software. With comprehensive file format compatibility and robust support for extensions, LibreOffice is ideal for users seeking a complete office solution. The appropriate language pack for your system will be installed." \
-  spdx-identifiers="LGPL-3.0-or-later" \
-  available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment`" {
-    arch-packages ""
-    chroot-script "`MAIN_LOCALE={Settings.instance.get('main-locale')}`" \
-                  #"LIBREOFFICE="libreoffice-still-$MAIN_LOCALE""# \
-                  #"if ! is_package_available "$LIBREOFFICE"; then"# \
-                  #"    if [ "$MAIN_LOCALE" != "en" ]; then"# \
-                  #"        echo -e "\033[33m--- Unable to localize Libre Office for $MAIN_LOCALE ---\033[0m""# \
-                  "    fi" \
-                  #"    LIBREOFFICE="libreoffice-still""# \
-                  "fi" \
-                  #"echo -e "\033[32m--- Installing $LIBREOFFICE ---\033[0m""# \
-                  #"runuser -u builduser -- pikaur -S "$LIBREOFFICE" --noconfirm || true"#
-  }
 - name="install-betterbird" \
   dialog-name="Desktop Applications" \
   short-description="Install Betterbird" \
@@ -112,4 +93,6 @@
     autostart {
         - "XFCE;" "/usr/bin/variety"
     }
+    // suppress first-run setup dialog as we pre-install a configuration
+    first-login-commands #"echo -n "$(date '+%Y-%m-%d %H:%M:%S')" > "$HOME/.config/variety/.firstrun""#
   }

@@ -2,7 +2,7 @@
 - name="keymap-layout" default-value="" required-by-chroot=#true
 - name="keymap-variant" default-value="" required-by-chroot=#true
 - name="keyboard-rate" default-value=50 required-by-chroot=#true
-- name="keyboard-delay" default-value=250 required-by-chroot=#true
+- name="keyboard-delay" default-value="`profile-developer ?? 250 !! 500`" required-by-chroot=#true
 - name="install-disk" required-by-chroot=#true default-value=""
 - name="install-disk-description" default-value=""
 - name="boot-device" default-value=""
@@ -13,7 +13,7 @@
 - name="enable-os-prober" required-by-chroot=#true default-value=#false
 - name="change-nvme-lba-format" default-value=#false
 - name="optimal-lba-format-index" default-value=-1
-- name="encrypt-root-partition" required-by-chroot=#true default-value=#true
+- name="encrypt-root-partition" required-by-chroot=#true default-value="`NOT (profile-windows OR profile-quick)`"
 - name="swap-partition" default-value=""
 - name="timezone" default-value=""
 - name="locale" required-by-chroot=#true default-value=""

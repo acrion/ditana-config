@@ -31,7 +31,7 @@ By activating this option, in contrast, an English-centric environment will be m
 This standardized approach ensures uniform behavior across various C and C++ library functions, avoiding discrepancies that can arise from differing regional settings. It’s particularly useful for developers or users who prefer a consistent English interface while maintaining their regional preferences for date and currency formats. Both spell checkers will be installed (in case your locale is different from en_US).
 """ \
   spdx-identifiers="" \
-  default-value=#false {
+  default-value="`profile-developer`" {
     arch-packages ""
     chroot-script "`LOWERCASE_LOCALE={Settings.instance.get('locale').lc}`" \
                   #"if [ "$LOWERCASE_LOCALE" != "en_us" ]; then echo -e "\033[32m--- Installing hunspell-en_us for English system output ---\033[0m"; runuser -u builduser -- pikaur -S hunspell-en_us --noconfirm || true; fi"#
@@ -68,7 +68,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   long-description="Install Zed, a high-performance, multiplayer code editor from the creators of Atom and Tree-sitter. Written in Rust with GPU-accelerated rendering for a low-latency editing experience. Includes packages for language support and to keep you logged into your Zed account: $packages" \
   spdx-identifiers="GPL-3.0-or-later,AGPL-3.0-or-later,Apache-2.0" \
   available="`install-desktop-environment`" \
-  default-value=#false {
+  default-value="`install-desktop-environment AND profile-developer`" {
     arch-packages "zed" \
                   "eslint" \ // optional dependency of zed
                   "org.freedesktop.secrets" // optional dependency of zed

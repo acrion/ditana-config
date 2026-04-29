@@ -8,7 +8,7 @@
   \ // We restrict ZFS to LTS kernel only for maximum stability. OpenZFS typically supports new kernel versions
   \ // within days/weeks of release, see https://github.com/openzfs/zfs/releases for current status.
   available="`install-standard-lts-kernel OR install-hardened-lts-kernel`" \
-  default-value="`install-standard-lts-kernel OR install-hardened-lts-kernel`" {
+  default-value="`(install-standard-lts-kernel OR install-hardened-lts-kernel) AND NOT profile-quick`" {
     arch-packages "zfs-utils"
   }
 - name="btrfs-filesystem" \
@@ -16,7 +16,8 @@
   short-description="Btrfs - Snapshots, Flexible Subvolumes & Online Management" \
   long-description="BTRFS: Supports atomic snapshots and ensures data integrity. Ideal for systems using Timeshift for reliable restoration and reducing SSD wear through data compression. Flexible management of subvolumes online without downtime." \
   spdx-identifiers="GPL-2.0-only" \
-  required-by-chroot=#true default-value="`NOT (install-standard-lts-kernel OR install-hardened-lts-kernel)`" {
+  required-by-chroot=#true \
+  default-value="`profile-quick OR NOT (install-standard-lts-kernel OR install-hardened-lts-kernel)`" {
     arch-packages "btrfs-progs" "compsize"
   }
 - name="xfs-filesystem" \

@@ -24,7 +24,7 @@
   license-category="CLOSED" \
   spdx-identifiers="" \
   available="`install-desktop-environment`" \
-  default-value=#false {
+  default-value="`install-desktop-environment AND profile-windows`" {
     flatpak-packages "com.spotify.Client"
   }
 - name="install-pinta" dialog-name="Multimedia Applications" short-description="Install Pinta image editor" long-description="Install Pinta image editor: Choose to install Pinta, a user-friendly raster graphics editor that resembles Windows’ Paint .NET application. Pinta offers a straightforward interface with essential image editing tools like layers, adjustments, and effects. It’s ideal for quick edits, creating simple graphics, or touching up photos without the complexity of more advanced software like GIMP." spdx-identifiers="MIT" available="`install-desktop-environment`" default-value="`install-desktop-environment`" {

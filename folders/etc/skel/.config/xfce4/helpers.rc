@@ -1,5 +1,5 @@
-TerminalEmulator=xdg-terminal-exec
-FileManager=thunar
-WebBrowser=librewolf
+TerminalEmulator=
+FileManager=
+WebBrowser=
 MailReader=custom-MailReader
 

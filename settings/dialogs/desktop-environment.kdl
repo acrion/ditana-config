@@ -45,6 +45,8 @@
                   "system-config-printer" \
                   "cups-pk-helper" \
                   "python-pysmbc" \
+                  \ // === Send Desktop Notifications ===
+                  "libnotify" \
                   \ // === On-screen keyboard ===
                   "onboard"
     files \ // Marker file for first-login detection. If this file exists when the user logs in,
@@ -127,6 +129,9 @@
     files \ // === Thunar custom actions ===
           "/etc/skel/.config/Thunar/uca.xml"
   }
+- name="install-xfce-thunar" default-value="`install-xfce AND install-thunar`" {
+    first-login-commands #"sed -i "s|^FileManager=.*|FileManager=thunar|" "$HOME/.config/xfce4/helpers.rc""#
+}
 - name="install-ramdisk-thunar-bookmark" \
   default-value="`install-thunar AND install-ramdisk`" {
     files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
@@ -141,10 +146,6 @@
 - name="install-xreader" default-value="`install-desktop-environment`" {
     arch-packages "xreader"
   }
-- name="install-librewolf" default-value="`install-desktop-environment`" {
-    files "/etc/skel/.librewolf/librewolf.overrides.cfg"
-    flatpak-packages "io.gitlab.librewolf-community"
-  }
 - name="install-engrampa" default-value="`install-desktop-environment`" {
     arch-packages "engrampa"
   }
@@ -153,7 +154,7 @@
   short-description="XFCE (Xorg)" \
   long-description="XFCE: A mature, lightweight desktop environment running on Xorg (X11). XFCE offers a traditional desktop paradigm with a panel, application menu, and window management. It is highly customizable, resource-efficient, and has broad hardware and software compatibility. Ditana ships a preconfigured XFCE setup with the Dracula theme, Kitty or Ghostty terminal, and curated panel plugins." \
   spdx-identifiers="GPL-2.0-or-later" \
-  default-value=#false {
+  default-value="`profile-windows OR profile-quick`" {
     arch-packages "xorg-server" \
                   "xorg-xinit" \
                   \ // === group xfce4 without xfce4-terminal ===
@@ -225,8 +226,6 @@
           \ // === Desktop shortcuts ===
           "/etc/skel/Desktop/Donate to Ditana.desktop" \
           "/etc/skel/Desktop/Best Practices.desktop" \
-          \ // === LibreWolf XFCE helper ===
-          "/etc/skel/.local/share/xfce4/helpers/librewolf.desktop" \
           \ // === Ditana XFCE helper scripts ===
           "/usr/lib/ditana/pre-xfce-first-login" \
           "/usr/lib/ditana/xfce-first-login" \
@@ -252,7 +251,7 @@
   short-description="Wayfire (Wayland)" \
   long-description="Wayfire: A modular Wayland compositor inspired by Compiz. Wayfire provides a stacking/floating window management experience on the modern Wayland display protocol, offering smooth animations, 3D effects, and a plugin-based architecture. It is a good choice for users who want a visually rich desktop without the legacy constraints of Xorg." \
   spdx-identifiers="MIT" \
-  default-value=#true {
+  default-value="`profile-default OR profile-developer OR profile-quick`" {
     files "/usr/lib/ditana/start-wayfire-greetd" \
           "/usr/share/ditana/wayland-sessions/wayfire-ditana.desktop" \
           \ // === Wayfire config ===
@@ -292,7 +291,7 @@
   long-description="Niri: A scrollable-tiling Wayland compositor. Instead of arranging windows in a fixed grid, Niri places them in an infinite horizontal strip that you scroll through, similar to a panoramic workspace. It is well-suited for keyboard-driven workflows and users who prefer automatic window tiling without manual layout management." \
   spdx-identifiers="GPL-3.0-or-later" \
   available="`has-gpu-render-node`" \
-  default-value=#false {
+  default-value="`profile-developer OR profile-quick`" {
     arch-packages "niri-git" \
                   "xwayland-satellite" \
                   "swaybg" \
@@ -338,98 +337,6 @@
           "/usr/lib/ditana/waybar-display-scale"
     chroot-script "systemctl --global enable waybar-display-scale.service"
   }
-
-// Terminal emulator philosophy: Ditana follows "Write programs that do
-// one thing and do it well" (Doug McIlroy). The terminal emulates a
-// terminal; tabs, panes, layouts, and session persistence are delegated
-// to zellij, which is installed by default. This gives users rich
-// multiplexing that works identically across emulators, hosts, and SSH
-// sessions.
-//
-//   - foot:      Wayland-native, default when only Wayland compositors
-//                (Wayfire, Niri) are installed. Beyond Wayland being
-//                the designated X11 successor, foot provides practical
-//                features that upstream Alacritty intentionally omits.
-//                  * OSC 133 semantic prompt markers — jump between
-//                    prompts in scrollback, select full command output.
-//                    Ditana ships shell hooks in /etc/skel/.shellrc
-//                    that emit these markers in bash and zsh, scoped
-//                    to foot via $TERM / $TERMINAL, because Starship
-//                    does not emit OSC 133 natively.
-//                  * OSC 9 / OSC 777 desktop notifications — any shell
-//                    script or CLI tool can raise "build finished"
-//                    style alerts with a single printf, no notify-send
-//                    dependency, no D-Bus plumbing.
-//                  * Sixel graphics — inline image previews in TUIs
-//                    such as yazi, lf, gnuplot, matplotlib.
-//                  * Server/daemon mode (foot --server) — near-instant
-//                    window spawn, noticeable under tiling compositors
-//                    where terminals are opened frequently.
-//                  * Very small memory footprint per instance.
-//
-//   - alacritty: GPU-accelerated, works on both X11 and Wayland.
-//                Becomes the default as soon as XFCE is part of the
-//                installation, since foot is Wayland-only. Alacritty
-//                explicitly declines tabs, panes, graphics protocols,
-//                ligatures, and most OSC extensions as a design
-//                principle — delegating to external tools. This keeps
-//                the emulator layer minimal and makes it a clean
-//                counterpart to zellij on both display servers.
-
-- name="install-foot" \
-  default-value=#true {
-    arch-packages "foot" \
-                  "libnotify" \
-                  "xdg-terminal-exec-git"
-    files "/etc/skel/.config/foot/foot.ini"
-    chroot-script "systemctl --global enable foot-server.socket" \
-                  "mkdir -p /etc/xdg" \
-                  "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
-  }
-  
-- name="install-alacritty" \
-  default-value="`install-xfce`" {
-    arch-packages "alacritty" \
-                  "xdg-terminal-exec-git"
-    chroot-script "mkdir -p /etc/xdg" \
-                  \ // we use alacritty for XFCE, because foot runs only under Wayland
-                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
-  }
-  
-// - name="install-kitty" \
-//   default-value="`install-xfce`" {
-//     arch-packages "kitty" \
-//                   "imagemagick" \
-//                   "python-pygments" \
-//                   "libcanberra" \
-//                   "xdg-terminal-exec-git"
-//     files "/etc/skel/.config/kitty/kitty.conf" \
-//           "/usr/share/pixmaps/ditana-logo-tiny.png"
-//     chroot-script "mkdir -p /etc/xdg" \
-//                   "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
-//                   \ // $TERMINAL is consumed by GUI apps via the PAM session env
-//                   \ // (xdg-terminal-exec fallback, i3-sensible-terminal, ...).
-//                   "mkdir -p /etc/environment.d" \
-//                   "echo TERMINAL=kitty >> /etc/environment.d/set-terminal.conf"
-//   }
-
-// - name="install-ghostty" \
-//   \ // In VMs without GPU passthrough, Ghostty's OpenGL 4.3+ requirement
-//   \ // (compute shaders, SSBOs) cannot be met: llvmpipe crashes due to an
-//   \ // LLVM JIT bug (MGATHER instruction selection), and softpipe only
-//   \ // supports OpenGL 3.3. Kitty works with OpenGL 3.3, so we use it as
-//   \ // the default terminal in virtual environments instead.
-//   default-value="`install-desktop-environment AND has-gpu-acceleration`" {
-//     arch-packages "ghostty" \
-//                   "xdg-terminal-exec-git"
-//     files "/etc/skel/.config/ghostty/config" \
-//           "/usr/share/pixmaps/ditana-logo-tiny.png"
-//     chroot-script "mkdir -p /etc/xdg" \
-//                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list" \
-//                   "mkdir -p /etc/environment.d" \
-//                   "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
-//   }
-
 - name="install-waybar-ditana-assistant" \
   default-value="`install-wayland AND install-ditana-assistant`" {
     early-chroot-script \

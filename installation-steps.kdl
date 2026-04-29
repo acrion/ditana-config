@@ -3,7 +3,10 @@ Enter the screen diagonal in inches (only the used area).
 
 This is used to determine the terminal font size.
 """ available="`virtual-terminal AND NOT installing-over-ssh AND NOT set-font-hook-exists`"
-  - name="update-terminal-font" type="procedure" available="`virtual-terminal AND NOT installing-over-ssh`"
+- name="update-terminal-font" type="procedure" available="`virtual-terminal AND NOT installing-over-ssh`"
+  - name="User Profile" type="radiolist" instruction="""
+Choose a profile to pre-set defaults for the rest of the installation. This is a convenience step - every option you see later remains adjustable in the «Configuration Categories» menu shown a few steps from now. The profile only flips checkboxes for you, it never hides choices.
+""" help-intro="Picking a profile changes which options start out checked in subsequent dialogs. Depending on the profile, a small number of settings that are normally hidden under «Advanced Settings» are also pulled forward so you encounter them up front (without removing them from their normal location)." help-note=""
   - name="choose-region-or-timezone" type="procedure"
   - name="choose-specific-timezone" type="procedure"
   - name="choose-main-locale" type="procedure"
@@ -42,6 +45,21 @@ This is recommended, especially for laptops. Please note that if you lose your e
   - name="update-mirrorlist" type="procedure" available="`real-install`"
   - name="rate-mirrors" type="procedure" available="`real-install`"
   - name="check-nvidia" type="procedure" available="`nvidia-pci-id`"
+  - name="host-name" type="ask-for-setting" validation="name" available="`profile-developer`" instruction="""
+Computer name for new system
+
+Enter a lowercase name for your computer. While DNS servers don't distinguish case, using lowercase simplifies system management and prevents potential conflicts.
+"""
+  - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" available="`profile-developer`" instruction="""
+Sudo password timeout in minutes.
+
+This sets how long sudo remembers your password before asking again. The default (5 minutes) is a common balance between security and convenience.
+
+- 0 means sudo will ask for the password every time.
+- Higher values are more convenient but less secure, as any process running in your terminal can use the cached credentials.
+
+If unsure, it's recommended to keep the default value.
+"""
   - name="Configuration Categories" type="categories" {
       categories {
           - name="Desktop Environment" type="checklist" instruction="Choose desktop environments to install:" help-intro="Select one or more desktop environments. If you leave all options unchecked, Ditana will be installed as a headless system without a graphical interface, suitable for servers or remote-only usage." help-note="""
@@ -50,6 +68,8 @@ For further information, please consult the following URLs:
  • https://wayfire.org (Wayfire)
  • https://github.com/YaLTeR/niri (Niri)
 """
+          - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or Flatpak." help-note=""
+          - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
           - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
           - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""
           - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant is enabled by default, it means that your hardware supports running a local AI (CPU with AVX2 & sufficient RAM). Ditana Assistant relies on KoboldCpp to handle AI interactions locally, ensuring your privacy and data security. If your hardware does not support running KoboldCpp, it will not be available in this list. You can still activate Ditana Assistant, but you will need to configure it in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
@@ -135,6 +155,7 @@ Both BusyBox and systemd are installed, as they are required by other parts of t
                   - name="Repository & Package Management Configuration" type="checklist" instruction="" help-intro="" help-note=""
                   - name="Network and Security Tools" type="checklist" instruction="Choose network options:" help-intro="" help-note=""
                   - name="System Maintenance Tools" type="checklist" instruction="Choose system maintenance options:" help-intro="" help-note=""
+                  - name="Terminal Emulator" type="radiolist" instruction="Choose your default terminal emulator:" help-intro="The radiolist picks the primary terminal emulator. If you select foot and also install XFCE, Alacritty is added automatically as the X11 fallback (foot is Wayland-only)." help-note=""
                   - name="Terminal Tools and Utilities" type="checklist" instruction="Choose terminal options:" help-intro="" help-note=""
                   - name="Development Tools and Libraries" type="checklist" instruction="Choose development options:" help-intro="" help-note=""
               }

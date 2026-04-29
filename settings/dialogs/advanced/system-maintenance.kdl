@@ -75,7 +75,7 @@ Disable Core Dumps:
 Core dumps capture the memory state of a program during crashes, which is useful for debugging but may inadvertently expose sensitive information. In Ditana, core dumps are disabled by default, safeguarding system integrity and user privacy. Advanced users can choose to enable core dumps temporarily in shell sessions or for specific systemd services, ensuring a secure default configuration while allowing flexibility for debugging needs.
 """ \
   spdx-identifiers="AGPL-3.0-or-later" \
-  default-value=#true {
+  default-value="`NOT profile-developer`" {
     files "/etc/security/limits.d/50-ditana.conf" \
           "/etc/systemd/system.conf.d/50-ditana-limits.conf"
   }

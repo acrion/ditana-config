@@ -1,0 +1,128 @@
+// Quick-start profile selection. Sets sensible defaults for many
+// settings throughout the rest of the installer. The user can still
+// fine-tune every option later in the «Configuration Categories» menu;
+// the profile only changes which checkboxes start out checked, it does
+// not hide any choice.
+//
+// Exactly one of these five settings will be #true at any time
+// (radiolist semantics). All other Ditana settings reference these
+// flags from their `default-value` expressions.
+
+- name="profile-default" \
+  dialog-name="User Profile" \
+  short-description="Standard - Typical Linux user (recommended)" \
+  long-description="""
+The recommended profile for most users.
+
+Wayfire is preselected as the desktop environment, all standard Ditana
+features are enabled (encryption prompt, ZFS file system on LTS kernels,
+Ditana Assistant where supported, LibreWolf, LibreOffice, foot under
+Wayland and Alacritty under XFCE).
+
+Equivalent to leaving the original Ditana defaults untouched.
+""" \
+  spdx-identifiers="" \
+  default-value=#true {
+    arch-packages ""
+}
+
+- name="profile-windows" \
+  dialog-name="User Profile" \
+  short-description="Coming from Windows - Familiar desktop layout" \
+  long-description="""
+Geared towards users migrating from Microsoft Windows.
+
+Defaults that change vs. Standard:
+ - XFCE preselected as the only desktop environment (traditional menu /
+   panel layout). Wayfire and Niri remain off but can be enabled in
+   «Configuration Categories - Desktop Environment».
+ - ONLYOFFICE preselected instead of LibreOffice (ribbon UI, closer to
+   MS Office UX).
+ - Spotify added to the multimedia selection.
+ - Keyboard repeat delay defaults to ~500 ms (Windows-typical).
+ - Disk encryption prompt is skipped (encryption defaults to off).
+""" \
+  spdx-identifiers="" \
+  default-value=#false {
+    arch-packages ""
+}
+
+- name="profile-developer" \
+  dialog-name="User Profile" \
+  short-description="Software Developer - Multiple compositors, dev-friendly defaults" \
+  long-description="""
+Optimised for software development work.
+
+Defaults that change vs. Standard:
+ - Wayfire AND Niri preselected; XFCE is off.
+ - Zed preinstalled as an additional editor.
+ - Standardized C.UTF-8 locale for system messages while keeping
+   regional formats (consistent tool output, easier to grep).
+ - Unrestricted ptrace enabled (allows attaching debuggers across
+   processes of the same user without extra capabilities; gdb, lldb,
+   strace, perf, rr, Valgrind, IDE debuggers all work).
+ - Core dumps stay enabled (useful for crash analysis).
+ - Keyboard repeat delay defaults to a snappy 200 ms.
+ - host-name and sudo-timeout are pulled forward and asked up front
+   instead of being hidden under «Advanced Settings» (both stay in
+   their normal location too, so you can still revise without «Back»).
+""" \
+  spdx-identifiers="" \
+  default-value=#false {
+    arch-packages ""
+}
+
+- name="profile-server" \
+  dialog-name="User Profile" \
+  short-description="Server - Headless system, no graphical interface" \
+  long-description="""
+For headless installations: virtual machines used as build hosts, home
+servers, NAS guests on hypervisors such as Synology / Proxmox, and
+similar setups.
+
+No desktop environment, no browser, no office suite, no terminal
+emulator package. All other Ditana defaults are unchanged - including
+LTS-kernel ZFS, automatic snapshots, firewalld, and the SSH server.
+
+Ditana intentionally does not preinstall any specific server software
+here (no nginx, no database, no container runtime); it is not specified
+what kind of server this will become.
+""" \
+  spdx-identifiers="" \
+  default-value=#false {
+    arch-packages ""
+}
+
+- name="profile-quick" \
+  dialog-name="User Profile" \
+  short-description="Quick Installation - Fastest install (for distro hopping)" \
+  long-description="""
+Trades several Ditana-specific features for the shortest install time.
+Use this if you only want to evaluate Ditana, not work in it long-term -
+the typical «distro-hopping» scenario.
+
+What is sacrificed for speed:
+ - BTRFS instead of ZFS (no parallel DKMS module build, and the initial
+   automatic snapshot taken at the end of the install is much faster on
+   BTRFS than the rsync-based Timeshift snapshot used by ext4 / xfs).
+ - Firefox (Arch package) instead of LibreWolf (the LibreWolf Flatpak
+   download is the single longest network step in a default install).
+ - Ditana Assistant / local AI is disabled (skips the Ollama model
+   download, several hundred megabytes).
+ - Disk encryption prompt is skipped (encryption defaults to off).
+
+What is kept (because it does not affect install duration much):
+ - All three desktop environments - XFCE, Wayfire and Niri - are
+   preselected, so you can compare them in the same session. This is
+   intentional: a few extra packages are negligible compared to the
+   items above.
+
+Note: this profile optimises install duration, not the resulting
+system. The defaults sacrificed here are exactly what distinguishes
+Ditana from a generic Arch derivative. If you intend to use Ditana
+as a daily driver, pick «Standard» instead.
+""" \
+  spdx-identifiers="" \
+  default-value=#false {
+    arch-packages ""
+}

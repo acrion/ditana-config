@@ -1,0 +1,144 @@
+// Terminal-emulator philosophy: Ditana follows "Write programs that do
+// one thing and do it well" (Doug McIlroy). The terminal emulates a
+// terminal; tabs, panes, layouts, and session persistence are delegated
+// to zellij, which is installed by default. This gives users rich
+// multiplexing that works identically across emulators, hosts, and SSH
+// sessions.
+//
+// Each entry below is one option in the «Terminal Emulator» radiolist
+// shown under «Advanced Settings». Exactly one of install-foot,
+// install-alacritty, install-kitty, install-ghostty,
+// install-no-terminal is active at any time (radiolist semantics).
+//
+//   - foot:      Wayland-native, default when any Wayland compositor
+//                (Wayfire, Niri) is installed. Beyond Wayland being
+//                the designated X11 successor, foot provides practical
+//                features that upstream Alacritty intentionally omits.
+//                  * OSC 133 semantic prompt markers - jump between
+//                    prompts in scrollback, select full command output.
+//                    Ditana ships shell hooks in /etc/skel/.shellrc
+//                    that emit these markers in bash and zsh, scoped
+//                    to foot via $TERM / $TERMINAL.
+//                  * OSC 9 / OSC 777 desktop notifications - any shell
+//                    script or CLI tool can raise "build finished"
+//                    style alerts with a single printf.
+//                  * Sixel graphics - inline image previews in TUIs
+//                    such as yazi, lf, gnuplot, matplotlib.
+//                  * Server / daemon mode (foot --server) - near-instant
+//                    window spawn, noticeable under tiling compositors.
+//                  * Very small memory footprint per instance.
+//                Because foot is Wayland-only, picking it as the
+//                primary on a system that also installs XFCE auto-pulls
+//                Alacritty as the X11 fallback (see install-alacritty-for-xfce
+//                further below; it is NOT a radiolist entry).
+//
+//   - alacritty: GPU-accelerated, works on both X11 and Wayland.
+//                Default when only XFCE is installed (foot would not
+//                run there). Alacritty explicitly declines tabs, panes,
+//                graphics protocols, ligatures, and most OSC extensions
+//                as a design principle - delegating to external tools.
+//                A clean counterpart to zellij on both display servers.
+//
+//   - kitty:     GPU-accelerated, works on both X11 and Wayland with
+//                OpenGL 3.3 (so it also runs under llvmpipe in VMs
+//                without GPU passthrough). Built-in tabs, splits, image
+//                protocol, and configurable shaders. Pick this if you
+//                want a feature-rich, batteries-included terminal.
+//
+//   - ghostty:   GPU-accelerated, modern. Requires OpenGL 4.3+
+//                (compute shaders, SSBOs); in VMs without GPU passthrough,
+//                llvmpipe crashes due to an LLVM JIT bug (MGATHER
+//                instruction selection), and softpipe only supports
+//                OpenGL 3.3. The has-gpu-acceleration check on the
+//                `available` field hides this option in those
+//                environments.
+
+- name="install-foot" \
+  dialog-name="Terminal Emulator" \
+  short-description="foot - Wayland-native, fast, OSC-133/OSC-9 support" \
+  long-description="foot is a Wayland-native terminal emulator with semantic prompt markers (OSC 133), desktop notifications (OSC 9 / OSC 777), Sixel graphics, server / daemon mode, and a very small memory footprint. Recommended default for any Wayland compositor. If XFCE is also installed, Alacritty is automatically added as the X11 fallback." \
+  spdx-identifiers="MIT" \
+  available="`install-wayland`" \
+  default-value="`install-wayland`" {
+    arch-packages "foot" \
+                  "libnotify" \
+                  "xdg-terminal-exec-git"
+    files "/etc/skel/.config/foot/foot.ini"
+    chroot-script "systemctl --global enable foot-server.socket" \
+                  "mkdir -p /etc/xdg" \
+                  "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
+}
+
+- name="install-alacritty" \
+  dialog-name="Terminal Emulator" \
+  short-description="Alacritty - GPU-accelerated, X11 + Wayland, minimalist" \
+  long-description="GPU-accelerated terminal emulator. Explicitly declines tabs, panes, graphics protocols, ligatures and most OSC extensions as a design principle, delegating to external tools such as zellij. Works on both X11 and Wayland - default when only XFCE is installed." \
+  spdx-identifiers="Apache-2.0" \
+  available="`install-desktop-environment`" \
+  default-value="`install-xfce AND NOT install-wayland`" {
+    arch-packages "alacritty" \
+                  "xdg-terminal-exec-git"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
+                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
+}
+
+- name="install-kitty" \
+  dialog-name="Terminal Emulator" \
+  short-description="kitty - GPU-accelerated (OpenGL 3.3), X11 + Wayland, full-featured" \
+  long-description="GPU-accelerated terminal emulator with built-in tabs, splits, image protocol and configurable shaders. Works with OpenGL 3.3, so it also runs in VMs without GPU passthrough where Ghostty fails. Pick this if you want a feature-rich, batteries-included terminal across X11 and Wayland." \
+  spdx-identifiers="GPL-3.0-only" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+    arch-packages "kitty" \
+                  "imagemagick" \
+                  "python-pygments" \
+                  "libcanberra" \
+                  "xdg-terminal-exec-git"
+    files "/etc/skel/.config/kitty/kitty.conf" \
+          "/usr/share/pixmaps/ditana-logo-tiny.png"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo kitty.desktop >/etc/xdg/xdg-terminals.list" \
+                  "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
+                  "mkdir -p /etc/environment.d" \
+                  "echo TERMINAL=kitty >> /etc/environment.d/set-terminal.conf"
+}
+
+- name="install-ghostty" \
+  dialog-name="Terminal Emulator" \
+  short-description="Ghostty - GPU-accelerated, modern, requires OpenGL 4.3+" \
+  long-description="Modern, GPU-accelerated terminal emulator. Requires OpenGL 4.3+ (compute shaders, SSBOs); in VMs without GPU passthrough, llvmpipe / softpipe cannot satisfy this requirement, so Ghostty is unavailable in pure-software-rendering environments." \
+  spdx-identifiers="MIT" \
+  available="`install-desktop-environment AND has-gpu-acceleration`" \
+  default-value=#false {
+    arch-packages "ghostty" \
+                  "xdg-terminal-exec-git"
+    files "/etc/skel/.config/ghostty/config" \
+          "/usr/share/pixmaps/ditana-logo-tiny.png"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo com.mitchellh.ghostty.desktop >/etc/xdg/xdg-terminals.list" \
+                  "echo com.mitchellh.ghostty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
+                  "mkdir -p /etc/environment.d" \
+                  "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
+}
+
+- name="install-no-terminal" \
+  dialog-name="Terminal Emulator" \
+  short-description="None - Do not install a terminal emulator (server / headless)" \
+  long-description="Skip terminal emulator installation. Auto-selected for headless / server installs without a desktop environment." \
+  spdx-identifiers="" \
+  default-value="`NOT install-desktop-environment`" {
+    arch-packages ""
+}
+
+// XFCE fallback for the foot-Wayland-only case. NOT a radiolist member -
+// this is a regular dependent setting that fires only when foot is the
+// primary terminal and XFCE is also installed. Writes to xfce-xdg-
+// terminals.list only; xdg-terminals.list still points at footclient
+// for Wayland sessions.
+- name="install-alacritty-for-xfce" \
+  default-value="`install-foot AND install-xfce`" {
+    arch-packages "alacritty"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
+}
