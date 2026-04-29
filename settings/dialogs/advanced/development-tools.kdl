@@ -135,7 +135,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   short-description="Install general development packages" \
   long-description="Install general development packages: $packages." \
   spdx-identifiers="" \
-  default-value=#false {
+  default-value="`profile-developer`" {
     arch-packages "ltrace" \
                   "binutils" \
                   "perf" \
@@ -165,7 +165,7 @@ Install Tools for Arch package maintainers:
 • perl-locale-gettext: translation support in makepkg-template
 """ \
   spdx-identifiers="GPL GPL-3.0-or-later PerlArtistic MIT" \
-  default-value=#false {
+  default-value="`profile-developer`" {
     arch-packages "auracle-git" \
                   "devtools" \ // optional dependency of pikaur
                   "perl-locale-gettext" // translation support in makepkg-template
