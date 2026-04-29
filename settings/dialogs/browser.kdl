@@ -33,8 +33,12 @@
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
   default-value=#false {
-    flatpak-packages "com.brave.Browser"
-}
+    \ // We do not use the Flatpak com.brave.Browser because it would require kernel.unprivileged_userns_clone=1
+    \ // for its inner zypak/Chromium sandbox (increasing the kernel attack surface). Installation of bubblewrap-suid
+    \ // does not help. Instead we use the native AUR package brave-bin, which works flawlessly with userns=0
+    \ // via its own chrome-sandbox helper. See https://wiki.archlinux.org/title/Security#Sandboxing_applications
+    aur-packages "brave-bin"
+  }
 
 - name="install-mullvad-browser" \
   dialog-name="Browser" \

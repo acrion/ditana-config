@@ -65,11 +65,13 @@ Install Bubblejail, a sandboxing utility that provides application isolation wit
 Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for process isolation. When those are disabled — either by selecting a Hardened Kernel or by enabling the «Disable unprivileged user namespaces» option — Ditana automatically installs bubblewrap-suid as a setuid fallback so Bubblejail continues to work.
 """ \
   spdx-identifiers="GPL-3.0-or-later" \
-  default-value=#true {
+  default-value=#false {
     arch-packages "bubblejail"
   }
 - name="install-bubblewrap-suid" \
   \ // https://wiki.archlinux.org/title/Bubblewrap
+  \ // Installs the setuid-root variant of bubblewrap when unprivileged user namespaces are disabled (hardened kernels or kernel-option-duurn).
+  \ // Ditana does not install bubblewrap explicitly; bubblejail depends on it and bubblewrap-suid replaces it cleanly.
   default-value="`install-bubblejail AND (kernel-option-duurn OR install-hardened-stable-kernel OR install-hardened-lts-kernel)`" {
     arch-packages "bubblewrap-suid"
   }

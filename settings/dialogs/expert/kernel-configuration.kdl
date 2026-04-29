@@ -68,25 +68,6 @@
   long-description="Order Device Initialization & Power Tasks: Facilitates the correct sequence of device initialization and power management tasks based on firmware information. This ensures a stable system operation by prioritizing the initialization of supplier devices before consumers and managing power states effectively during suspend/resume cycles." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true
-- name="kernel-option-perf1" \
-    dialog-name="General Kernel Configuration" \
-    short-description="Allow normal users to access performance profiling tools (perf_event_paranoid=1)" \
-    long-description="Allow normal users to access performance profiling tools: This is particularly useful for developers who need to analyze application performance in a more secure way without needing full root privileges." \
-    spdx-identifiers="GPL-2.0-only" \
-    default-value=#true {
-    \ // https://docs.kernel.org/admin-guide/sysctl/kernel.html#perf-event-paranoid
-    chroot-script "echo 'kernel.perf_event_paranoid=1 # Allow normal users to access performance profiling tools' >> /etc/sysctl.d/ditana.conf"
-  }
-- name="kernel-option-duurn" \
-  dialog-name="General Kernel Configuration" \
-  short-description="Disable unprivileged user namespaces (unprivileged_userns_clone=0)" \
-  long-description="Disable unprivileged user namespaces: Enhances system security by eliminating a historically common kernel attack surface exploited in local privilege escalations. This option is only exposed with the standard kernel, because both Hardened Kernel variants apply the same patch unconditionally. Trade-offs to consider: sandboxing tools that rely on unprivileged user namespaces (rootless containers, bubblewrap-based wrappers) need a setuid fallback or stop working. Firefox-derived browsers (including LibreWolf) lose the user-namespace layer of their internal sandbox (chroot and IPC/network isolation of content processes); their seccomp-BPF syscall filtering and process sandboxing remain active, and Mozilla deliberately ships no setuid fallback. Chromium-based browsers are unaffected because they ship their own setuid helper (chrome-sandbox). The reason this trade-off is worth accepting: a kernel exploit compromises the entire system irreversibly — every process, every file, all data — while the user-namespace layer is only one of several defense-in-depth mechanisms in a browser sandbox. Seccomp-BPF syscall filtering, process separation, and site isolation remain active; these, not user namespaces, form the primary sandbox that modern browsers rely on. Reducing a historically exploited kernel attack surface protects every process on the system, not just the browser." \
-  spdx-identifiers="GPL-2.0-only" \
-  available="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" \
-  default-value=#false {
-    \ // https://wiki.archlinux.org/title/Security#Sandboxing_applications
-    chroot-script "echo 'kernel.unprivileged_userns_clone=0 # Disable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
-  }
 - name="kernel-option-inita" \
   dialog-name="General Kernel Configuration" \
   short-description="Automatically fill allocated memory with 0 (init_on_alloc=1)" \
