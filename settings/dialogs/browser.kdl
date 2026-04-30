@@ -40,6 +40,11 @@
     aur-packages "brave-bin"
   }
 
+- name="fix-brave-for-cosmic" \
+  default-value="`install-brave AND install-cosmic`" {
+      files "/usr/local/bin/brave"
+  }
+
 - name="install-mullvad-browser" \
   dialog-name="Browser" \
   short-description="Mullvad Browser - Anti-fingerprinting Tor-style hardening" \

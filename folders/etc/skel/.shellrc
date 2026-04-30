@@ -2,6 +2,10 @@
 # It is sourced by .bashrc and, if zsh is installed, by .zshrc as well.
 # shellcheck shell=bash
 
+if command -v zellij >/dev/null 2>&1 && [[ $- == *i* ]] && [[ -z "${ZELLIJ}" ]] && [[ -z "${SSH_TTY}" ]] && [[ -z "${SSH_CLIENT}" ]]; then
+    zellij
+fi
+
 if [[ -f "$HOME/.raku/bin/s6" ]]; then
     export SP6_REPO=https://sparrowhub.io/repo
 fi
@@ -49,6 +53,8 @@ if [[ -f "$HOME/.config/ripgrep/ripgreprc" ]]; then
     export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/ripgreprc"
 fi
 
+export OLLAMA_API_BASE="http://127.0.0.1:11434"
+
 log_system() {
     (
         local log_path=$HOME/.cache/ditana
@@ -89,7 +95,7 @@ safe_rm() {
 }
 
 get_package_installer() {
-    local installers=(synar pakku aurman trizen pikaur paru yay pacman)
+    local installers=(pikaur pakku aurman trizen paru yay pacman)
     for installer in "${installers[@]}"; do
         if command -v "$installer" > /dev/null 2>&1; then
             echo "$installer"

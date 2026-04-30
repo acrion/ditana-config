@@ -1,0 +1,24 @@
+- name="install-system76-power" \
+  dialog-name="Power Management" \
+  short-description="Install Power Management" \
+  long-description="""
+Install System76 Power Management: Provides full power profile support (Performance, Balanced, Power Saver) via the standard D-Bus interface used by XFCE, COSMIC, Waybar and other desktop environments.
+
+It is a complete drop-in replacement for power-profiles-daemon and is the default choice in Ditana for maximum consistency across all supported desktops (including their parallel installation). The package also adds hardware-specific optimisations such as NVIDIA hybrid graphics switching where applicable.
+""" \
+  spdx-identifiers="GPL-3.0-or-later" \
+  default-value="`install-desktop-environment AND has-battery AND NOT virtual-environment`" {
+    arch-packages "system76-power"
+  }
+- name="prevent-suspend-environment" \
+  dialog-name="Power Management" \
+  short-description="Disable suspend and hibernation" \
+  long-description="""
+This setting is intended to be used only in virtual environments (VirtualBox, KVM, VMware, etc.). It disables suspend, sleep, hibernate and hybrid-sleep targets, because these are typically unreliable or non-functional inside virtual machines.
+
+Masking them prevents hangs, black screens or data corruption when running under a hypervisor.
+""" \
+  spdx-identifiers="" \
+  default-value="`virtual-environment`" {
+    chroot-script "`systemctl mask suspend.target sleep.target hibernate.target hybrid-sleep.target`"
+  }

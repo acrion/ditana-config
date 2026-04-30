@@ -320,6 +320,17 @@
     files "/usr/lib/ditana/start-cosmic-greetd" \
           "/usr/share/ditana/wayland-sessions/cosmic-ditana.desktop" \
   }
+- name="fix-cosmic-for-vms" \
+  default-value="`install-cosmic AND virtual-environment`" {
+      \ // Ditana: Stabilize COSMIC (Software-Rendering)
+      \ // Forces software rendering to avoid sporadic graphics glitches in COSMIC
+      \ // wgpu (COSMIC renderer) fallback
+      login-commands \
+        "export LIBGL_ALWAYS_SOFTWARE=1" \
+        "export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
+        "export WGPU_FORCE_FALLBACK_ADAPTER=1" \
+        "export WGPU_BACKEND=gl"
+  }
 - name="install-niri-or-wayfire" \
   default-value="`install-niri OR install-wayfire`" {
     files \ // === Waybar config ===

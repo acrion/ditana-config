@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script is executed by /usr/share/ditana/wayland-sessions/niri-ditana.desktop,
+# This script is executed by /usr/share/ditana/wayland-sessions/cosmic-ditana.desktop,
 # whose directory is referenced by /etc/greetd/config.toml.
 
 exec > >(systemd-cat -t ditana-pre-cosmic-login -p info) 2>&1

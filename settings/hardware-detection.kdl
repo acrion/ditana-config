@@ -6,6 +6,7 @@
 - name="amd-gpu-pci-id" detect=#"qx{lspci -nn}.lines.grep(/:i 'vga' .* 'amd'/).&{ $_ ?? .first.match(/\w+':' (\w+) ']'/).[0].Str !! '' }"#
 - name="nvidia-pci-id" detect=#"qx{lspci -nn}.lines.grep(/:i 'vga'.*'nvidia'/).&{ $_ ?? .first.match(/\w+':' (\w+) ']'/).[0].Str !! '' }"#
 - name="has-hybrid-nvidia-gpu" detect="my @gpus = qx{lspci -d ::0300}.lines.grep(*.chars > 0); @gpus > 1 && @gpus.any.contains(/:i nvidia/) && !@gpus.all.contains(/:i nvidia/)"
+- name="has-battery" detect="'/sys/class/power_supply'.IO.e && dir('/sys/class/power_supply').grep(*.basename.starts-with('BAT')).so"
 - name="b43-required" detect="qx{journalctl -k}.grep(rx/«b43 .* Loading/).so"
 - name="cpu-name" detect=#"'/proc/cpuinfo'.IO.lines.grep(/^model\sname\s*\:/).unique.map({ .split(':')[1].trim }).first"#
 - name="intel-cpu" detect="'/proc/cpuinfo'.IO.lines.first(* ~~ /vendor_id/).contains('GenuineIntel')"

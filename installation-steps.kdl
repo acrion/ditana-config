@@ -152,6 +152,7 @@ Both BusyBox and systemd are installed, as they are required by other parts of t
                     instruction="" \ // this text may be changed by check-nvidia()
                     help-intro="" \
                     help-note=""
+                  - name="Power Management" type="checklist" instruction="" help-intro="" help-note=""
                   - name="Repository & Package Management Configuration" type="checklist" instruction="" help-intro="" help-note=""
                   - name="Network and Security Tools" type="checklist" instruction="Choose network options:" help-intro="" help-note=""
                   - name="System Maintenance Tools" type="checklist" instruction="Choose system maintenance options:" help-intro="" help-note=""

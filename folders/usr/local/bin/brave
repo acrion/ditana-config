@@ -1,0 +1,11 @@
+#!/bin/sh
+# Ditana Brave-Wrapper: X11 only under COSMIC (cosmic-comp dmabuf-Bug)
+# https://github.com/pop-os/cosmic-comp/issues/1218
+
+REAL_BRAVE=/usr/bin/brave
+
+if [ "${XDG_CURRENT_DESKTOP}" = "COSMIC" ]; then
+    exec "$REAL_BRAVE" --ozone-platform=x11 "$@"
+else
+    exec "$REAL_BRAVE" "$@"
+fi
