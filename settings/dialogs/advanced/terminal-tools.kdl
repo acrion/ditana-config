@@ -67,8 +67,7 @@
     "systemctl-tui" \
     "trash-cli" \
     "turbostat" \
-    "zoxide" \
-    "zellij"
+    "zoxide"
     files "/etc/skel/.config/bat/config"
     chroot-script "`su - {Settings.instance.get('user-name')} -c 'git lfs install'`"
   }
@@ -77,7 +76,14 @@
     arch-packages "ripgrep"
     files "/etc/skel/.config/ripgrep/ripgreprc"
   }
-  
+- name="install-zellij" \
+  dialog-name="Terminal Tools and Utilities" \
+  short-description="Install zellij terminal multiplexer" \
+  long-description="Install zellij: zellij is a modern terminal multiplexer similar to tmux. It enables efficient management of multiple panes, tabs, and sessions within a single terminal window. Ditana automatically invokes zellij in the shell configuration." \
+  spdx-identifiers="MIT" \
+  default-value="`install-terminal-utilities AND NOT profile-windows`" {
+      arch-packages "zellij"
+  }
 - name="install-fresh" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install fresh editor and set it as default" \

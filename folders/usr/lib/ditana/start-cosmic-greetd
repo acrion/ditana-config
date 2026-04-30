@@ -34,4 +34,5 @@ if systemctl --user is-active --quiet graphical-session.target; then
     echo ">>> End of pre-login diagnostic <<<"
 fi
 
-uwsm start cosmic.desktop
+# `uwsm start cosmic.desktop` seems to work without issues, but we stick to Cosmic’s design:
+exec start-cosmic
