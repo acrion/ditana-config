@@ -354,12 +354,22 @@
       \ // Ditana: Stabilize COSMIC (Software-Rendering)
       \ // Forces software rendering to avoid sporadic graphics glitches in COSMIC
       \ // wgpu (COSMIC renderer) fallback
+      \ // COSMIC's cosmic-session only imports a hardcoded set of variables into the
+      \ // systemd user activation environment. Anything else we set here
+      \ // is invisible to systemd-managed components (xdg-desktop-portal-cosmic,
+      \ // D-Bus activated services, etc.). uwsm does this propagation automatically;
+      \ // without uwsm we have to do it ourselves.
       login-commands \
         #"if [[ "$DESKTOP_SESSION" == "cosmic-ditana" ]]; then"# \
         "    export LIBGL_ALWAYS_SOFTWARE=1" \
         "    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
         "    export WGPU_FORCE_FALLBACK_ADAPTER=1" \
         "    export WGPU_BACKEND=gl" \
+        #"    systemctl --user import-environment \"# \
+        #"        LIBGL_ALWAYS_SOFTWARE \"# \
+        #"        MESA_LOADER_DRIVER_OVERRIDE \"# \
+        #"        WGPU_FORCE_FALLBACK_ADAPTER \"# \
+        #"        WGPU_BACKEND"# \
         "fi"
   }
 - name="install-niri-or-wayfire" \
