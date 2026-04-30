@@ -81,7 +81,7 @@
   short-description="Install zellij terminal multiplexer" \
   long-description="Install zellij: zellij is a modern terminal multiplexer similar to tmux. It enables efficient management of multiple panes, tabs, and sessions within a single terminal window. Ditana automatically invokes zellij in the shell configuration." \
   spdx-identifiers="MIT" \
-  default-value="`install-terminal-utilities AND NOT profile-windows`" {
+  default-value="`NOT profile-windows`" {
       arch-packages "zellij"
   }
 - name="install-fresh" \

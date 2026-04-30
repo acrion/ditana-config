@@ -14,9 +14,7 @@
   long-description="""
 The recommended profile for most users.
 
-Wayfire is preselected as the desktop environment, all standard Ditana features are enabled
-(encryption prompt, ZFS file system on LTS kernels, Ditana Assistant where supported,
-LibreWolf, LibreOffice, foot under Wayland and Alacritty under XFCE).
+Cosmic and Wayfire are preselected as the desktop environments, all standard Ditana features are enabled (encryption prompt, ZFS file system on LTS kernels, Ditana Assistant where supported, LibreWolf, LibreOffice, foot under Wayland and Alacritty under Xfce).
 
 Equivalent to leaving the original Ditana defaults untouched.
 """ \
@@ -27,17 +25,15 @@ Equivalent to leaving the original Ditana defaults untouched.
 
 - name="profile-windows" \
   dialog-name="User Profile" \
-  short-description="Coming from Windows - Familiar desktop layout" \
+  short-description="Coming from KDE Plasma, Cinnamon, Xfce or MATE" \
   long-description="""
-Geared towards users migrating from Microsoft Windows.
+Geared towards users migrating from traditional menu / panel layout.
 
 Defaults that change vs. Standard:
- - XFCE preselected as the only desktop environment (traditional menu / panel layout).
-   Wayfire and Niri remain off but can be enabled in «Configuration Categories - Desktop
-   Environment».
- - ONLYOFFICE preselected instead of LibreOffice (ribbon UI, closer to MS Office UX).
- - Spotify added to the multimedia selection.
- - Disk encryption prompt is skipped (encryption defaults to off).
+ • Cosmic and Wayfire are preselected as the desktop environments. Xfce and Niri remain off but can be enabled in «Configuration Categories - Desktop Environment».
+ • ONLYOFFICE preselected instead of LibreOffice (ribbon UI, closer to MS Office UX).
+ • Spotify added to the multimedia selection.
+ • Disk encryption prompt defaults to off (the dialog to change this automatically appears).
 """ \
   spdx-identifiers="" \
   default-value=#false {
@@ -51,17 +47,12 @@ Defaults that change vs. Standard:
 Optimised for software development work.
 
 Defaults that change vs. Standard:
- - Wayfire AND Niri preselected; XFCE is off.
- - Zed preinstalled as an additional editor.
- - Standardized C.UTF-8 locale for system messages while keeping regional formats
-   (consistent tool output, easier to grep).
- - Unrestricted ptrace enabled (allows attaching debuggers across processes of the same
-   user without extra capabilities; gdb, lldb,
-   strace, perf, rr, Valgrind, IDE debuggers all work).
- - Core dumps stay enabled (useful for crash analysis).
- - host-name and sudo-timeout are pulled forward and asked up front instead of being hidden
-   under «Advanced Settings» (both stay in their normal location too, so you can still
-   revise without «Back»).
+ • Wayfire AND Niri preselected; Xfce is off.
+ • Zed preinstalled as an additional editor.
+ • Standardized C.UTF-8 locale for system messages while keeping regional formats (consistent tool output, easier to grep).
+ • Unrestricted ptrace enabled (allows attaching debuggers across processes of the same user without extra capabilities; gdb, lldb, strace, perf, rr, Valgrind, IDE debuggers all work).
+ • Core dumps stay enabled (useful for crash analysis).
+ • host-name and sudo-timeout are pulled forward and asked up front instead of being hidden under «Advanced Settings» (both stay in their normal location too, so you can still revise without «Back»).
 """ \
   spdx-identifiers="" \
   default-value=#false {
@@ -95,23 +86,16 @@ Trades several Ditana-specific features for the shortest install time. Use this 
 want to evaluate Ditana, not work in it long-term - the typical «distro-hopping» scenario.
 
 What is sacrificed for speed:
- - BTRFS instead of ZFS (no parallel DKMS module build, and the initial automatic snapshot
-   taken at the end of the install is much faster on BTRFS than the rsync-based Timeshift
-   snapshot used by ext4 / xfs).
- - Firefox (Arch package) instead of LibreWolf (the LibreWolf Flatpak download is the
-   single longest network step in a default install).
- - Ditana Assistant / local AI is disabled (skips the Ollama model download, several
-   hundred megabytes).
- - Disk encryption prompt is skipped (encryption defaults to off).
+ • BTRFS instead of ZFS (no parallel DKMS module build, and the initial automatic snapshot taken at the end of the install is much faster on BTRFS than the rsync-based Timeshift snapshot used by ext4 / xfs).
+ • Firefox (Arch package) instead of LibreWolf (the LibreWolf Flatpak download is the single longest network step in a default install).
+ • Ditana Assistant / local AI is disabled (skips the Ollama model download, several hundred megabytes).
+ • No Office suite will be installed.
+ • Disk encryption prompt is skipped (encryption defaults to off).
 
 What is kept (because it does not affect install duration much):
- - All three desktop environments - XFCE, Wayfire and Niri - are preselected, so you can
-   compare them in the same system. This is intentional: a few extra packages are
-   negligible compared to the items above.
+ • All foud desktop environments - Cosmic, Niri, Wayfire and Xfce - are preselected, so you can compare them in the same system. This is intentional: a few extra packages are negligible compared to the items above.
 
-Note: this profile optimises install duration, not the resulting system. The defaults
-sacrificed here are exactly what distinguishes Ditana from a generic Arch derivative.
-If you intend to use Ditana as a daily driver, pick «Standard» instead.
+Note: this profile optimises install duration, not the resulting system. The defaults sacrificed here are exactly what distinguishes Ditana from a generic Arch derivative. If you intend to use Ditana as a daily driver, pick «Standard» instead.
 """ \
   spdx-identifiers="" \
   default-value=#false {

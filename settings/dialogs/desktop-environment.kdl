@@ -1,5 +1,6 @@
 // Settings that correspond to the dialog "Configuration Categories" → "Desktop Environment"
-- name="install-desktop-environment" default-value="`install-xfce OR install-wayfire OR install-niri`" {
+- name="install-desktop-environment" \
+  default-value="`install-xfce OR install-wayfire OR install-niri OR install-cosmic`" {
     arch-packages \ // === Fonts ===
                   "adobe-source-serif-fonts" \
                   "otf-comicshanns-nerd" \
@@ -154,7 +155,7 @@
   short-description="XFCE (Xorg)" \
   long-description="XFCE: A mature, lightweight desktop environment running on Xorg (X11). XFCE offers a traditional desktop paradigm with a panel, application menu, and window management. It is highly customizable, resource-efficient, and has broad hardware and software compatibility. Ditana ships a preconfigured XFCE setup with the Dracula theme, Kitty or Ghostty terminal, and curated panel plugins." \
   spdx-identifiers="GPL-2.0-or-later" \
-  default-value="`profile-windows OR profile-quick`" {
+  default-value="`profile-quick`" {
     arch-packages "xorg-server" \
                   "xorg-xinit" \
                   \ // === group xfce4 without xfce4-terminal ===
@@ -319,7 +320,7 @@
   short-description="Cosmic" \
   long-description="TODO" \
   spdx-identifiers="GPL-3.0-only" \
-  default-value=#false {
+  default-value="`profile-default OR profile-windows OR profile-quick`" {
     arch-packages \
         "cosmic-app-library" \
         "cosmic-applets" \

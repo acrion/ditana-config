@@ -28,7 +28,7 @@
   long-description="ONLYOFFICE Desktop Editors offers a ribbon-style interface familiar to Microsoft Office users, with strong .docx / .xlsx / .pptx compatibility for documents, spreadsheets and presentations. Distributed as a Flatpak (~1.3 GB)." \
   spdx-identifiers="AGPL-3.0-only" \
   available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment AND (profile-windows OR profile-quick)`" {
+  default-value="`install-desktop-environment AND profile-windows`" {
     flatpak-packages "org.onlyoffice.desktopeditors"
 }
 
@@ -37,6 +37,6 @@
   short-description="None - Do not install an office suite" \
   long-description="Skip office suite installation. Auto-selected for headless / server installs." \
   spdx-identifiers="" \
-  default-value="`NOT install-desktop-environment`" {
+  default-value="`profile-quick OR NOT install-desktop-environment`" {
     arch-packages ""
 }
