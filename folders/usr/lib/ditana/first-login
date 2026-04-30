@@ -24,11 +24,22 @@
 # After execution, it disables itself for the current user using the XDG
 # autostart override mechanism (Hidden=true in ~/.config/autostart/).
 
+# Skip GNOME-style theming under COSMIC: COSMIC has its own schemas
+# (com.system76.CosmicTk / CosmicTheme.*) and writes via cosmic-config,
+# not gsettings. Touching org.gnome.desktop.interface here would only
+# pollute the cosmic dconf database without any visible effect.
+if [[ "$XDG_CURRENT_DESKTOP" == *COSMIC* ]]; then
+    # Defer first-login work until a non-COSMIC session runs it.
+    exit 0
+fi
+
 shopt -s dotglob
 mkdir -p "$HOME/.ditana"
 LOG_PATH="$HOME/.ditana/first-login.log"
 
 {
+    set -ex   # exit on error, trace each command
+    
     # Creating a file in /etc/dconf/db/local.d/ does not work, presumably due to how XFCE emulates dconf.
     # Example settings that would be configured there:
     # [org/gnome/desktop/interface]
@@ -37,16 +48,6 @@ LOG_PATH="$HOME/.ditana/first-login.log"
     gsettings set org.gnome.desktop.interface color-scheme prefer-dark
     gsettings set org.gnome.desktop.interface gtk-theme 'Dracula'
     gsettings set org.gnome.desktop.interface icon-theme 'kora-yellow'
-
-    # DEPRECATED: The following two settings are maintained for backwards compatibility
-    # with XFCE's dconf compatibility mode. While no longer actively used in modern GNOME
-    # environments, retaining these settings ensures system stability and doesn't
-    # introduce any adverse effects.
-    # The primary configuration for the default terminal is now managed through
-    # the '/etc/xdg/xdg-terminals.list' file.
-    # For more information, refer to: https://github.com/Vladimir-csp/xdg-terminal-exec
-    gsettings set org.gnome.desktop.default-applications.terminal exec 'xdg-terminal-exec'
-    gsettings set org.gnome.desktop.default-applications.terminal exec-arg '-e'
 
     # Workaround for gnome-keyring initialization issue on first login
     # This restarts the gnome-keyring-daemon to ensure proper initialization
