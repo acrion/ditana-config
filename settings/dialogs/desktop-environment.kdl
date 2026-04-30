@@ -277,13 +277,17 @@
         #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
         #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
         "fi"
-    login-commands #"if systemd-detect-virt -q && [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
-                   "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
-                   "fi"
     autostart {
         - "Wayfire;wayfire;" "/usr/bin/kanshi"
         - "Wayfire;wayfire;" "/usr/bin/waybar"
     }
+  }
+- name="fix-wayfire-for-vms" \
+  default-value="`install-wayfire AND virtual-environment`" {
+      login-commands \
+        #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
+        "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+        "fi"
   }
 - name="install-niri" \
   dialog-name="Desktop Environment" \
@@ -326,10 +330,12 @@
       \ // Forces software rendering to avoid sporadic graphics glitches in COSMIC
       \ // wgpu (COSMIC renderer) fallback
       login-commands \
-        "export LIBGL_ALWAYS_SOFTWARE=1" \
-        "export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
-        "export WGPU_FORCE_FALLBACK_ADAPTER=1" \
-        "export WGPU_BACKEND=gl"
+        #"if [[ "$DESKTOP_SESSION" == "cosmic-ditana" ]]; then"# \
+        "    export LIBGL_ALWAYS_SOFTWARE=1" \
+        "    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
+        "    export WGPU_FORCE_FALLBACK_ADAPTER=1" \
+        "    export WGPU_BACKEND=gl" \
+        "fi"
   }
 - name="install-niri-or-wayfire" \
   default-value="`install-niri OR install-wayfire`" {
