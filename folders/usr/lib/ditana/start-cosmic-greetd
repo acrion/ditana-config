@@ -43,4 +43,17 @@ fi
 #     xdg-desktop-portal-cosmic. uwsm propagates these via wayland-wm-env@*.service;
 #     start-cosmic does not.
 # Empirically tested: COSMIC↔Wayfire/Niri switching works cleanly in both directions.
+
+# Note on log noise: cosmic-session unconditionally tries to spawn cosmic-greeter
+# as a child process, even when launched under an external greeter (here: tuigreet).
+# This produces "cosmic-greeter exited with error 1" + exponential backoff messages
+# in the journal. It is harmless: cosmic-comp and the rest of the session are
+# unaffected. See https://github.com/pop-os/cosmic-epoch/issues/447 for context.
+
+# We cannot replace tuigreet with cosmic-greeter because of https://github.com/pop-os/cosmic-greeter/issues/404
+# Moreover, tuigreet includes dedicated X11 support: by default it prepends
+# `startx /usr/bin/env` (configurable with --xsession-wrapper) to all X11 sessions
+# from /usr/share/xsessions/. This reliably starts the X server on its own VT.
+# cosmic-greeter simply executes the Exec= line directly under cosmic-comp
+# (Wayland) and therefore fails with pure X11 sessions such as XFCE.
 uwsm start cosmic.desktop

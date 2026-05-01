@@ -12,7 +12,7 @@
   dialog-name="User Profile" \
   short-description="Standard - Recommended Ditana defaults" \
   long-description="""
-The recommended profile for users who want Ditana's curated experience without further customization. Equivalent to leaving the original Ditana defaults untouched: a privacy-focused FOSS setup with sensible choices across the board.
+Standard: The recommended profile for users who want Ditana's curated experience without further customization. Equivalent to leaving the original Ditana defaults untouched: a privacy-focused FOSS setup with sensible choices across the board.
 """ \
   spdx-identifiers="" \
   default-value=#true {
@@ -23,7 +23,7 @@ The recommended profile for users who want Ditana's curated experience without f
   dialog-name="User Profile" \
   short-description="Coming from KDE Plasma, Cinnamon, Xfce or MATE" \
   long-description="""
-Geared towards users migrating from a traditional menu / panel layout - Windows, but equally KDE Plasma, Cinnamon, Xfce, or MATE.
+Coming from KDE Plasma, Cinnamon, Xfce or MATE: Geared towards users migrating from a traditional menu / panel layout - Windows, but equally KDE Plasma, Cinnamon, Xfce, or MATE.
 
 Defaults shift towards applications and conventions that should feel more familiar coming from such environments. Ditana's privacy-focused, FOSS-first character is preserved; only individual application choices and a handful of settings differ from Standard.
 """ \
@@ -36,7 +36,7 @@ Defaults shift towards applications and conventions that should feel more famili
   dialog-name="User Profile" \
   short-description="Software Developer - Dev-friendly defaults" \
   long-description="""
-Optimised for software development work.
+Software Developer: Optimised for software development work.
 
 Additional editor tooling is preinstalled and several settings useful for debugging are enabled (such as unrestricted ptrace and core dumps). A handful of options normally hidden under «Advanced Settings» are pulled forward so you encounter them up front - they remain available in their normal location too, so you can still revise without «Back».
 """ \
@@ -49,7 +49,7 @@ Additional editor tooling is preinstalled and several settings useful for debugg
   dialog-name="User Profile" \
   short-description="Server - Headless system, no graphical interface" \
   long-description="""
-For headless installations: virtual machines used as build hosts, home servers, NAS guests on hypervisors such as Synology / Proxmox, and similar setups.
+Server (for headless installations): virtual machines used as build hosts, home servers, NAS guests on hypervisors such as Synology / Proxmox, and similar setups.
 
 No desktop environment, no browser, no office suite, no terminal emulator package. All other Ditana defaults are unchanged - including LTS-kernel ZFS, automatic snapshots, firewalld, and the SSH server.
 
@@ -64,7 +64,7 @@ Ditana intentionally does not preinstall any specific server software here (no n
   dialog-name="User Profile" \
   short-description="Quick Installation - Fastest install (for distro hopping)" \
   long-description="""
-Trades several Ditana-specific features for the shortest install time. Use this if you only want to evaluate Ditana, not work in it long-term - the typical «distro-hopping» scenario.
+Quick Installation: Trades several Ditana-specific features for the shortest install time. Use this if you only want to evaluate Ditana, not work in it long-term - the typical «distro-hopping» scenario.
 
 The slowest install steps are skipped or replaced with faster alternatives, mostly around filesystem choice, browser, and locally-hosted AI. All four desktop environments stay preselected so you can compare them in the same system - a few extra packages cost little compared to the items above.
 
