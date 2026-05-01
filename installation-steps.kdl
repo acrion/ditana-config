@@ -1,27 +1,35 @@
-  - name="display-size" type="ask-for-setting" validation="number" instruction="""
+- name="display-size" type="ask-for-setting" validation="number" instruction="""
 Enter the screen diagonal in inches (only the used area).
 
 This is used to determine the terminal font size.
 """ available="`virtual-terminal AND NOT installing-over-ssh AND NOT set-font-hook-exists`"
+
 - name="update-terminal-font" type="procedure" available="`virtual-terminal AND NOT installing-over-ssh`"
-  - name="User Profile" type="radiolist" instruction="""
+
+- name="User Profile" type="radiolist" instruction="""
 Choose a profile to pre-set defaults for the rest of the installation. This is a convenience step - every option you see later remains adjustable in the «Configuration Categories» menu shown a few steps from now. The profile only flips checkboxes for you, it never hides choices.
+
+All four desktop environments are preselected by default (the Server profile excepted). You can trim that selection - and review many other settings worth a look - under «Configuration Categories - Desktop Environment».
 """ help-intro="Picking a profile changes which options start out checked in subsequent dialogs. Depending on the profile, a small number of settings that are normally hidden under «Advanced Settings» are also pulled forward so you encounter them up front (without removing them from their normal location)." help-note=""
-  - name="choose-region-or-timezone" type="procedure"
-  - name="choose-specific-timezone" type="procedure"
-  - name="choose-main-locale" type="procedure"
-  - name="choose-sub-locale" type="procedure"
-  - name="choose-keymap-layout" type="procedure"
-  - name="choose-keymap-variant" type="procedure"
-  - name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 50..2000" instruction="""
+
+- name="choose-region-or-timezone" type="procedure"
+- name="choose-specific-timezone" type="procedure"
+- name="choose-main-locale" type="procedure"
+- name="choose-sub-locale" type="procedure"
+- name="choose-keymap-layout" type="procedure"
+- name="choose-keymap-variant" type="procedure"
+
+- name="keyboard-delay" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 50..2000" instruction="""
 Please enter the key repeat delay in milliseconds.
 
 Please enter a value between 50 and 2000. A smaller value will result in a faster repeat start, while a larger value will delay the repeat start.
 """
-  - name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
-  - name="test-keymap" type="procedure"
-  - name="generate-host-name" type="procedure"
-  - name="user-name" \
+
+- name="set-keymap-and-delay-rate" type="procedure" available="`real-install`"
+- name="test-keymap" type="procedure"
+- name="generate-host-name" type="procedure"
+
+- name="user-name" \
     type="ask-for-setting" \
     validation="name" \
     extra-validation="!$_.starts-with('systemd-') && $_ ∉ <alpm avahi bin colord cups daemon dbus ftp fwupd games gdm geoclue git http koboldcpp lightdm mail named news nobody nvidia-persistenced passim polkitd root rtkit sync sys transmission tss uuidd>" \
@@ -30,27 +38,32 @@ User name for new system
 
 Enter a login name in lowercase letters only (this is not your real name, but a system identifier). Using lowercase letters ensures consistency across system components and avoids potential issues with case sensitivity in command-line operations and configuration files.
 """
-  - name="select-disk" type="procedure"
-  - name="check_efi" type="procedure"
-  - name="confirm-nvme-format" type="procedure"
-  - name="encrypt-root-partition" type="ask-for-yes-no" instruction="""
+
+- name="select-disk" type="procedure"
+- name="check_efi" type="procedure"
+- name="confirm-nvme-format" type="procedure"
+
+- name="encrypt-root-partition" type="ask-for-yes-no" instruction="""
 Would you like to encrypt the root partition?
 
 This is recommended, especially for laptops. Please note that if you lose your encryption passphrase, all data will be irretrievably lost.
 """
-  - name="set-default-swap-size" type="procedure"
-  - name="add-repos-and-sync" type="procedure" available="`real-install`"
-  - name="adjust-mtu-if-needed" type="procedure" available="`real-install`"
-  - name="update-keyring" type="procedure" available="`real-install`"
-  - name="update-mirrorlist" type="procedure" available="`real-install`"
-  - name="rate-mirrors" type="procedure" available="`real-install`"
-  - name="check-nvidia" type="procedure" available="`nvidia-pci-id`"
-  - name="host-name" type="ask-for-setting" validation="name" available="`profile-developer`" instruction="""
+
+- name="set-default-swap-size" type="procedure"
+- name="add-repos-and-sync" type="procedure" available="`real-install`"
+- name="adjust-mtu-if-needed" type="procedure" available="`real-install`"
+- name="update-keyring" type="procedure" available="`real-install`"
+- name="update-mirrorlist" type="procedure" available="`real-install`"
+- name="rate-mirrors" type="procedure" available="`real-install`"
+- name="check-nvidia" type="procedure" available="`nvidia-pci-id`"
+
+- name="host-name" type="ask-for-setting" validation="name" available="`profile-developer`" instruction="""
 Computer name for new system
 
 Enter a lowercase name for your computer. While DNS servers don't distinguish case, using lowercase simplifies system management and prevents potential conflicts.
 """
-  - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" available="`profile-developer`" instruction="""
+
+- name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" available="`profile-developer`" instruction="""
 Sudo password timeout in minutes.
 
 This sets how long sudo remembers your password before asking again. The default (5 minutes) is a common balance between security and convenience.
@@ -60,29 +73,30 @@ This sets how long sudo remembers your password before asking again. The default
 
 If unsure, it's recommended to keep the default value.
 """
-  - name="Configuration Categories" type="categories" {
+
+- name="Configuration Categories" type="categories" {
       categories {
-          - name="Desktop Environment" type="checklist" instruction="Choose desktop environments to install:" help-intro="Select one or more desktop environments. If you leave all options unchecked, Ditana will be installed as a headless system without a graphical interface, suitable for servers or remote-only usage." help-note="""
+        - name="Desktop Environment" type="checklist" instruction="Choose desktop environments to install:" help-intro="Select one or more desktop environments. If you leave all options unchecked, Ditana will be installed as a headless system without a graphical interface, suitable for servers or remote-only usage." help-note="""
 For further information, please consult the following URLs:
  • https://wiki.archlinux.org/title/Xfce (XFCE)
  • https://wayfire.org (Wayfire)
  • https://github.com/YaLTeR/niri (Niri)
 """
-          - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""
-          - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
-          - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
-          - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""
-          - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant is enabled by default, it means that your hardware supports running a local AI (CPU with AVX2 & sufficient RAM). Ditana Assistant relies on KoboldCpp to handle AI interactions locally, ensuring your privacy and data security. If your hardware does not support running KoboldCpp, it will not be available in this list. You can still activate Ditana Assistant, but you will need to configure it in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
-          - name="Advanced Settings" type="categories" {
+        - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""
+        - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
+        - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
+        - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""
+        - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant is enabled by default, it means that your hardware supports running a local AI (CPU with AVX2 & sufficient RAM). Ditana Assistant relies on KoboldCpp to handle AI interactions locally, ensuring your privacy and data security. If your hardware does not support running KoboldCpp, it will not be available in this list. You can still activate Ditana Assistant, but you will need to configure it in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
+        - name="Advanced Settings" type="categories" {
               categories {
 - name="host-name" type="ask-for-setting" validation="name" instruction="""
 Computer name for new system
 
 Enter a lowercase name for your computer. While DNS servers don’t distinguish case, using lowercase simplifies system management and prevents potential conflicts.
 """
-                  - name="User Configuration" type="categories" instruction="Configure user identification:" {
+                - name="User Configuration" type="categories" instruction="Configure user identification:" {
                       categories {
-                          - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
+                        - name="user-id" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
 ID of user «$user-name».
 
 The user ID (UID) is a unique number assigned to each user on a Linux system. The default value (1000) is suitable for most cases and ensures compatibility with standard system settings.
@@ -94,7 +108,7 @@ You might want to change this if:
 
 If unsure, it’s recommended to keep the default value.
 """
-                          - name="user-group" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
+                        - name="user-group" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 1000..60000" instruction="""
 Group of user «$user-name».
 
 In Linux, every user belongs to at least one group. Groups help manage permissions for shared resources. The default value (1000) creates a private group for the user, which is suitable for most personal systems.
@@ -109,12 +123,12 @@ If unsure, it’s recommended to keep the default value.
 """
                       }
                   }
-                  - name="File System" type="radiolist" instruction="Select the file system for your root partition using the [SPACE] key. If you are unsure, leave it at the default." help-intro="Choose the appropriate file system for your root partition." help-note="Note: Timeshift is enabled by default for BTRFS, XFS, and EXT4. For ZFS, a native snapshot solution is pre-configured instead of using Timeshift. You can configure automatic system snapshots in the Advanced Settings → System Maintenance Tools menu, available for selection later."
-                  - name="swap-size" type="procedure"
-                  - name="Storage & File System Options" type="checklist" instruction="Choose Storage & File System Options:" help-intro="" help-note=""
+                - name="File System" type="radiolist" instruction="Select the file system for your root partition using the [SPACE] key. If you are unsure, leave it at the default." help-intro="Choose the appropriate file system for your root partition." help-note="Note: Timeshift is enabled by default for BTRFS, XFS, and EXT4. For ZFS, a native snapshot solution is pre-configured instead of using Timeshift. You can configure automatic system snapshots in the Advanced Settings → System Maintenance Tools menu, available for selection later."
+                - name="swap-size" type="procedure"
+                - name="Storage & File System Options" type="checklist" instruction="Choose Storage & File System Options:" help-intro="" help-note=""
 - name="Sudo Configuration" type="categories" instruction="Configure sudo password handling:" {
                       categories {
-                          - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" instruction="""
+                        - name="sudo-timeout" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 0..480" instruction="""
 Sudo password timeout in minutes.
 
 This sets how long sudo remembers your password before asking again. The default (5 minutes) is a common balance between security and convenience.
@@ -124,7 +138,7 @@ This sets how long sudo remembers your password before asking again. The default
 
 If unsure, it's recommended to keep the default value.
 """
-                          - name="sudo-password-feedback" type="ask-for-yes-no" instruction="""
+                        - name="sudo-password-feedback" type="ask-for-yes-no" instruction="""
 Show visual feedback during sudo password entry?
 
 By default, sudo displays nothing as you type your password. This is intended to hide password length from observers, but in practice anyone who can see the screen can usually also hear the keystrokes, exposing both length and timing rhythm.
@@ -135,35 +149,35 @@ Note: A historical buffer overflow in this feature (CVE-2019-18634) was fixed in
 """
                       }
                   }
-                  - name="Kernel Selection" type="radiolist" instruction="Choose kernel:" help-intro="You may choose one of the following kernels:" help-note="""
+                - name="Kernel Selection" type="radiolist" instruction="Choose kernel:" help-intro="You may choose one of the following kernels:" help-note="""
 For further information, please consult the following URLs:
  • https://www.kernel.org (Default Kernel)
  • https://github.com/anthraxx/linux-hardened (Hardened Kernel)
  • https://wiki.linuxfoundation.org/realtime/start (Realtime Kernel)
  • https://github.com/zen-kernel/zen-kernel/wiki/Detailed-Feature-List (Zen Kernel)
 """
-                  - name="Boot Init System" type="radiolist" instruction="Here you can select the boot initialization system. If you are unsure, it is recommended to keep the default option." help-intro="""
+                - name="Boot Init System" type="radiolist" instruction="Here you can select the boot initialization system. If you are unsure, it is recommended to keep the default option." help-intro="""
 The boot initialization system, used during the early stages of the boot process, is responsible for preparing the system to start. This choice only affects how the system boots in the initial phase, specifically by loading the necessary modules and scripts from a temporary root file system (called initramfs). After that, the system uses systemd to manage all processes and services, regardless of the choice made here.
 
 Both BusyBox and systemd are installed, as they are required by other parts of the system, but here you can choose which one to use as the boot initialization system:
 """ help-note=""
-                  - name="Hardware Support Options" \
+                - name="Hardware Support Options" \
                     type="checklist" \
                     instruction="" \ // this text may be changed by check-nvidia()
                     help-intro="" \
                     help-note=""
-                  - name="Power Management" type="checklist" instruction="" help-intro="" help-note=""
-                  - name="Repository & Package Management Configuration" type="checklist" instruction="" help-intro="" help-note=""
-                  - name="Network and Security Tools" type="checklist" instruction="Choose network options:" help-intro="" help-note=""
-                  - name="System Maintenance Tools" type="checklist" instruction="Choose system maintenance options:" help-intro="" help-note=""
-                  - name="Terminal Emulator" type="radiolist" instruction="Choose your default terminal emulator:" help-intro="The radiolist picks the primary terminal emulator. If you select foot and also install XFCE, Alacritty is added automatically as the X11 fallback (foot is Wayland-only)." help-note=""
-                  - name="Terminal Tools and Utilities" type="checklist" instruction="Choose terminal options:" help-intro="" help-note=""
-                  - name="Development Tools and Libraries" type="checklist" instruction="Choose development options:" help-intro="" help-note=""
+                - name="Power Management" type="checklist" instruction="" help-intro="" help-note=""
+                - name="Repository & Package Management Configuration" type="checklist" instruction="" help-intro="" help-note=""
+                - name="Network and Security Tools" type="checklist" instruction="Choose network options:" help-intro="" help-note=""
+                - name="System Maintenance Tools" type="checklist" instruction="Choose system maintenance options:" help-intro="" help-note=""
+                - name="Terminal Emulator" type="radiolist" instruction="Choose your default terminal emulator:" help-intro="The radiolist picks the primary terminal emulator. If you select foot and also install XFCE, Alacritty is added automatically as the X11 fallback (foot is Wayland-only)." help-note=""
+                - name="Terminal Tools and Utilities" type="checklist" instruction="Choose terminal options:" help-intro="" help-note=""
+                - name="Development Tools and Libraries" type="checklist" instruction="Choose development options:" help-intro="" help-note=""
               }
             }
-          - name="Expert Settings" type="categories" {
+        - name="Expert Settings" type="categories" {
               categories {
-                  - name="Umask Configuration" \
+                - name="Umask Configuration" \
                     type="radiolist" \
                     instruction="Choose umask:" \
                     help-intro="The umask determines default file permissions for newly created files and directories. A more restrictive umask enhances privacy by limiting access for other users on the system." \
@@ -171,7 +185,7 @@ Both BusyBox and systemd are installed, as they are required by other parts of t
 For further information, please consult the following URL:
  • https://wiki.archlinux.org/title/Umask
 """
-                  - name="General Kernel Configuration" \
+                - name="General Kernel Configuration" \
                     type="checklist" \
                     instruction="The checked items indicate modifications to the default kernel configurations. If you prefer to adhere to established standards for security and stability, you may wish to uncheck all items and retain the standard Linux kernel configurations. These modifications have been carefully selected and are further explained in the Help page." \
                     help-intro="" \
@@ -180,7 +194,7 @@ For further information, please consult the following URLs:
  • https://docs.kernel.org/next/admin-guide/sysctl
  • https://docs.kernel.org/next/admin-guide/kernel-parameters.html
 """ suppress-license=#true
-                  - name="System Hardening" \
+                - name="System Hardening" \
                     type="checklist" \
                     instruction="Select system hardening options:" \
                     help-intro="These settings harden the system against common attack vectors by restricting access to kernel internals, reducing the attack surface, protecting the network stack, and securing the file system. All selected options are written to /etc/sysctl.d/ditana.conf." \
@@ -190,7 +204,7 @@ For further information, please consult the following URLs:
  • https://www.kernel.org/doc/html/latest/admin-guide/sysctl/
  • https://madaidans-insecurities.github.io/guides/linux-hardening.html
 """
-                  - name="CPU Vulnerability Mitigation Options" \
+                - name="CPU Vulnerability Mitigation Options" \
                     type="checklist" \
                     instruction="""
 The options listed below are mitigations for CPU vulnerabilities detected on your system. These mitigations are enabled by default to enhance security. You can adjust these settings as needed. Please note that modifying these settings may impact system performance or security.
@@ -206,7 +220,7 @@ For further information, please consult the following URLs:
  • https://docs.kernel.org/next/admin-guide/kernel-parameters.html
 """ \
                     suppress-license=#true
-                  - name="System Allocator" \
+                - name="System Allocator" \
                     type="radiolist" \
                     instruction="""
 The system memory allocator handles all dynamic memory requests from applications. Replacing the default glibc allocator can improve performance or security, but carries a compatibility risk: programs that bundle their own allocator (e.g., applications using jemalloc or tcmalloc) may crash when a different allocator is active system-wide. This affects a small but unpredictable set of software.
@@ -219,10 +233,10 @@ For further information, please consult the following URLs:
 """
               }
           }
-          - name="review-summary-and-start-installation" type="procedure"
+        - name="review-summary-and-start-installation" type="procedure"
       }
     }
-  - name="host-dpi" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 102..185" instruction="""
+- name="host-dpi" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 102..185" instruction="""
 Virtual Environment Detected: Please enter the DPI of your display.
 
 Ditana automatically scales your XFCE desktop based on your main display’s DPI, ensuring optimal visuals when changing resolutions or display connections. This setting allows Ditana to provide the same seamless experience in your virtual setup as it would on physical hardware.
@@ -230,51 +244,51 @@ Ditana automatically scales your XFCE desktop based on your main display’s DPI
 Note: Enter the DPI value of your host display, not the virtual
       environment’s.
 """ available="`virtual-environment AND install-xfce AND install-desktop-environment`"
-  - name="switch-on-logging" type="procedure"
-  - name="format-nvme" type="procedure" available="`real-install`"
-  - name="partition-drive" type="procedure" available="`real-install`"
-  - name="create-kernel-configuration" type="procedure" available="`real-install`"
-  - name="mount-bootimage-partition" type="procedure" available="`real-install AND NOT zfs-filesystem`"
-  - name="mount-bootloader-partition" type="procedure" available="`real-install`"
-  - name="enable-swap-partition" type="procedure" available="`real-install`"
-  - name="set-host-dpi-for-xfce" type="procedure" available="`real-install AND install-xfce AND virtual-environment`"
+- name="switch-on-logging" type="procedure"
+- name="format-nvme" type="procedure" available="`real-install`"
+- name="partition-drive" type="procedure" available="`real-install`"
+- name="create-kernel-configuration" type="procedure" available="`real-install`"
+- name="mount-bootimage-partition" type="procedure" available="`real-install AND NOT zfs-filesystem`"
+- name="mount-bootloader-partition" type="procedure" available="`real-install`"
+- name="enable-swap-partition" type="procedure" available="`real-install`"
+- name="set-host-dpi-for-xfce" type="procedure" available="`real-install AND install-xfce AND virtual-environment`"
 
-    // Copy system files that should not be part of packages into the chroot before pacstrap. This
-    // includes /usr/lib/os-release, which contains distribution-specific release information
-    // (VERSION and VERSION_ID fields). This file must be present before pacstrap, as it is required
-    // by DKMS modules (provided by e.g. nvidia-dkms) during their installation process (related
-    // error message: "Error! System is missing os-release file.").
-  - name="copy-files-into-chroot-before-pacstrap" type="procedure" available="`real-install`"
+  // Copy system files that should not be part of packages into the chroot before pacstrap. This
+  // includes /usr/lib/os-release, which contains distribution-specific release information
+  // (VERSION and VERSION_ID fields). This file must be present before pacstrap, as it is required
+  // by DKMS modules (provided by e.g. nvidia-dkms) during their installation process (related
+  // error message: "Error! System is missing os-release file.").
+- name="copy-files-into-chroot-before-pacstrap" type="procedure" available="`real-install`"
 
-  - name="add-version" type="procedure" available="`real-install`"
-  - name="copy-console-keyboard-configuration" type="procedure" available="`real-install`"
-  - name="configure-terminal-font" type="procedure" available="`real-install AND virtual-terminal AND NOT installing-over-ssh`"
-  - name="pacstrap" type="procedure" available="`real-install`"
+- name="add-version" type="procedure" available="`real-install`"
+- name="copy-console-keyboard-configuration" type="procedure" available="`real-install`"
+- name="configure-terminal-font" type="procedure" available="`real-install AND virtual-terminal AND NOT installing-over-ssh`"
+- name="pacstrap" type="procedure" available="`real-install`"
 
   // Pre-fetch Flatpak applications into the target system. The actual
   // deployment happens at first boot via ditana-flatpak-finalize.service
   // because bwrap (used by Flatpak for apply_extra hooks) cannot reliably
   // create user namespaces inside arch-chroot.
-  - name="prefetch-flatpaks" type="procedure" available="`real-install`"
+- name="prefetch-flatpaks" type="procedure" available="`real-install`"
 
   // Copy system files that should not be part of packages into the chroot after pacstrap. This
   // includes /etc/lsb-release, overriding the version that was installed by package lsb-release.
-  - name="copy-files-into-chroot-after-pacstrap" type="procedure" available="`real-install`"
+- name="copy-files-into-chroot-after-pacstrap" type="procedure" available="`real-install`"
 
-  - name="apply-locale" type="procedure" available="`real-install`"
-  - name="copy-xorg-keyboard-configuration" type="procedure" available="`real-install AND install-desktop-environment`"
-  - name="create-hostid" type="procedure" available="`real-install`"
-  - name="genfstab" type="procedure" available="`real-install`"
-  - name="curate-chroot-files" type="procedure" available="`real-install`"
-  - name="create-mimeapps-list" type="procedure" available="`real-install`"
-  - name="generate-chroot-script" type="procedure"
-  - name="generate-aur-package-installation-script" type="procedure"
-  - name="generate-root-script" type="procedure" available="`real-install`"
-  - name="generate-session-setup" type="procedure" available="`install-desktop-environment`"
-  - name="generate-session-setup-script" type="procedure" available="`install-desktop-environment`"
-  - name="generate-autostart-entries" type="procedure" available="`install-desktop-environment`"
-  - name="generate-chroot-settings-file" type="procedure"
-  - name="configure-bind-mounts" type="procedure" available="`real-install`"
-  - name="chroot-installation" type="procedure" available="`real-install`"
-  - name="cleanup-mounts" type="procedure" available="`real-install`"
-  - name="reboot" type="procedure" available="`real-install`"
+- name="apply-locale" type="procedure" available="`real-install`"
+- name="copy-xorg-keyboard-configuration" type="procedure" available="`real-install AND install-desktop-environment`"
+- name="create-hostid" type="procedure" available="`real-install`"
+- name="genfstab" type="procedure" available="`real-install`"
+- name="curate-chroot-files" type="procedure" available="`real-install`"
+- name="create-mimeapps-list" type="procedure" available="`real-install`"
+- name="generate-chroot-script" type="procedure"
+- name="generate-aur-package-installation-script" type="procedure"
+- name="generate-root-script" type="procedure" available="`real-install`"
+- name="generate-session-setup" type="procedure" available="`install-desktop-environment`"
+- name="generate-session-setup-script" type="procedure" available="`install-desktop-environment`"
+- name="generate-autostart-entries" type="procedure" available="`install-desktop-environment`"
+- name="generate-chroot-settings-file" type="procedure"
+- name="configure-bind-mounts" type="procedure" available="`real-install`"
+- name="chroot-installation" type="procedure" available="`real-install`"
+- name="cleanup-mounts" type="procedure" available="`real-install`"
+- name="reboot" type="procedure" available="`real-install`"
