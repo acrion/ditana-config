@@ -237,18 +237,18 @@ button:hover {
 }
 
 #custom-terminal {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/utilities-terminal.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/utilities-terminal.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
 }
 
 #custom-browser {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/internet-web-browser.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/internet-web-browser.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
 }
 
 #custom-package-manager {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-software-install.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-software-install.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
 }
 
 #custom-resources {
@@ -257,18 +257,18 @@ button:hover {
 }
 
 #custom-file-manager {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-file-manager.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-file-manager.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/system-file-manager.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-file-manager.svg");
 }
 
 #custom-display-settings {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/preferences-desktop-display.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/preferences-desktop-display.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/preferences-desktop-display.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/preferences-desktop-display.svg");
 }
 
 #custom-settings {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/preferences-system.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/preferences-system.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/preferences-system.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/preferences-system.svg");
 }
 
 #custom-ditana-assistant {
@@ -299,8 +299,8 @@ button:hover {
 
 #custom-shutdown {
   background-color: #3a3a3a;
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-shutdown.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/apps/scalable/system-shutdown.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/system-shutdown.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-shutdown.svg");
   background-size: 56px 56px;          /* was: 64px 64px — was actually oversized */
   background-repeat: no-repeat;
   background-position: center;

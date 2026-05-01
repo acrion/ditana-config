@@ -76,16 +76,19 @@ the Dracula aesthetic rather than override it.
   }
 - name="waybar-orange-accent" \
   default-value="`install-waybar AND accent-color-orange`" {
-      early-chroot-script "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+      early-chroot-script "sed -i 's|@@ICON_THEME@@|kora-yellow/apps/scalable|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
                           "dconf update"
   }
 - name="waybar-blue-accent" \
   default-value="`install-waybar AND accent-color-blue`" {
-      early-chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-blue/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+      early-chroot-script "sed -i 's|@@ICON_THEME@@|Tela-circle-blue/scalable/apps|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/Tela-circle-blue/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
                           "dconf update"
   }
 - name="waybar-purple-accent" \
   default-value="`install-waybar AND accent-color-purple`" {
-      early-chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-dracula/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+      early-chroot-script "sed -i 's|@@ICON_THEME@@|Tela-circle-dracula/scalable/apps|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/Tela-circle-dracula/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
                           "dconf update"
   }
