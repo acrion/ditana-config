@@ -82,18 +82,19 @@ For further information, please consult the following URLs:
  • https://wayfire.org (Wayfire)
  • https://github.com/YaLTeR/niri (Niri)
 """
-        - name="Desktop Accent Color" type="radiolist" instruction="""
-Choose the accent color used for highlights, selection, hover effects,
-and the matching icon theme:
+        - name="Desktop Appearance" type="radiolist" instruction="""
+Choose your preferred visual style. This selection changes both the 
+system-wide accent color (used for highlights) and the design of 
+your desktop icons.
 """ help-intro="""
-The accent color is applied across the desktop wherever an emphasis
-color is needed: GTK selection and hover backgrounds, KDE/Qt highlight
-palettes, and the waybar launcher icons. Each option also installs a
-matching icon theme that harmonises with the chosen color. The base
-palette (Ditana's deep dark blue background and light gray foreground)
-stays the same in every case — only the accent changes. The choice is
-honoured by GTK 3/4 apps, libadwaita apps, Qt 5/6 apps, KDE apps, and
-the waybar panel under Niri and Wayfire.
+This setting defines the overall look of your desktop. It applies the 
+chosen accent color to menus, highlights, and selections across all 
+applications. It also installs a matching set of icons (for folders, 
+apps, and the panel). 
+
+The dark base theme of Ditana remains the same for all options — only 
+the colorful accents and icon shapes change to give your system a 
+consistent, personalized look.
 """ help-note=""
 
         - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""

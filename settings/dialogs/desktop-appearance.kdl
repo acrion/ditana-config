@@ -1,0 +1,95 @@
+// Settings that correspond to the dialog "Configuration Categories" → "Desktop Appearance"
+
+- name="ditana-theme" \
+  default-value="`install-desktop-environment`" {
+      arch-packages "dracula-gtk-theme"
+      files \
+          "/etc/dconf/db/local.d/00-ditana-gtk-settings" \
+          "/etc/environment.d/50-ditana-set-theme.conf" \
+          "/etc/skel/.config/gtk-3.0/gtk.css" \
+          "/etc/skel/.config/gtk-4.0/gtk.css" \
+          "/etc/skel/.config/kdeglobals" \
+          "/etc/skel/.config/qt5ct/qt5ct.conf" \
+          "/etc/skel/.config/qt6ct/qt6ct.conf" \
+          "/usr/share/qt5ct/colors/DitanaDark.conf" \
+          "/usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+
+- name="amber-rounded-icons" \
+  dialog-name="Desktop Appearance" \
+  short-description="Amber with rounded icons" \
+  long-description="""
+The official Ditana look. Features a warm amber accent color paired 
+with circular, highly detailed icons. Recommended for a cohesive, 
+out-of-the-box experience.
+""" \
+  spdx-identifiers="GPL-3.0-only" \
+  available="`install-desktop-environment`" \
+  default-value="`install-desktop-environment`" {
+      arch-packages "kora-yellow-icon-theme"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+
+- name="blue-flat-icons" \
+  dialog-name="Desktop Appearance" \
+  short-description="Indigo Blue with flat icons" \
+  long-description="""
+A calm indigo blue accent paired with a modern, paper-like icon style. 
+Offers a clean, minimalist look with excellent support for almost 
+all applications.
+""" \
+  spdx-identifiers="GPL-3.0" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+      arch-packages "papirus-icon-theme"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/82,148,226/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5294E2/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5294E2/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+
+- name="amber-vibrant-icons" \
+  dialog-name="Desktop Appearance" \
+  short-description="Amber with vibrant icons" \
+  long-description="""
+Uses the same warm amber accent color as the default style, but pairs 
+it with an energetic, semi-flat icon set. Ideal if you prefer a bolder, 
+more colorful desktop.
+""" \
+  spdx-identifiers="GPL-3.0-or-later" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+      arch-packages "pop-icon-theme"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+
+- name="waybar-amber-rounded" \
+  default-value="`install-waybar AND amber-rounded-icons`" {
+      early-chroot-script "sed -i 's|@@ICON_THEME@@|kora-yellow/apps/scalable|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
+  }
+- name="waybar-blue-flat" \
+  default-value="`install-waybar AND blue-flat-icons`" {
+      early-chroot-script "sed -i 's|@@ICON_THEME@@|Papirus/64x64/apps|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/Papirus/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
+  }
+- name="waybar-amber-vibrant" \
+  default-value="`install-waybar AND amber-vibrant-icons`" {
+      early-chroot-script "sed -i 's|@@ICON_THEME@@/preferences|Pop/64x64/categories/preferences|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's|@@ICON_THEME@@/system-shutdown|Pop/64x64/actions/system-shutdown|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's|@@ICON_THEME@@|Pop/64x64/apps|g' /etc/skel/.config/waybar/style.css" \
+                          "sed -i 's/@@ICON_THEME@@/Pop/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
+  }
+
