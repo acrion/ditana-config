@@ -63,7 +63,8 @@
     arch-packages "foot" \
                   "libnotify" \
                   "xdg-terminal-exec-git"
-    files "/etc/skel/.config/foot/foot.ini"
+    files "/etc/skel/.config/foot/foot.ini" \
+          "/etc/systemd/user/foot-server.service.d/ditana-shutdown.conf"
     chroot-script "systemctl --global enable foot-server.socket" \
                   "mkdir -p /etc/xdg" \
                   "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
