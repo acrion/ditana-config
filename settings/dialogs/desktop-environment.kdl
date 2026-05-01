@@ -318,7 +318,7 @@
 - name="install-cosmic" \
   dialog-name="Desktop Environment" \
   short-description="Cosmic" \
-  long-description="TODO" \
+  long-description="Cosmic: A modern Wayland desktop environment written in Rust. Cosmic delivers a clean, productive, and highly customizable interface with a full suite of native applications, a flexible panel system with applets, and advanced workspace management. It is well-suited for users who want a contemporary, performant, and cohesive desktop experience." \
   spdx-identifiers="GPL-3.0-only" \
   default-value="`profile-default OR profile-windows OR profile-quick`" {
     arch-packages \
