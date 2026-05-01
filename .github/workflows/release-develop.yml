@@ -45,7 +45,7 @@ jobs:
       - name: Update develop release
         uses: ncipollo/release-action@v1
         with:
-          tag: develop
+          tag: develop-latest
           commit: ${{ github.sha }}
           name: Develop configuration
           body: |
