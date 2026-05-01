@@ -39,15 +39,12 @@ LOG_PATH="$HOME/.ditana/first-login.log"
 
 {
     set -ex   # exit on error, trace each command
-    
-    # Creating a file in /etc/dconf/db/local.d/ does not work, presumably due to how XFCE emulates dconf.
+
+    # Creating a file in /etc/dconf/db/local.d/ does not work for Xfce, presumably due to how Xfce emulates dconf.
     # Example settings that would be configured there:
     # [org/gnome/desktop/interface]
     # monospace-font-name='JetBrainsMono Nerd Font 9'
     gsettings set org.gnome.desktop.interface monospace-font-name 'JetBrainsMono Nerd Font 9'
-    gsettings set org.gnome.desktop.interface color-scheme prefer-dark
-    gsettings set org.gnome.desktop.interface gtk-theme 'Dracula'
-    gsettings set org.gnome.desktop.interface icon-theme 'kora-yellow'
 
     # Workaround for gnome-keyring initialization issue on first login
     # This restarts the gnome-keyring-daemon to ensure proper initialization

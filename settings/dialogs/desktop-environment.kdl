@@ -12,9 +12,6 @@
                   "noto-fonts-extra" \
                   "noto-fonts-emoji" \
                   "ttf-twemoji" \
-                  \ // === Theming ===
-                  "dracula-gtk-theme" \
-                  "kora-yellow-icon-theme" \
                   \ // === greetd ===
                   "greetd" \
                   "greetd-tuigreet" \
@@ -75,8 +72,6 @@
           "/etc/profile.d/ditana-xdg.sh" \
           \ // === Fontconfig ===
           "/etc/skel/.config/fontconfig/fonts.conf" \
-          \ // === GTK customization ===
-          "/etc/skel/.config/gtk-3.0/gtk.css" \
           \ // === Ditana helper scripts ===
           "/usr/lib/ditana/open-disk-manager" \
           "/usr/lib/ditana/copy-path-to-clipboard" \
@@ -85,15 +80,12 @@
           "/usr/share/applications/pacseek-desktop.desktop" \
           \ // === Logos ===
           "/usr/share/pixmaps/ditana-logo-small.png" \
-          "/usr/share/pixmaps/ditana-shakehands.png"
+          "/usr/share/pixmaps/ditana-shakehands.png" \
+          \ // === Enable files in /etc/dconf/db/local.d/ ===
+          "/etc/dconf/profile/user"
     chroot-script "systemctl enable greetd.service" \
                   "usermod -aG video,input greeter" \
                   "fc-cache -fv" \
-                  "mkdir -p /etc/environment.d" \
-                  "cat <<'DITANA_ENV' >> /etc/environment.d/ditana-set-theme.conf" \
-                  "# Fallback for apps not picking up the theme via gsettings" \
-                  "GTK_THEME=Dracula" \
-                  "DITANA_ENV" \
                   "sudo mkdir -p /var/cache/tuigreet" \
                   "sudo chmod 755 /var/cache/tuigreet" \
                   "sudo chown greeter:greeter /var/cache/tuigreet" \
@@ -364,21 +356,22 @@
   }
 - name="install-niri-or-wayfire" \
   default-value="`install-niri OR install-wayfire`" {
-    files \ // === Waybar config ===
-          "/etc/skel/.config/waybar/config.jsonc" \
-          "/etc/skel/.config/waybar/style.css" \
-          \ // === nwg-launchers config ===
-          "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
-          "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
     arch-packages "xdg-desktop-portal-gtk" \
-                  "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
                   "rofi" \
                   "wl-clipboard" \
-                  "waybar" \
-                  "nwg-launchers" \
-                  "swaylock" \
                   "hyprpolkitagent" \
                   "mako"
+  }
+- name="install-waybar" \
+  default-value="`install-niri-or-wayfire`" {
+    files "/etc/skel/.config/waybar/config.jsonc" \
+          "/etc/skel/.config/waybar/style.css" \
+          "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
+          "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
+    arch-packages "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
+                  "waybar" \
+                  "nwg-launchers" \
+                  "swaylock"
   }
 - name="install-wayland" \
   default-value="`install-niri OR install-wayfire OR install-cosmic`" {

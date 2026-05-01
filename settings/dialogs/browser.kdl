@@ -1,6 +1,5 @@
-// Browser radiolist. Replaces the previous unconditional install-librewolf
-// block in desktop-environment.kdl. Exactly one of these settings is
-// active at a time. The «None» entry is the auto-selected default for
+// Settings that correspond to the dialog "Configuration Categories" → "Browser"
+// Browser radiolist. The «None» entry is the auto-selected default for
 // headless / server installs without a desktop environment.
 
 - name="install-librewolf" \

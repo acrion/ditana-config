@@ -1,0 +1,91 @@
+// Settings that correspond to the dialog "Configuration Categories" → "Desktop Accent Color"
+
+- name="ditana-theme" \
+  default-value="`install-desktop-environment`" {
+      arch-packages "dracula-gtk-theme"
+      files \
+          "/etc/dconf/db/local.d/00-ditana-gtk-settings" \
+          "/etc/environment.d/50-ditana-set-theme.conf" \
+          "/etc/skel/.config/gtk-3.0/gtk.css" \
+          "/etc/skel/.config/gtk-4.0/gtk.css" \
+          "/etc/skel/.config/kdeglobals" \
+          "/etc/skel/.config/qt5ct/qt5ct.conf" \
+          "/etc/skel/.config/qt6ct/qt6ct.conf" \
+          "/usr/share/qt5ct/colors/DitanaDark.conf" \
+          "/usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+- name="accent-color-orange" \
+  dialog-name="Desktop Accent Color" \
+  short-description="Amber Yellow (Ditana classic)" \
+  long-description="""
+The signature Ditana accent: a warm amber yellow (RGB 255/187/0,
+hex #FFBB00) paired with the kora-yellow icon theme, whose folder and
+application icons echo the same hue. This is the historical default and
+matches the Ditana branding. Recommended if you want the most cohesive
+out-of-the-box look.
+""" \
+  spdx-identifiers="GPL-3.0-only" \
+  available="`install-desktop-environment`" \
+  default-value="`install-desktop-environment`" {
+      arch-packages "kora-yellow-icon-theme"
+      chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                    "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+- name="accent-color-blue" \
+  dialog-name="Desktop Accent Color" \
+  short-description="Indigo Blue" \
+  long-description="""
+A calm Material-design indigo (RGB 86/119/252, hex #5677FC) paired with
+Tela-circle-blue, a flat circular icon theme. The cooler accent reads
+as more reserved and professional than the amber default, and pairs
+well with predominantly text-driven workflows where you want the
+desktop to recede into the background.
+""" \
+  spdx-identifiers="GPL-3.0-or-later" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+      arch-packages "tela-circle-icon-theme-blue"
+      chroot-script "sed -i 's/@@ACCENT_COLOR@@/86,119,252/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                    "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+- name="accent-color-purple" \
+  dialog-name="Desktop Accent Color" \
+  short-description="Dracula Purple" \
+  long-description="""
+The classic Dracula purple (RGB 189/147/249, hex #BD93F9) paired with
+Tela-circle-dracula icons. This option harmonises most closely with
+the Dracula GTK theme that Ditana ships, since it picks up Dracula's
+own accent color. Choose this if you want the desktop to lean into
+the Dracula aesthetic rather than override it.
+""" \
+  spdx-identifiers="GPL-3.0-or-later" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+      arch-packages "tela-circle-icon-theme-dracula"
+      chroot-script "sed -i 's/@@ACCENT_COLOR@@/189,147,249/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                    "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                    "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+  }
+- name="waybar-orange-accent" \
+  default-value="`install-waybar AND accent-color-orange`" {
+      chroot-script "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                    "dconf update"
+  }
+- name="waybar-blue-accent" \
+  default-value="`install-waybar AND accent-color-blue`" {
+      chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-blue/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                    "dconf update"
+  }
+- name="waybar-purple-accent" \
+  default-value="`install-waybar AND accent-color-purple`" {
+      chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-dracula/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                    "dconf update"
+  }

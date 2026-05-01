@@ -148,6 +148,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "marksman" \
                   "vscode-json-languageserver" \
                   "vscode-html-languageserver" \
+                  "vscode-css-languageserver" \
                   "bash-language-server" \
                   "lua-language-server" \
                   "yaml-language-server" \
