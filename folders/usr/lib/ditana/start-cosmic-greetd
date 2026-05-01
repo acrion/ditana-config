@@ -34,4 +34,13 @@ if systemctl --user is-active --quiet graphical-session.target; then
     echo ">>> End of pre-login diagnostic <<<"
 fi
 
+# COSMIC's official packaging recommends `start-cosmic` directly. We use uwsm
+# instead for two reasons:
+# (1) Consistency: all three Wayland DEs (Wayfire, Niri, COSMIC) share the
+#     same session lifecycle and environment-propagation mechanism.
+# (2) Environment: variables exported in session-setup (e.g. LIBGL_ALWAYS_SOFTWARE
+#     for VM stability) need to reach systemd-managed components like
+#     xdg-desktop-portal-cosmic. uwsm propagates these via wayland-wm-env@*.service;
+#     start-cosmic does not.
+# Empirically tested: COSMIC↔Wayfire/Niri switching works cleanly in both directions.
 uwsm start cosmic.desktop
