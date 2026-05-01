@@ -28,11 +28,11 @@ out-of-the-box look.
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment`" {
       arch-packages "kora-yellow-icon-theme"
-      chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
-                    "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
 - name="accent-color-blue" \
   dialog-name="Desktop Accent Color" \
@@ -48,11 +48,11 @@ desktop to recede into the background.
   available="`install-desktop-environment`" \
   default-value=#false {
       arch-packages "tela-circle-icon-theme-blue"
-      chroot-script "sed -i 's/@@ACCENT_COLOR@@/86,119,252/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
-                    "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/86,119,252/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5677fc/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/3955a8/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
 - name="accent-color-purple" \
   dialog-name="Desktop Accent Color" \
@@ -68,24 +68,24 @@ the Dracula aesthetic rather than override it.
   available="`install-desktop-environment`" \
   default-value=#false {
       arch-packages "tela-circle-icon-theme-dracula"
-      chroot-script "sed -i 's/@@ACCENT_COLOR@@/189,147,249/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
-                    "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                    "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/189,147,249/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/bd93f9/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/8b6cd6/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
 - name="waybar-orange-accent" \
   default-value="`install-waybar AND accent-color-orange`" {
-      chroot-script "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
-                    "dconf update"
+      early-chroot-script "sed -i 's/@@ICON_THEME@@/kora-yellow/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
   }
 - name="waybar-blue-accent" \
   default-value="`install-waybar AND accent-color-blue`" {
-      chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-blue/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
-                    "dconf update"
+      early-chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-blue/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
   }
 - name="waybar-purple-accent" \
   default-value="`install-waybar AND accent-color-purple`" {
-      chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-dracula/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
-                    "dconf update"
+      early-chroot-script "sed -i 's/@@ICON_THEME@@/Tela-circle-dracula/g' /etc/skel/.config/waybar/style.css /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
+                          "dconf update"
   }
