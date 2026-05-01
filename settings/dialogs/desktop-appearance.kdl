@@ -19,13 +19,11 @@
   dialog-name="Desktop Appearance" \
   short-description="Amber with rounded icons" \
   long-description="""
-The official Ditana look. Features a warm amber accent color paired 
-with circular, highly detailed icons. Recommended for a cohesive, 
-out-of-the-box experience.
+Amber Rounded Icons: The official Ditana look. Features a warm amber accent color paired with circular, highly detailed icons. Recommended for a cohesive, out-of-the-box experience.
 """ \
   spdx-identifiers="GPL-3.0-only" \
   available="`install-desktop-environment`" \
-  default-value="`install-desktop-environment`" {
+  default-value="`install-desktop-environment AND (profile-default OR profile-developer)`" {
       arch-packages "kora-yellow-icon-theme"
       early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
                           "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
@@ -38,13 +36,11 @@ out-of-the-box experience.
   dialog-name="Desktop Appearance" \
   short-description="Indigo Blue with flat icons" \
   long-description="""
-A calm indigo blue accent paired with a modern, paper-like icon style. 
-Offers a clean, minimalist look with excellent support for almost 
-all applications.
+Blue Flat Icons: A calm indigo blue accent paired with a modern, paper-like icon style. Offers a clean, minimalist look with excellent support for almost all applications.
 """ \
   spdx-identifiers="GPL-3.0" \
   available="`install-desktop-environment`" \
-  default-value=#false {
+  default-value="`install-desktop-environment AND profile-windows`" {
       arch-packages "papirus-icon-theme"
       early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/82,148,226/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
                           "sed -i 's/@@ACCENT_COLOR@@/5294E2/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
@@ -57,13 +53,11 @@ all applications.
   dialog-name="Desktop Appearance" \
   short-description="Amber with vibrant icons" \
   long-description="""
-Uses the same warm amber accent color as the default style, but pairs 
-it with an energetic, semi-flat icon set. Ideal if you prefer a bolder, 
-more colorful desktop.
+Amber Vibrant Icons: Uses the same warm amber accent color as the default style, but pairs it with an energetic, semi-flat icon set. Ideal if you prefer a bolder, more colorful desktop.
 """ \
   spdx-identifiers="GPL-3.0-or-later" \
   available="`install-desktop-environment`" \
-  default-value=#false {
+  default-value="`install-desktop-environment AND profile-quick`" {
       arch-packages "pop-icon-theme"
       early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
                           "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
