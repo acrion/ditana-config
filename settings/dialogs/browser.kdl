@@ -39,7 +39,7 @@
     aur-packages "brave-bin"
   }
 
-- name="install-mullvad-browser" \
+- name="install-mullvad" \
   dialog-name="Browser" \
   short-description="Mullvad Browser - Anti-fingerprinting Tor-style hardening" \
   long-description="A privacy-focused browser developed by Mullvad VPN in collaboration with the Tor Project, applying many of Tor Browser's anti-fingerprinting and tracking-resistance techniques without routing traffic through Tor itself." \
