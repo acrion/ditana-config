@@ -43,7 +43,6 @@
                   "lxsession" \
                   \ // === XFCE fixes ===
                   "mugshot" \
-                  "gnome-keyring" \
                   \ // === XDG Desktop Portal ===
                   "xdg-desktop-portal-gtk" \
                   \ // === XFCE Ditana specific ===

@@ -30,7 +30,9 @@
                   "cups-pk-helper" \
                   "python-pysmbc" \
                   \ // === Send Desktop Notifications ===
-                  "libnotify"
+                  "libnotify" \
+                  \ // === implement the secret portal, for certain apps to work ===
+                  "gnome-keyring"
     files \ // Marker file for first-login detection. If this file exists when the user logs in,
           \ // session-setup scripts marked with once=true (see "session-setup" below) are executed,
           \ // and the file is then deleted. See generate-session-setup() in Chroot.rakumod.
