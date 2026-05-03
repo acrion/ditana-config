@@ -20,6 +20,19 @@
                   "fi" \
                   #"echo -e "\033[32m--- Installing $LIBREOFFICE ---\033[0m""# \
                   #"runuser -u builduser -- pikaur -S "$LIBREOFFICE" --noconfirm || true"#
+    mime-defaults {
+        - "libreoffice-writer.desktop" \
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
+          "application/vnd.oasis.opendocument.text"
+
+        - "libreoffice-calc.desktop" \
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" \
+          "application/vnd.oasis.opendocument.spreadsheet"
+
+        - "libreoffice-impress.desktop" \
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation" \
+          "application/vnd.oasis.opendocument.presentation"
+    }
 }
 
 - name="install-onlyoffice" \
@@ -30,6 +43,15 @@
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment AND profile-windows`" {
     flatpak-packages "org.onlyoffice.desktopeditors"
+    mime-defaults {
+        - "org.onlyoffice.desktopeditors.desktop" \
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
+          "application/vnd.oasis.opendocument.text" \
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" \
+          "application/vnd.oasis.opendocument.spreadsheet" \
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation" \
+          "application/vnd.oasis.opendocument.presentation"
+    }
 }
 
 - name="install-no-office" \

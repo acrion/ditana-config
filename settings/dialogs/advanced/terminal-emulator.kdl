@@ -68,6 +68,9 @@
     chroot-script "systemctl --global enable foot-server.socket" \
                   "mkdir -p /etc/xdg" \
                   "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
+    mime-defaults {
+        - "footclient.desktop" "x-scheme-handler/terminal"
+    }
   }
 
 - name="install-alacritty" \

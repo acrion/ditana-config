@@ -11,6 +11,9 @@
   default-value="`install-desktop-environment AND NOT (profile-quick OR profile-windows)`" {
     files "/etc/skel/.librewolf/librewolf.overrides.cfg"
     flatpak-packages "io.gitlab.librewolf-community"
+    mime-defaults {
+        - "io.gitlab.librewolf-community.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
+    }
 }
 
 - name="install-firefox" \
@@ -23,6 +26,9 @@
     arch-packages "firefox" \
                   "onnxruntime" \
                   "speech-dispatcher"
+    mime-defaults {
+        - "firefox.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
+    }
 }
 
 - name="install-brave" \
