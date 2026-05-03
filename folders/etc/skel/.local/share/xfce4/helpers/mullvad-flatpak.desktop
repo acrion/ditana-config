@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Type=X-XFCE-Helper
+NoDisplay=true
+Name=Mullvad
+Icon=net.mullvad.MullvadBrowser
+X-XFCE-Category=WebBrowser
+X-XFCE-Commands=flatpak run net.mullvad.MullvadBrowser
+X-XFCE-CommandsWithParameter=flatpak run net.mullvad.MullvadBrowser "%s"
+X-XFCE-Binaries=flatpak

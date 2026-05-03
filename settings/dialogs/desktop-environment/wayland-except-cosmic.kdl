@@ -1,0 +1,40 @@
+- name="install-niri-or-wayfire" \
+  default-value="`install-niri OR install-wayfire`" {
+    arch-packages "xdg-desktop-portal-gtk" \
+                  "wayland-display-info" \
+                  "wayland-font-dpi" \
+                  "rofi" \
+                  "wl-clipboard" \
+                  "hyprpolkitagent" \
+                  "mako"
+    chroot-script "systemctl --global enable hyprpolkitagent.service"
+  }
+
+- name="install-waybar" \
+  default-value="`install-niri-or-wayfire`" {
+    files "/etc/skel/.config/waybar/config.jsonc" \
+          "/etc/skel/.config/waybar/style.css" \
+          "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
+          "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
+    arch-packages "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
+                  "waybar" \
+                  "nwg-launchers" \
+                  "swaylock"
+  }
+
+- name="install-waybar-display-scale" \
+  default-value="`install-niri-or-wayfire`" {
+    files "/usr/lib/systemd/user/waybar-display-scale.service" \
+          "/usr/lib/ditana/waybar-display-scale"
+    chroot-script "systemctl --global enable waybar-display-scale.service"
+  }
+
+- name="install-waybar-ditana-assistant" \
+  default-value="`install-niri-or-wayfire AND install-ditana-assistant`" {
+    early-chroot-script \
+      "CFG=/etc/skel/.config/waybar/config.jsonc" \
+      #"if ! grep -q '"custom/ditana-assistant"' "$CFG"; then"# \
+      #"    sed -i '/"modules-left"/,/\]/ s|"custom/start"|"custom/start",\n    "custom/ditana-assistant"|' "$CFG""# \
+      #"    sed -i '/^  "custom\/start": {/i\  "custom/ditana-assistant": {\n    "format": " ",\n    "tooltip": true,\n    "tooltip-format": "Ditana Assistant",\n    "on-click": "xdg-terminal-exec -e bash -c \\"ditana-assistant --gui\\"",\n  },' "$CFG""# \
+      "fi"
+  }

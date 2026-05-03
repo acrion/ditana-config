@@ -1,0 +1,27 @@
+- name="install-niri" \
+  dialog-name="Desktop Environment" \
+  short-description="Niri" \
+  long-description="Niri: A scrollable-tiling Wayland compositor. Instead of arranging windows in a fixed grid, Niri places them in an infinite horizontal strip that you scroll through, similar to a panoramic workspace. It is well-suited for keyboard-driven workflows and users who prefer automatic window tiling without manual layout management." \
+  spdx-identifiers="GPL-3.0-or-later" \
+  available="`has-gpu-render-node`" \
+  default-value="`NOT profile-server`" {
+    arch-packages "niri-git" \
+                  "xwayland-satellite" \
+                  "swaybg" \
+                  "monique" \
+                  "niri-settings-git"
+    login-commands "systemctl --user stop niri.service 2>/dev/null" // note that we do that for all DEs (independent from $XDG_SESSION_DESKTOP)
+    files "/usr/lib/ditana/start-niri-greetd" \
+          "/usr/share/ditana/wayland-sessions/niri-ditana.desktop" \
+          \ // === Niri config ===
+          "/etc/skel/.config/niri/config.kdl" \
+          "/usr/share/slick-greeter/badges/niri.svg" \
+          \ // === NVIDIA Niri fix ===
+          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json"
+    early-chroot-script \
+      \ // Patch the keyboard repeat values in the niri config.
+      #"sed -i -E "s|(repeat-delay[[:space:]]+)[0-9]+|\1${KEYBOARD_DELAY}|" /etc/skel/.config/niri/config.kdl"# \
+      #"sed -i -E "s|(repeat-rate[[:space:]]+)[0-9]+|\1${KEYBOARD_RATE}|" /etc/skel/.config/niri/config.kdl"#
+  }
+
+ 

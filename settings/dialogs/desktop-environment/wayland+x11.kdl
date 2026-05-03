@@ -1,0 +1,146 @@
+- name="install-desktop-environment" \
+  default-value="`install-xfce OR install-wayfire OR install-niri OR install-cosmic`" {
+    arch-packages \ // === greetd ===
+                  "greetd" \
+                  "greetd-tuigreet" \
+                  "uwsm" \
+                  \ // === XDG utilities ===
+                  "xdg-user-dirs" \
+                  "xdg-utils" \
+                  \ // === Key management ===
+                  "seahorse" \
+                  \ // === Bluetooth (GUI) ===
+                  "blueman" \
+                  \ // === Audio ===
+                  "pavucontrol" \
+                  \ // === Network tray ===
+                  "network-manager-applet" \
+                  \ // === Security updates indicator ===
+                  "arch-audit-gtk" \
+                  \ // === GPU diagnostics ===
+                  "mesa-utils" \
+                  "libva-utils" \
+                  "intel-gpu-tools" \
+                  \ // === System resources monitor ===
+                  "resources" \
+                  \ // === Disk management ===
+                  "gnome-disk-utility" \
+                  \ // === Printing ===
+                  "system-config-printer" \
+                  "cups-pk-helper" \
+                  "python-pysmbc" \
+                  \ // === Send Desktop Notifications ===
+                  "libnotify"
+    files \ // Marker file for first-login detection. If this file exists when the user logs in,
+          \ // session-setup scripts marked with once=true (see "session-setup" below) are executed,
+          \ // and the file is then deleted. See generate-session-setup() in Chroot.rakumod.
+          "/etc/skel/.config/ditana/trigger-first-login" \
+          \ // === Greetd configuration ===
+          "/etc/greetd/config.toml" \
+          \ // XDG user dirs. The upstream /etc/xdg/autostart/xdg-user-dirs.desktop
+          \ // sets X-systemd-skip=true and X-GNOME-Autostart-Phase=EarlyInitialization;
+          \ // both keys cause systemd-xdg-autostart-generator to skip the entry (see
+          \ // systemd-xdg-autostart-generator(8) and upstream issue systemd/systemd#18791).
+          \ // As a result the upstream entry does not run on compositors that rely on
+          \ // systemd for XDG autostart (Niri, Wayfire via graphical-session.target).
+          \ // XFCE4 has its own autostart handler that ignores those keys, so the
+          \ // upstream entry works there. We ship an additional entry without the skip
+          \ // keys so xdg-user-dirs-update runs on every DE; it is idempotent, so
+          \ // running twice on XFCE is harmless.
+          "/etc/xdg/autostart/ditana-xdg-user-dirs.desktop" \
+          \ // XDG Base Directory Specification defaults, set explicitly for visibility
+          \ // and robustness against spec-nonconforming apps. environment.d covers
+          \ // systemd user services and logind-started sessions; the matching
+          \ // /etc/profile.d/ditana-xdg.sh below covers interactive login shells.
+          "/etc/environment.d/50-ditana-xdg.conf" \
+          "/etc/profile.d/ditana-xdg.sh" \
+          \ // === Ditana helper scripts ===
+          "/usr/lib/ditana/first-login" \
+          \ // === Pacseek launcher ===
+          "/usr/share/applications/pacseek-desktop.desktop" \
+          \ // === Logos ===
+          "/usr/share/pixmaps/ditana-logo-small.png" \
+          "/usr/share/pixmaps/ditana-shakehands.png" \
+          \ // === Enable files in /etc/dconf/db/local.d/ ===
+          "/etc/dconf/profile/user"
+    chroot-script "systemctl enable greetd.service" \
+                  "usermod -aG video,input greeter" \
+                  "fc-cache -fv" \
+                  "sudo mkdir -p /var/cache/tuigreet" \
+                  "sudo chmod 755 /var/cache/tuigreet" \
+                  "sudo chown greeter:greeter /var/cache/tuigreet" \
+                  #"printf "%s" "$USER_NAME" > /var/cache/tuigreet/lastuser"# \
+                  "sudo chmod 640 /var/cache/tuigreet/lastuser" \
+                  "sudo chown greeter:greeter /var/cache/tuigreet/lastuser"
+    autostart {
+        - "" "/usr/lib/ditana/first-login"
+    }
+  }
+  
+- name="fonts" \
+  default-value="`install-desktop-environment`" {
+      files "/etc/fonts/local.conf"
+      arch-packages \
+          "adobe-source-serif-fonts" \
+          "otf-comicshanns-nerd" \
+          "otf-font-awesome" \
+          "terminus-font" \
+          "ttf-jetbrains-mono-nerd" \
+          "noto-fonts" \
+          "noto-fonts-cjk" \
+          "noto-fonts-extra" \
+          "noto-fonts-emoji" \
+          "ttf-twemoji"
+  }
+
+- name="xkb-environment" \
+  default-value="`install-desktop-environment`" {
+    files "/etc/environment.d/50-ditana-xkb.conf"
+    chroot-script \
+        "sed -i 's|@@KEYMAP_LAYOUT@@|'$KEYMAP_LAYOUT'|' /etc/environment.d/50-ditana-xkb.conf" \
+        #"if [ -n "$KEYMAP_VARIANT" ]; then"# \
+        "    sed -i 's|@@KEYMAP_VARIANT@@|'$KEYMAP_VARIANT'|' /etc/environment.d/50-ditana-xkb.conf" \
+        "else" \
+        "    sed -i '/@@KEYMAP_VARIANT@@/d' /etc/environment.d/50-ditana-xkb.conf" \
+        "fi"
+  }
+
+- name="install-thunar" default-value="`install-desktop-environment`" {
+    arch-packages "thunar" \
+                  "catfish" \
+                  "gvfs" \
+                  "thunar-archive-plugin" \
+                  "thunar-media-tags-plugin" \
+                  "thunar-volman" \
+                  "tumbler" \
+                  \ // === Tumbler thumbnailer plugin dependencies ===
+                  "libgepub" \
+                  "libopenraw" \
+                  "libgsf"
+    files \ // === Thunar custom actions ===
+          "/etc/skel/.config/Thunar/uca.xml" \
+          "/usr/lib/ditana/open-disk-manager" \
+          "/usr/lib/ditana/copy-path-to-clipboard"
+  }
+
+- name="install-ramdisk-thunar-bookmark" \
+  default-value="`install-thunar AND install-ramdisk`" {
+    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
+          "/usr/share/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
+  }
+
+- name="install-vlc" default-value="`install-desktop-environment`" {
+    arch-packages "vlc"
+  }
+
+- name="install-ristretto" default-value="`install-desktop-environment`" {
+    arch-packages "ristretto"
+  }
+
+- name="install-xreader" default-value="`install-desktop-environment`" {
+    arch-packages "xreader"
+  }
+
+- name="install-engrampa" default-value="`install-desktop-environment`" {
+    arch-packages "engrampa"
+  }

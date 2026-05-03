@@ -1,0 +1,4 @@
+- name="install-wayland" \
+  default-value="`install-niri OR install-wayfire OR install-cosmic`" {
+    arch-packages "uwsm"
+  }

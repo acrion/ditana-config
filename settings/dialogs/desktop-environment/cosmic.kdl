@@ -1,0 +1,56 @@
+- name="install-cosmic" \
+  dialog-name="Desktop Environment" \
+  short-description="Cosmic" \
+  long-description="Cosmic: A modern Wayland desktop environment written in Rust. Cosmic delivers a clean, productive, and highly customizable interface with a full suite of native applications, a flexible panel system with applets, and advanced workspace management. It is well-suited for users who want a contemporary, performant, and cohesive desktop experience." \
+  spdx-identifiers="GPL-3.0-only" \
+  default-value="`NOT profile-server`" {
+    arch-packages \
+        "cosmic-app-library" \
+        "cosmic-applets" \
+        "cosmic-bg" \
+        "cosmic-comp" \
+        "cosmic-files" \ // TODO
+        "cosmic-icon-theme" \
+        "cosmic-idle" \
+        "cosmic-initial-setup" \
+        "cosmic-launcher" \
+        "cosmic-notifications" \
+        "cosmic-osd" \
+        "cosmic-panel" \
+        "cosmic-player" \ // TODO
+        "cosmic-randr" \
+        "cosmic-screenshot" \ // TODO
+        "cosmic-session" \
+        "cosmic-settings" \
+        "cosmic-settings-daemon" \
+        "cosmic-store" \ // TODO
+        "cosmic-terminal" \ // TODO
+        "cosmic-text-editor" \ // TODO
+        "cosmic-wallpapers" \
+        "cosmic-workspaces" \
+        "xdg-desktop-portal-cosmic"
+    files "/usr/lib/ditana/start-cosmic-greetd" \
+          "/usr/share/ditana/wayland-sessions/cosmic-ditana.desktop" \
+  }
+
+- name="fix-cosmic-for-vms" \
+  default-value="`install-cosmic AND virtual-environment`" {
+      \ // Ditana: Stabilize COSMIC (Software-Rendering)
+      \ // Forces software rendering to avoid sporadic graphics glitches in COSMIC
+      \ // wgpu (COSMIC renderer) fallback
+      login-commands \
+        #"if [[ "$DESKTOP_SESSION" == "cosmic-ditana" ]]; then"# \
+        "    export LIBGL_ALWAYS_SOFTWARE=1" \
+        "    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
+        "    export WGPU_FORCE_FALLBACK_ADAPTER=1" \
+        "    export WGPU_BACKEND=gl" \
+        "fi"
+  }
+
+// === related to browser.kdl ===
+
+- name="fix-brave-for-cosmic" \
+  default-value="`install-brave AND install-cosmic`" {
+      files "/usr/local/bin/brave"
+  }
+

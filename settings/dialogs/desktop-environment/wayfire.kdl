@@ -1,0 +1,44 @@
+- name="install-wayfire" \
+  dialog-name="Desktop Environment" \
+  short-description="Wayfire" \
+  long-description="Wayfire: A modular Wayland compositor inspired by Compiz. Wayfire provides a stacking/floating window management experience on the modern Wayland display protocol, offering smooth animations, 3D effects, and a plugin-based architecture. It is a good choice for users who want a visually rich desktop without the legacy constraints of Xorg." \
+  spdx-identifiers="MIT" \
+  default-value="`NOT profile-server`" {
+    files "/usr/lib/ditana/start-wayfire-greetd" \
+          "/usr/share/ditana/wayland-sessions/wayfire-ditana.desktop" \
+          \ // === Wayfire config ===
+          "/etc/skel/.config/wayfire.ini" \
+          "/usr/share/slick-greeter/badges/wayfire.svg"
+    arch-packages "wayfire" \
+                  "wayfire-plugins-extra" \
+                  "wf-msg-git" \
+                  "wlr-protocols" \
+                  "wlr-randr" \
+                  "wdisplays-persistent" \ // depends on kanshi
+                  "wcm" \
+                  "wf-config" \
+                  "xdg-desktop-portal-wlr" \
+                  "xorg-xwayland" \
+                  "grim"
+    \ // Wayfire does not reliably honor XKB_DEFAULT_LAYOUT/VARIANT from
+    \ // /etc/environment.d/ — see upstream issues such as
+    \ // https://github.com/WayfireWM/wayfire/issues/2178. We
+    \ // therefore patch the [input] section of wayfire.ini.
+    early-chroot-script \
+        #"sed -i "s|^xkb_layout[[:space:]]*=.*|xkb_layout = ${KEYMAP_LAYOUT}|" /etc/skel/.config/wayfire.ini"# \
+        #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
+        #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
+        "fi"
+    autostart {
+        - "Wayfire;wayfire;" "/usr/bin/kanshi"
+        - "Wayfire;wayfire;" "/usr/bin/waybar"
+    }
+  }
+
+- name="fix-wayfire-for-vms" \
+  default-value="`install-wayfire AND virtual-environment`" {
+      login-commands \
+        #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
+        "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+        "fi"
+  }

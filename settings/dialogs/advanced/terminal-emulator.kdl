@@ -29,7 +29,7 @@
 //                  * Very small memory footprint per instance.
 //                Because foot is Wayland-only, picking it as the
 //                primary on a system that also installs XFCE auto-pulls
-//                Alacritty as the X11 fallback (see install-alacritty-for-xfce
+//                Alacritty as the X11 fallback (see fallback-alacritty-for-xfce
 //                further below; it is NOT a radiolist entry).
 //
 //   - alacritty: GPU-accelerated, works on both X11 and Wayland.
@@ -68,7 +68,7 @@
     chroot-script "systemctl --global enable foot-server.socket" \
                   "mkdir -p /etc/xdg" \
                   "echo footclient.desktop >/etc/xdg/xdg-terminals.list"
-}
+  }
 
 - name="install-alacritty" \
   dialog-name="Terminal Emulator" \
@@ -82,7 +82,7 @@
     chroot-script "mkdir -p /etc/xdg" \
                   "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
                   "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
-}
+  }
 
 - name="install-kitty" \
   dialog-name="Terminal Emulator" \
@@ -103,7 +103,7 @@
                   "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
                   "mkdir -p /etc/environment.d" \
                   "echo TERMINAL=kitty >> /etc/environment.d/set-terminal.conf"
-}
+  }
 
 - name="install-ghostty" \
   dialog-name="Terminal Emulator" \
@@ -121,7 +121,7 @@
                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
                   "mkdir -p /etc/environment.d" \
                   "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
-}
+  }
 
 - name="install-no-terminal" \
   dialog-name="Terminal Emulator" \
@@ -130,16 +130,4 @@
   spdx-identifiers="" \
   default-value="`NOT install-desktop-environment`" {
     arch-packages ""
-}
-
-// XFCE fallback for the foot-Wayland-only case. NOT a radiolist member -
-// this is a regular dependent setting that fires only when foot is the
-// primary terminal and XFCE is also installed. Writes to xfce-xdg-
-// terminals.list only; xdg-terminals.list still points at footclient
-// for Wayland sessions.
-- name="install-alacritty-for-xfce" \
-  default-value="`install-foot AND install-xfce`" {
-    arch-packages "alacritty"
-    chroot-script "mkdir -p /etc/xdg" \
-                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
-}
+  }

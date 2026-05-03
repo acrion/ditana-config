@@ -1,0 +1,228 @@
+- name="install-xfce" \
+  dialog-name="Desktop Environment" \
+  short-description="XFCE (Xorg)" \
+  long-description="XFCE: A mature, lightweight desktop environment running on Xorg (X11). XFCE offers a traditional desktop paradigm with a panel, application menu, and window management. It is highly customizable, resource-efficient, and has broad hardware and software compatibility. Ditana ships a preconfigured XFCE setup with the Dracula theme, Kitty or Ghostty terminal, and curated panel plugins." \
+  spdx-identifiers="GPL-2.0-or-later" \
+  default-value="`NOT profile-server`" {
+    arch-packages "xorg-server" \
+                  "xorg-xinit" \
+                  \ // === group xfce4 without xfce4-terminal ===
+                  "exo" \
+                  "garcon" \
+                  "xfce4-appfinder" \
+                  "xfce4-panel" \
+                  "xfce4-power-manager" \
+                  "xfce4-session" \
+                  "xfce4-settings" \
+                  "xfconf" \
+                  "xfdesktop" \
+                  "xfwm4" \
+                  \ // === XFCE plugins ===
+                  "xfce4-screenshooter" \
+                  "xfce4-screensaver" \
+                  "xfce4-notifyd" \
+                  \ // === On-screen keyboard ===
+                  "onboard" \
+                  \ // === Color picker ===
+                  "gpick" \
+                  \ // === XFCE panel plugins ===
+                  "xfce4-docklike-plugin" \
+                  "xfce4-genmon-plugin" \
+                  "xfce4-notes-plugin" \
+                  "xfce4-weather-plugin" \
+                  "xfce4-whiskermenu-plugin" \
+                  "xfce4-xkb-plugin" \
+                  "xfce4-pulseaudio-plugin" \
+                  \ // === X11 utilities ===
+                  "xclip" \
+                  "xsel" \
+                  "xorg-xev" \
+                  "xorg-xkill" \
+                  "xorg-xrandr" \
+                  "xorg-xhost" \
+                  "lxsession" \
+                  \ // === XFCE fixes ===
+                  "mugshot" \
+                  "gnome-keyring" \
+                  \ // === XDG Desktop Portal ===
+                  "xdg-desktop-portal-gtk" \
+                  \ // === XFCE Ditana specific ===
+                  "xfce-display-config-observer" \
+                  "xfce-wallpaper-overlay" \
+                  "kalu" \
+                  "pciutils" \
+                  \ // === Script dependencies ===
+                  "xmlstarlet" \
+                  "bc" \
+                  "zenity"
+    files \ // === XFCE configuration ===
+          "/usr/lib/ditana/start-xfce4-greetd" \
+          "/usr/share/ditana/xsessions/xfce-ditana.desktop" \
+          "/etc/skel/.config/xfce4/helpers.rc" \
+          "/etc/skel/.config/xfce4/panel/docklike-2.rc" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-terminal.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/thunar-volman.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
+          "/usr/lib/ditana/print-system-load" \ // configured in xfce4-panel.xml
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml" \
+          "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
+          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-1.txt" \
+          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-2.txt" \
+          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-3.txt" \
+          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-4.txt" \
+          \ // === Kalu config ===
+          "/etc/skel/.config/kalu/kalu.conf" \
+          \ // === Desktop shortcuts ===
+          "/etc/skel/Desktop/Donate to Ditana.desktop" \
+          "/etc/skel/Desktop/Best Practices.desktop" \
+          \ // === Ditana XFCE helper scripts ===
+          "/usr/lib/ditana/xfce-first-login" \
+          \ // === Wallpapers ===
+          "/usr/share/backgrounds/xfce/ditana-wallpaper.jpg" \
+          "/usr/share/backgrounds/xfce/ditana-blue.png" \
+          \ // === Qt Scaling ===
+          "/etc/skel/.config/systemd/user-environment-generators/50-qt-hidpi-xfce-ditana"
+    early-chroot-script \
+      \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
+      "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
+      "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"
+    chroot-script "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry
+                  "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
+    autostart {
+        - "XFCE;" "/usr/lib/ditana/xfce-first-login"
+        - "XFCE;" "/usr/bin/kalu"
+    }
+  }
+
+- name="install-xfce-thunar" default-value="`install-xfce AND install-thunar`" {
+    first-login-commands #"sed -i "s|^FileManager=.*|FileManager=thunar|" "$HOME/.config/xfce4/helpers.rc""#
+  }
+
+// === related to AI Tools ===
+
+- name="install-xfce-ditana-assistant" default-value="`install-xfce AND install-ditana-assistant`" {
+    first-login-commands \
+        #"if command -v ditana-assistant &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=ditana-assistant;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-logseq" default-value="`install-xfce AND install-logseq`" {
+    first-login-commands \
+        #"if command -v logseq &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=logseq-desktop;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+// === related to Desktop Applications ===
+
+- name="install-xfce-bitwarden" default-value="`install-xfce AND install-bitwarden`" {
+    first-login-commands \
+        #"if pacman -Qi bitwarden &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/bitwarden;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-backintime" default-value="`install-xfce AND install-backintime`" {
+    first-login-commands \
+        #"if command -v backintime &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/backintime-qt;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+// === related to Advanced Settings / Dev Tools ===
+
+- name="install-xfce-pacseek" default-value="`install-xfce AND install-pacman-core-tools`" {
+    first-login-commands \
+        #"if command -v pacseek &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/pacseek-desktop;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-vscode" default-value="`install-xfce AND install-vscode`" {
+    first-login-commands \
+        #"if command -v code &> /dev/null; then"# \
+        #"    if pacman -Qi code &> /dev/null; then"# \
+        #"        sed -i "/^pinned=/ s/$/code-oss;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"    else"# \
+        #"        sed -i "/^pinned=/ s/$/code;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"    fi"# \
+        #"fi"#
+  }
+
+// === related to browser.kdl ===
+
+- name="install-xfce-librewolf" default-value="`install-xfce AND install-librewolf`" {
+    files "/etc/skel/.local/share/xfce4/helpers/librewolf-flatpak.desktop"
+    first-login-commands \
+        #"if [[ -f /var/lib/flatpak/exports/share/applications/io.gitlab.librewolf-community.desktop ]]; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=io.gitlab.librewolf-community;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^WebBrowser=.*|WebBrowser=librewolf-flatpak|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-firefox" default-value="`install-xfce AND install-firefox`" {
+    first-login-commands \
+        #"if command -v firefox &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=firefox;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^WebBrowser=.*|WebBrowser=firefox|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-brave" default-value="`install-xfce AND install-brave`" {
+    first-login-commands \
+        #"if command -v brave &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=brave;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^WebBrowser=.*|WebBrowser=brave|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-mullvad" default-value="`install-xfce AND install-mullvad`" {
+    files "/etc/skel/.local/share/xfce4/helpers/mullvad-flatpak.desktop"
+    first-login-commands \
+        #"if [[ -f /var/lib/flatpak/exports/share/applications/net.mullvad.MullvadBrowser.desktop ]]; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=net.mullvad.MullvadBrowser;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^WebBrowser=.*|WebBrowser=mullvad-flatpak|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+// === related to terminal-emulator.kdl ===
+
+// XFCE fallback for the foot-Wayland-only case. This is a regular
+// dependent setting that fires only when foot is the primary terminal
+// and XFCE is also installed. Writes to xfce-xdg-terminals.list only;
+// xdg-terminals.list still points at footclient for Wayland sessions.
+- name="fallback-alacritty-for-xfce" \
+  default-value="`install-foot AND install-xfce`" {
+    arch-packages "alacritty"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
+  }
+
+- name="install-xfce-alacritty" default-value="`fallback-alacritty-for-xfce OR (install-xfce AND install-alacritty)`" {
+    first-login-commands \
+        #"if command -v alacritty &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=Alacritty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=alacritty|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-kitty" default-value="`install-xfce AND install-kitty`" {
+    first-login-commands \
+        #"if command -v kitty &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=kitty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=kitty|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
+
+- name="install-xfce-ghostty" default-value="`install-xfce AND install-ghostty`" {
+    first-login-commands \
+        #"if command -v ghostty &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=com.mitchellh.ghostty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=ghostty|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"fi"#
+  }
