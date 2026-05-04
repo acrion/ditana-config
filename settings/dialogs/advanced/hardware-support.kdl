@@ -117,12 +117,12 @@ Please note that although the actual package is licensed under the FOSS GPL2, it
     root-script #"echo "Installing VirtualBox guest additions...""# \
     "mkdir -p /tmp/virtualbox-guest" \
     "mount -o loop /usr/lib/virtualbox/additions/VBoxGuestAdditions.iso /tmp/virtualbox-guest/" \
-    "pushd /tmp/virtualbox-guest/" \
+    "pushd /tmp/virtualbox-guest/ || exit" \
     "./VBoxLinuxAdditions.run" \
     "`USER_NAME={Settings.instance.get('user-name')}`" \
     #"usermod -aG vboxsf "$USER_NAME""# \
     #"echo "VirtualBox guest additions installed successfully.""# \
-    "popd" \
+    "popd || exit" \
     "umount /tmp/virtualbox-guest/" \
     "rmdir /tmp/virtualbox-guest" \
     #"echo "Finished installing VirtualBox guest additions.""#

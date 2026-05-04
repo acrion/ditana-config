@@ -34,8 +34,9 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   default-value="`profile-developer`" {
     arch-packages ""
     chroot-script "`LOWERCASE_LOCALE={Settings.instance.get('locale').lc}`" \
-                  #"if [ "$LOWERCASE_LOCALE" != "en_us" ]; then echo -e "\033[32m--- Installing hunspell-en_us for English system output ---\033[0m"; runuser -u builduser -- pikaur -S hunspell-en_us --noconfirm || true; fi"#
+                  #"if [[ "$LOWERCASE_LOCALE" != "en_us" ]]; then echo -e "\033[32m--- Installing hunspell-en_us for English system output ---\033[0m"; runuser -u builduser -- pikaur -S hunspell-en_us --noconfirm || true; fi"#
   }
+
 - name="configure-git" \
   dialog-name="Development Tools and Libraries" \
   short-description="Configure Git with useful global settings" \
@@ -51,6 +52,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "git config --global protocol.file.allow always" \
         "git config --global push.autoSetupRemote true"
   }
+
 - name="install-vscode" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Visual Studio Code (Open Source build)" \
@@ -61,7 +63,11 @@ This standardized approach ensures uniform behavior across various C and C++ lib
     arch-packages "code" \
                   "code-marketplace"
     files "/etc/skel/.config/Code - OSS/User/settings.json"
+    mime-defaults {
+        - "code-oss.desktop" "text/plain" "text/x-readme" "text/x-install" "text/x-log" "text/x-changelog" "text/x-authors" "text/x-makefile" "text/x-cmake" "text/x-meson"
+    }
   }
+
 - name="install-zed" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install the Zed code editor" \
@@ -72,7 +78,11 @@ This standardized approach ensures uniform behavior across various C and C++ lib
     arch-packages "zed" \
                   "eslint" \ // optional dependency of zed
                   "org.freedesktop.secrets" // optional dependency of zed
+    mime-defaults {
+        - "dev.zed.Zed.desktop" "text/plain" "text/x-readme" "text/x-install" "text/x-log" "text/x-changelog" "text/x-authors" "text/x-makefile" "text/x-cmake" "text/x-meson"
+    }
   }
+
 - name="install-diffuse" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Diffuse and configure as git diff/merge tool" \
@@ -85,7 +95,11 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "if command -v diffuse &> /dev/null; then" \
         "    export DIFFPROG=diffuse" \
         "fi"
+    mime-defaults {
+        - "diffuse.desktop" "text/x-patch" "text/x-diff"
+    }
   }
+
 - name="install-meld" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Meld and configure as git diff/merge tool" \
@@ -94,7 +108,11 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   available="`install-desktop-environment`" \
   default-value=#false {
     arch-packages "meld"
+    mime-defaults {
+        - "org.gnome.meld.desktop" "text/x-patch" "text/x-diff"
+    }
   }
+
 - name="configure-diffuse-only" \
   default-value="`install-git AND install-diffuse AND NOT install-meld`" {
     first-login-commands \
@@ -102,6 +120,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "git config --global diff.tool diffuse" \
         "git config --global difftool.prompt false"
   }
+
 - name="configure-meld-only" \
   default-value="`install-git AND install-meld AND NOT install-diffuse`" {
     first-login-commands \
@@ -111,6 +130,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "git config --global mergetool.hideResolved true" \
         "git config --global mergetool.meld.useAutoMerge true"
   }
+
 - name="configure-meld-and-diffuse" \
   default-value="`install-git AND install-meld AND install-diffuse`" {
     first-login-commands \
@@ -120,6 +140,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
         "git config --global mergetool.hideResolved true" \
         "git config --global mergetool.meld.useAutoMerge true"
   }
+
 - name="install-java-jdk" \
   dialog-name="Development Tools and Libraries" \
   short-description="Java development kit" \
@@ -130,6 +151,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "java-runtime-common"
     files "/etc/profile.d/ditana-java.sh"
   }
+
 - name="install-general-dev" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install general development packages" \
@@ -156,6 +178,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "gopls" \
                   "taplo-cli" // toml
   }
+
 - name="install-pacman-additional-tools" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Tools for Arch package maintainers" \
@@ -171,6 +194,7 @@ Install Tools for Arch package maintainers:
                   "devtools" \ // optional dependency of pikaur
                   "perl-locale-gettext" // translation support in makepkg-template
   }
+
 - name="install-python-dev" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Python development packages" \
@@ -185,6 +209,7 @@ Install Tools for Arch package maintainers:
                   "pyright" \
                   "python-lsp-server" // language server, used e.g. by fresh
   }
+
 - name="install-rust-dev" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Rust toolchain via rustup" \
@@ -193,6 +218,7 @@ Install Tools for Arch package maintainers:
   default-value=#false {
     arch-packages "rustup" // also provides the language server, used e.g. by fresh
   }
+
 - name="install-cpp-dev" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install C++ development packages" \
@@ -211,6 +237,7 @@ Install Tools for Arch package maintainers:
                   "libtool" \
                   "pkgconf"
   }
+
 - name="install-cpu-parallel-dev" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install CPU Parallel Programming Frameworks" \
@@ -232,6 +259,7 @@ Install CPU Parallel Programming Frameworks:
                   "intel-oneapi-mkl" \
                   "ispc"
   }
+
 - name="install-qt5" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Qt5 development libraries" \

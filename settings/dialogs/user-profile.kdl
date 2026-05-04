@@ -43,7 +43,7 @@ Additional editor tooling is preinstalled and several settings useful for debugg
   spdx-identifiers="" \
   default-value=#false {
     arch-packages ""
-}
+  }
 
 - name="profile-server" \
   dialog-name="User Profile" \
@@ -58,7 +58,7 @@ Ditana intentionally does not preinstall any specific server software here (no n
   spdx-identifiers="" \
   default-value=#false {
     arch-packages ""
-}
+  }
 
 - name="profile-quick" \
   dialog-name="User Profile" \
@@ -73,4 +73,4 @@ Note: this profile optimises install duration, not the resulting system. The def
   spdx-identifiers="" \
   default-value=#false {
     arch-packages ""
-}
+  }

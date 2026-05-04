@@ -85,6 +85,9 @@
     chroot-script "mkdir -p /etc/xdg" \
                   "echo Alacritty.desktop >/etc/xdg/xdg-terminals.list" \
                   "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
+    mime-defaults {
+        - "Alacritty.desktop" "x-scheme-handler/terminal"
+    }
   }
 
 - name="install-kitty" \
@@ -106,6 +109,9 @@
                   "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
                   "mkdir -p /etc/environment.d" \
                   "echo TERMINAL=kitty >> /etc/environment.d/set-terminal.conf"
+    mime-defaults {
+        - "kitty.desktop" "x-scheme-handler/terminal"
+    }
   }
 
 - name="install-ghostty" \
@@ -124,6 +130,9 @@
                   "echo com.mitchellh.ghostty.desktop >/etc/xdg/xfce-xdg-terminals.list" \
                   "mkdir -p /etc/environment.d" \
                   "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
+    mime-defaults {
+        - "com.mitchellh.ghostty.desktop" "x-scheme-handler/terminal"
+    }
   }
 
 - name="install-no-terminal" \

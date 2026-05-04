@@ -5,6 +5,7 @@
   long-description="glibc Default Allocator: The standard memory allocator provided by the GNU C Library. Well-tested and compatible with all software. While it does not offer the performance benefits of mimalloc or the security hardening of hardened_malloc, it is the most robust and universally compatible choice." \
   spdx-identifiers="LGPL-2.1-or-later" \
   default-value=#true
+
 - name="allocator-mimalloc" \
   dialog-name="System Allocator" \
   short-description="mimalloc" \
@@ -14,6 +15,7 @@
     arch-packages "mimalloc"
     chroot-script "echo /usr/lib/libmimalloc.so > /etc/ld.so.preload"
   }
+
 - name="allocator-hardened" \
   dialog-name="System Allocator" \
   short-description="hardened_malloc (Full)" \
@@ -24,6 +26,7 @@
     arch-packages "hardened_malloc"
     chroot-script "echo /usr/lib/libhardened_malloc.so > /etc/ld.so.preload"
   }
+
 - name="allocator-hardened-light" \
   dialog-name="System Allocator" \
   short-description="hardened_malloc (Light)" \

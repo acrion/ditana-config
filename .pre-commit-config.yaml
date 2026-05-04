@@ -44,3 +44,9 @@ repos:
           ' --
         pass_filenames: false
         always_run: true
+      - id: validate-logic-and-scripts
+        name: Validate config logic, file references, and shell scripts
+        language: python
+        entry: python validate-logic.py
+        pass_filenames: false
+        always_run: true

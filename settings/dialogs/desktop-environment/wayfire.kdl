@@ -26,7 +26,7 @@
     \ // therefore patch the [input] section of wayfire.ini.
     early-chroot-script \
         #"sed -i "s|^xkb_layout[[:space:]]*=.*|xkb_layout = ${KEYMAP_LAYOUT}|" /etc/skel/.config/wayfire.ini"# \
-        #"if [ -n "${KEYMAP_VARIANT}" ]; then"# \
+        #"if [[ -n "${KEYMAP_VARIANT}" ]]; then"# \
         #"    sed -i "s|^xkb_variant[[:space:]]*=.*|xkb_variant = ${KEYMAP_VARIANT}|" /etc/skel/.config/wayfire.ini"# \
         "fi"
     autostart {

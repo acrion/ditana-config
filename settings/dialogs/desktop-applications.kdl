@@ -10,13 +10,17 @@
     chroot-script "`MAIN_LOCALE={Settings.instance.get('main-locale')}`" \
                   #"BETTERBIRD="betterbird-$MAIN_LOCALE-bin""# \
                   #"if ! is_package_available "$BETTERBIRD"; then"# \
-                  #"    if [ "$MAIN_LOCALE" != "en" ]; then"# \
+                  #"    if [[ "$MAIN_LOCALE" != "en" ]]; then"# \
                   #"        echo -e "\033[33m--- Unable to localize Betterbird for $MAIN_LOCALE ---\033[0m""# \
                   "    fi" \
                   #"    BETTERBIRD="betterbird-bin""# \
                   "fi" #"echo -e "\033[32m--- Installing $BETTERBIRD ---\033[0m""# \
                   #"runuser -u builduser -- pikaur -S "$BETTERBIRD" --noconfirm || true"#
+    mime-defaults {
+        - "betterbird.desktop" "message/rfc822" "x-scheme-handler/mailto"
+    }
   }
+
 - name="install-backintime" \
   dialog-name="Desktop Applications" \
   short-description="Install Back In Time" \
@@ -26,6 +30,7 @@
   default-value="`install-desktop-environment`" {
     arch-packages "backintime"
   }
+
 - name="install-pdfarranger" \
   dialog-name="Desktop Applications" \
   short-description="Install PDF Arranger" \
@@ -34,7 +39,11 @@
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment`" {
     arch-packages "pdfarranger"
+    mime-defaults {
+        - "com.github.jeromerobert.pdfarranger.desktop" "application/pdf"
+    }
   }
+
 - name="install-xournalpp" \
   dialog-name="Desktop Applications" \
   short-description="Install Xournal++" \
@@ -43,7 +52,11 @@
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment`" {
     arch-packages "xournalpp"
+    mime-defaults {
+        - "com.github.xournalpp.xournalpp.desktop" "application/pdf" "application/x-xoj" "application/x-xopt"
+    }
   }
+
 - name="install-font-manager" \
   dialog-name="Desktop Applications" \
   short-description="Install Font Manager" \
@@ -53,6 +66,7 @@
   default-value="`install-desktop-environment`" {
     arch-packages "font-manager"
   }
+
 - name="install-bitwarden" \
   dialog-name="Desktop Applications" \
   short-description="Install Bitwarden" \
@@ -62,6 +76,7 @@
   default-value=#false {
     arch-packages "bitwarden"
   }
+
 - name="install-rustdesk" \
   dialog-name="Desktop Applications" \
   short-description="Install RustDesk" \
@@ -70,7 +85,11 @@
   available="`install-desktop-environment`" \
   default-value=#false {
     flatpak-packages "com.rustdesk.RustDesk"
+    mime-defaults {
+        - "com.rustdesk.RustDesk.desktop" "x-scheme-handler/rustdesk"
+    }
   }
+
 - name="install-fluffychat" \
   dialog-name="Desktop Applications" \
   short-description="Install FluffyChat" \
@@ -79,7 +98,11 @@
   available="`install-desktop-environment`" \
   default-value=#false {
     arch-packages "fluffychat"
+    mime-defaults {
+        - "im.fluffychat.Fluffychat.desktop" "x-scheme-handler/matrix"
+    }
   }
+
 - name="install-variety" \
   dialog-name="Desktop Applications" \
   short-description="Install Variety" \

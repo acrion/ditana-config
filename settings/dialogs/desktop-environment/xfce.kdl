@@ -87,8 +87,8 @@
           "/etc/skel/.config/systemd/user-environment-generators/50-qt-hidpi-xfce-ditana"
     early-chroot-script \
       \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
-      "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
-      "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"
+      #"sed -i 's|@@KEYBOARD_DELAY@@|'"$KEYBOARD_DELAY"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"# \
+      #"sed -i 's|@@KEYBOARD_RATE@@|'"$KEYBOARD_RATE"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"#
     chroot-script "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry
                   "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
     autostart {
@@ -159,7 +159,7 @@
     files "/etc/skel/.local/share/xfce4/helpers/librewolf-flatpak.desktop"
     first-login-commands \
         #"if [[ -f /var/lib/flatpak/exports/share/applications/io.gitlab.librewolf-community.desktop ]]; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=io.gitlab.librewolf-community;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=io.gitlab.librewolf-community;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^WebBrowser=.*|WebBrowser=librewolf-flatpak|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
@@ -167,7 +167,7 @@
 - name="install-xfce-firefox" default-value="`install-xfce AND install-firefox`" {
     first-login-commands \
         #"if command -v firefox &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=firefox;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=firefox;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^WebBrowser=.*|WebBrowser=firefox|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
@@ -175,7 +175,7 @@
 - name="install-xfce-brave" default-value="`install-xfce AND install-brave`" {
     first-login-commands \
         #"if command -v brave &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=brave;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=brave;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^WebBrowser=.*|WebBrowser=brave|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
@@ -184,7 +184,7 @@
     files "/etc/skel/.local/share/xfce4/helpers/mullvad-flatpak.desktop"
     first-login-commands \
         #"if [[ -f /var/lib/flatpak/exports/share/applications/net.mullvad.MullvadBrowser.desktop ]]; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=net.mullvad.MullvadBrowser;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=net.mullvad.MullvadBrowser;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^WebBrowser=.*|WebBrowser=mullvad-flatpak|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
@@ -205,7 +205,7 @@
 - name="install-xfce-alacritty" default-value="`fallback-alacritty-for-xfce OR (install-xfce AND install-alacritty)`" {
     first-login-commands \
         #"if command -v alacritty &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=Alacritty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=Alacritty;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=alacritty|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
@@ -213,15 +213,16 @@
 - name="install-xfce-kitty" default-value="`install-xfce AND install-kitty`" {
     first-login-commands \
         #"if command -v kitty &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=kitty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=kitty;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=kitty|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
 
 - name="install-xfce-ghostty" default-value="`install-xfce AND install-ghostty`" {
+    files "/etc/skel/.local/share/xfce4/helpers/ghostty.desktop"
     first-login-commands \
         #"if command -v ghostty &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=com.mitchellh.ghostty;/" "$HOME/.config/xfce4/panel/docklike-2.rc"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=com.mitchellh.ghostty;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"    sed -i "s|^TerminalEmulator=.*|TerminalEmulator=ghostty|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }

@@ -33,6 +33,7 @@ Amber Rounded Icons: The official Ditana look. Features a warm amber accent colo
                           "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
                           "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
+
 - name="blue-vibrant-icons" \
   dialog-name="Desktop Appearance" \
   short-description="Indigo Blue with vibrant icons" \
@@ -49,7 +50,6 @@ Indigo Blue Vibrant Icons: A calm indigo blue accent paired with an energetic, s
                           "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
                           "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
-
 
 - name="amber-flat-icons" \
   dialog-name="Desktop Appearance" \

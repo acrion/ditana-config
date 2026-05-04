@@ -14,7 +14,7 @@
     mime-defaults {
         - "io.gitlab.librewolf-community.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
     }
-}
+  }
 
 - name="install-firefox" \
   dialog-name="Browser" \
@@ -29,7 +29,7 @@
     mime-defaults {
         - "firefox.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
     }
-}
+  }
 
 - name="install-brave" \
   dialog-name="Browser" \
@@ -53,7 +53,7 @@
   available="`install-desktop-environment`" \
   default-value=#false {
     flatpak-packages "net.mullvad.MullvadBrowser"
-}
+  }
 
 - name="install-no-browser" \
   dialog-name="Browser" \
@@ -62,4 +62,4 @@
   spdx-identifiers="" \
   default-value="`NOT install-desktop-environment`" {
     arch-packages ""
-}
+  }

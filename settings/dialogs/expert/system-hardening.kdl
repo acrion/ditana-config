@@ -11,12 +11,14 @@
   default-value="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" {
     chroot-script "echo 'kernel.unprivileged_userns_clone=0 # Disable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="enable-unprivileged-namespaces" \
   \ // Forces kernel.unprivileged_userns_clone=1 on hardened kernels when the user explicitly disables kernel-option-duurn
   \ // (i.e. overrules Ditana’s security default). This is the only case where userns=1 is set.
   default-value="`(install-hardened-stable-kernel OR install-hardened-lts-kernel) AND NOT kernel-option-duurn`" {
     chroot-script "echo 'kernel.unprivileged_userns_clone=1 # Enable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-kexec-disabled" \
   dialog-name="System Hardening" \
   short-description="Disable kexec (kernel.kexec_load_disabled=1)" \
@@ -26,6 +28,7 @@
   default-value=#true {
     chroot-script "echo 'kernel.kexec_load_disabled=1 # disable kexec' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-bpf-disabled" \
   dialog-name="System Hardening" \
   short-description="Disable unprivileged BPF (kernel.unprivileged_bpf_disabled=1)" \
@@ -34,6 +37,7 @@
   default-value=#true {
     chroot-script "echo 'kernel.unprivileged_bpf_disabled=1 # restrict BPF to root' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-ptrace-restrict" \
   dialog-name="System Hardening" \
   short-description="Restrict ptrace to root (kernel.yama.ptrace_scope=2)" \
@@ -43,6 +47,7 @@
   default-value="`NOT profile-developer`" {
     chroot-script "echo 'kernel.yama.ptrace_scope=2 # restrict ptrace to root' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-kptr-restrict" \
   dialog-name="System Hardening" \
   short-description="Hide kernel pointers (kernel.kptr_restrict=2)" \
@@ -51,6 +56,7 @@
   default-value=#true {
     chroot-script "echo 'kernel.kptr_restrict=2 # hide kernel pointers' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-dmesg-restrict" \
   dialog-name="System Hardening" \
   short-description="Restrict kernel log access to root (kernel.dmesg_restrict=1)" \
@@ -59,6 +65,7 @@
   default-value=#true {
     chroot-script "echo 'kernel.dmesg_restrict=1 # restrict dmesg to root' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-fs-protection" \
   dialog-name="System Hardening" \
   short-description="Protect FIFOs and regular files in sticky directories (fs.protected_fifos/regular=2)" \
@@ -67,6 +74,7 @@
   default-value=#true {
     chroot-script "echo 'fs.protected_fifos=2 # protect FIFOs in sticky dirs' >> /etc/sysctl.d/ditana.conf" "echo 'fs.protected_regular=2 # protect regular files in sticky dirs' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-net-hardening" \
   dialog-name="System Hardening" \
   short-description="Harden network stack (syncookies, no redirects, no source routing, rp_filter)" \
@@ -84,6 +92,7 @@ These settings are broadly recommended and unlikely to cause compatibility issue
   default-value=#true {
     chroot-script "echo 'net.ipv4.tcp_syncookies=1 # SYN flood protection' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.accept_redirects=0 # reject ICMP redirects' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv6.conf.all.accept_redirects=0 # reject ICMP redirects (IPv6)' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.accept_source_route=0 # disable source routing' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.rp_filter=1 # reverse-path filtering' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-perf1" \
     dialog-name="System Hardening" \
     short-description="Allow normal users to access performance profiling tools (perf_event_paranoid=1)" \
@@ -93,6 +102,7 @@ These settings are broadly recommended and unlikely to cause compatibility issue
     \ // https://docs.kernel.org/admin-guide/sysctl/kernel.html#perf-event-paranoid
     chroot-script "echo 'kernel.perf_event_paranoid=1 # Allow normal users to access performance profiling tools' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="sysctl-ptrace-unrestricted" \
   dialog-name="System Hardening" \
   short-description="Unrestrict ptrace for developers (kernel.yama.ptrace_scope=0)" \

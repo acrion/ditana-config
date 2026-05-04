@@ -15,6 +15,7 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
   default-value="`avx2-available AND total-ram-gib>=12 AND NOT profile-quick`" {
     arch-packages "ditana-assistant"
   }
+
 - name="install-ollama" \
   dialog-name="AI Tools and Libraries" \
   short-description="Install Ollama Local AI" \
@@ -27,21 +28,24 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
                   "runuser -u ollama -- env HOME=/var/lib/ollama OLLAMA_MODELS=/var/lib/ollama ollama serve > /dev/null 2>&1 &" \
                   "OLLAMA_PID=$!" \
                   #"echo "Waiting for Ollama to start...""# \
-                  "for i in $(seq 1 30); do ollama list > /dev/null 2>&1 && break; sleep 1; done" \
+                  "for _ in $(seq 1 30); do ollama list > /dev/null 2>&1 && break; sleep 1; done" \
                   #"echo -e "\033[32m--- Pulling phi4-mini model ---\033[0m""# \
                   "ollama pull phi4-mini" \
                   "kill $OLLAMA_PID 2>/dev/null || true" \
                   "wait $OLLAMA_PID 2>/dev/null || true"
     files "/etc/systemd/system/ollama.service.d/override.conf"
   }
+
 - name="install-ollama-cuda" \
   default-value="`install-ollama AND nvidia-pci-id AND (install-nvidia-opensource OR install-nvidia-proprietary)`" {
     arch-packages "ollama-cuda"
   }
+
 - name="install-ollama-rocm" \
   default-value="`install-ollama AND amd-gpu-pci-id`" {
     arch-packages "ollama-rocm"
   }
+
 - name="install-logseq" \
   dialog-name="AI Tools and Libraries" \
   short-description="Install Logseq" \
@@ -51,9 +55,9 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
   default-value="`install-desktop-environment AND avx2-available AND total-ram-gib>=12 AND NOT profile-quick`" {
     arch-packages "logseq-desktop-bin"
     early-chroot-script "pacman -S --noconfirm --needed npm git" \
-                        "cd /tmp" \
+                        "cd /tmp || exit" \
                         "git clone --branch v1.14.2 --depth 1 https://github.com/briansunter/logseq-plugin-gpt3-openai.git" \
-                        "cd logseq-plugin-gpt3-openai" \
+                        "cd logseq-plugin-gpt3-openai || exit" \
                         #"sed -i 's/return response\.data\[0\]\.url;/return response.data![0].url;/' src/lib/openai.ts"# \
                         #"sed -i 's/engine.startsWith("gpt-3.5") || engine.startsWith("gpt-4")/true/' src/lib/openai.ts"# \
                         "npm install" \
@@ -66,6 +70,7 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
     files "/etc/skel/.logseq/settings/logseq-plugin-gpt3-openai.json" \
           "/etc/skel/.logseq/config/plugins.edn"
   }
+
 - name="install-gpu-libraries" \
   dialog-name="AI Tools and Libraries" \
   short-description="Install GPU libraries" \
@@ -98,6 +103,7 @@ For NVIDIA GPU users, the following packages will be installed in addition:
                   "opencl-clhpp" \
                   "onednn"
   }
+
 - name="install-gpu-libraries-nvidia" \
   default-value="`install-gpu-libraries AND nvidia-pci-id`" {
     arch-packages "nccl"

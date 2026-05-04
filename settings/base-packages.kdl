@@ -3,9 +3,11 @@
 - name="intel-microcode" default-value="`intel-cpu`" {
     arch-packages "intel-ucode"
   }
+
 - name="amd-microcode" default-value="`amd-cpu`" {
     arch-packages "amd-ucode"
   }
+
 - name="firmware" default-value=#true {
     // should match those packages of `packages.x86_64` that install into `/usr/lib/firmware`, with the exception of amd-ucode, intel-ucode and b43-firmware
     arch-packages "linux-atm" \
@@ -14,19 +16,24 @@
                   "sof-firmware" \
                   "wireless-regdb"
   }
+
 - name="b43-firmware" default-value="`b43-required`" {
     // we separate this from the rest of the firmware packages and install it only if it is required, because it requires a specific kernel
     arch-packages "b43-firmware"
   }
+
 - name="install-syslinux" default-value="`zfs-filesystem AND NOT uefi`" {
     arch-packages "syslinux"
   }
+
 - name="install-grub" default-value="`NOT zfs-filesystem`" {
     arch-packages "grub"
   }
+
 - name="install-efibootmgr" default-value="`uefi`" {
     arch-packages "efibootmgr"
   }
+
 - name="ditana-base" default-value=#true {
     arch-packages "base" \              // Minimal package set to define a basic Arch Linux installation.
                   "base-devel" \        // Provides various essential tools like sudo. Optional dependency of pacman, required to use makepkg.
@@ -64,18 +71,20 @@
     chroot-script "mkdir -p /etc/environment.d" \
                   "echo COLORTERM=truecolor >>/etc/environment.d/ditana-set-colorterm.conf" \
                   #"echo DEBUGINFOD_URLS="https://debuginfod.archlinux.org" >>/etc/environment.d/ditana-set-arch-debuginfo.conf"# \
-                  "sed -i 's|@@KEYBOARD_DELAY@@|'$KEYBOARD_DELAY'|' /etc/systemd/system/ditana_kbdrate.service" \
-                  "sed -i 's|@@KEYBOARD_RATE@@|'$KEYBOARD_RATE'|' /etc/systemd/system/ditana_kbdrate.service" \
+                  #"sed -i 's|@@KEYBOARD_DELAY@@|'"$KEYBOARD_DELAY"'|' /etc/systemd/system/ditana_kbdrate.service"# \
+                  #"sed -i 's|@@KEYBOARD_RATE@@|'"$KEYBOARD_RATE"'|' /etc/systemd/system/ditana_kbdrate.service"# \
                   "systemctl enable ditana_kbdrate.service"
   }
+
 - name="enable-paccache" default-value=#true {
     arch-packages "pacman-contrib"
     chroot-script "systemctl enable paccache.timer"
-}
+  }
+
 - name="flatpak" default-value=#true {
     // Ditana enables Flatpak support for software that meets these criteria:
     // (1) not available in the official Arch or Ditana repositories,
-    // (2) a local aurto build would be resource-intensive or unreliable, and
+    // (2) a local AUR build would be resource-intensive or unreliable, and
     // (3) the application benefits from sandboxing.
     //
     // The flathub remote is registered in chroot-install.sh (not here) because
@@ -89,10 +98,12 @@
           "/usr/lib/ditana/flatpak-finalize" \
           "/usr/lib/ditana/flatpak-show-progress"
     chroot-script "systemctl enable ditana-flatpak-finalize.service"
-}
+  }
+
 - name="ditana-mirrorlist" default-value="`release-version`" {
     arch-packages "ditana-mirrorlist"
   }
+
 - name="ditana-testing-mirrorlist" default-value="`NOT release-version`" {
     arch-packages "ditana-testing-mirrorlist"
   }

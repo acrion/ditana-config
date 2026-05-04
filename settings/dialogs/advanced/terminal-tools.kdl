@@ -15,6 +15,7 @@
                   #"`chsh -s "\$(which zsh)" {Settings.instance.get('user-name')}`"#
     files "/etc/skel/.zshrc"
   }
+
 - name="install-cron" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install cron and activate service" \
@@ -24,10 +25,12 @@
     arch-packages "cronie"
     chroot-script "systemctl enable cronie"
   }
+
 - name="install-git" \
   default-value="`install-terminal-utilities" {
     arch-packages "git-lfs"
   }
+
 - name="install-terminal-utilities" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install essential terminal utilities like grep, rsync, bc..." \
@@ -71,11 +74,13 @@
     files "/etc/skel/.config/bat/config"
     chroot-script "`su - {Settings.instance.get('user-name')} -c 'git lfs install'`"
   }
+
 - name="install-ripgrep" \
   default-value="`install-terminal-utilities`" {
     arch-packages "ripgrep"
     files "/etc/skel/.config/ripgrep/ripgreprc"
   }
+
 - name="install-zellij" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install zellij terminal multiplexer" \
@@ -84,6 +89,7 @@
   default-value="`NOT profile-windows`" {
       arch-packages "zellij"
   }
+
 - name="install-fresh" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install fresh editor and set it as default" \
@@ -112,7 +118,11 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
                   "VISUAL=/usr/lib/ditana/editor" \
                   "DITANA_ENV"
     arch-packages "fresh-editor-bin"
+    mime-defaults {
+        - "fresh.desktop" "text/plain" "text/x-readme" "text/x-install" "text/x-log" "text/x-changelog" "text/x-authors" "text/x-makefile" "text/x-cmake" "text/x-meson"
+    }
   }
+
 - name="install-yazi" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install yazi terminal file manager including optional packages" \
@@ -124,7 +134,11 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
                   "imagemagick" \ // for image and font preview
                   "poppler" \ // for PDF preview
                   "resvg" // for SVG preview
+    mime-defaults {
+        - "yazi.desktop" "inode/directory"
+    }
   }
+
 - name="install-archivers" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install various command line archivers like zip, unzip, 7z..." \

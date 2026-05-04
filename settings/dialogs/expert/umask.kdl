@@ -6,12 +6,14 @@
   spdx-identifiers="" \
   required-by-chroot=#true \
   default-value=#true
+
 - name="umask-077" \
   dialog-name="Umask Configuration" \
   short-description="Private (077)" \
   long-description="Private Umask (077): New files are created with permissions 600 (owner: read/write only) and new directories with 700 (owner: full access only). No other user, including group members, can access newly created files. This provides maximum privacy but may cause issues with services or applications that expect group-readable files." \
   spdx-identifiers="" \
   required-by-chroot=#true default-value=#false
+
 - name="umask-022" \
   dialog-name="Umask Configuration" \
   short-description="Permissive (022) — Linux Default" \

@@ -13,7 +13,7 @@
     chroot-script "`MAIN_LOCALE={Settings.instance.get('main-locale')}`" \
                   #"LIBREOFFICE="libreoffice-still-$MAIN_LOCALE""# \
                   #"if ! is_package_available "$LIBREOFFICE"; then"# \
-                  #"    if [ "$MAIN_LOCALE" != "en" ]; then"# \
+                  #"    if [[ "$MAIN_LOCALE" != "en" ]]; then"# \
                   #"        echo -e "\033[33m--- Unable to localize Libre Office for $MAIN_LOCALE ---\033[0m""# \
                   "    fi" \
                   #"    LIBREOFFICE="libreoffice-still""# \

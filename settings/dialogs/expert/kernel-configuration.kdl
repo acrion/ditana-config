@@ -7,6 +7,7 @@
   default-value=#true {
     chroot-script "echo 'kernel.sysrq=1 # Enable Magic SysRq Keys' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-vfsca" \
   dialog-name="General Kernel Configuration" \
   short-description="Reduce background reclaiming of file system cache (vm.vfs_cache_pressure 100 -> 50)" \
@@ -15,6 +16,7 @@
   default-value="`total-ram-gib >= 24`" {
     chroot-script "echo 'vm.vfs_cache_pressure=50 # Reduce background reclaiming of file system cache' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-compa" \
   dialog-name="General Kernel Configuration" \
   short-description="Minimize background memory compaction (vm.compaction_proactiveness 20/100 → 1/100)" \
@@ -23,18 +25,21 @@
   default-value="`total-ram-gib >= 24`" {
     chroot-script "echo 'vm.compaction_proactiveness=1 # Minimize background memory compaction' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-swapp" \
   dialog-name="General Kernel Configuration" \
   short-description="Optimize swap file and ZRAM usage (vm.swappiness)" \
   long-description="Optimize swap file and ZRAM usage: If you have left ZRAM enabled (default), this setting changes swappiness from the default of 60 to the recommended value of 180. If you have ZRAM disabled, this setting changes swappiness to 1, which conserves RAM for active applications to improve system responsiveness, but leaves less RAM available for kernel operations such as caching file system metadata and managing network buffers." \
   spdx-identifiers="GPL-2.0-only" \
   default-value="`install-zram OR total-ram-gib >= 24`"
+
 - name="kernel-option-zswap" \
   dialog-name="General Kernel Configuration" \
   short-description="Disable Zswap Cache Layer (zswap.enabled=0)" \
   long-description="Disable Zswap Cache Layer: Disables Zswap’s intermediary cache, allowing direct use of swap devices like ZRAM." \
   spdx-identifiers="GPL-2.0-only" \
   default-value="`install-zram`"
+
 - name="kernel-option-pagec" \
   dialog-name="General Kernel Configuration" \
   short-description="Disable Swap Readahead (vm.page-cluster 3 → 0)" \
@@ -44,6 +49,7 @@
     \ // # https://wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
     chroot-script "echo 'vm.page-cluster=0 # Disable Swap Readahead - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-wmboo" \
   dialog-name="General Kernel Configuration" \
   short-description="Disable Extra Memory Reclaim (vm.watermark_boost_factor 15000 → 0)" \
@@ -53,6 +59,7 @@
     \ // https: //wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
     chroot-script "echo 'vm.watermark_boost_factor=0 # Disable Extra Memory Reclaim - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-wmsca" \
   dialog-name="General Kernel Configuration" \
   short-description="Maintain free memory (vm.watermark_scale_factor 10/3000 → 125/3000)" \
@@ -62,18 +69,21 @@
     \ // https://wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
     chroot-script "echo 'vm.watermark_scale_factor=125 # Maintain free memory - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
   }
+
 - name="kernel-option-fwdpe" \
   dialog-name="General Kernel Configuration" \
   short-description="Order device init & power tasks (fw_devlink=permissive)" \
   long-description="Order Device Initialization & Power Tasks: Facilitates the correct sequence of device initialization and power management tasks based on firmware information. This ensures a stable system operation by prioritizing the initialization of supplier devices before consumers and managing power states effectively during suspend/resume cycles." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true
+
 - name="kernel-option-inita" \
   dialog-name="General Kernel Configuration" \
   short-description="Automatically fill allocated memory with 0 (init_on_alloc=1)" \
   long-description="Fill Allocated Memory with 0: Increases security by zeroing out newly allocated memory." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true
+
 - name="kernel-option-initf" \
   dialog-name="General Kernel Configuration" \
   short-description="Automatically fill deallocated memory with 0 (init_on_free=1)" \

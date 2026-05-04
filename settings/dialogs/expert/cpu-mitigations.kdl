@@ -8,6 +8,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-spectre-v2-vulnerable`"
+
 - name="kernel-option-l1tff" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce L1 Terminal Fault Mitigation (l1tf=full,force)" \
@@ -15,6 +16,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-l1tf-vulnerable`"
+
 - name="kernel-option-mdsfu" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce MDS Mitigation (mds=full,nosmt)" \
@@ -22,6 +24,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-mds-vulnerable`"
+
 - name="kernel-option-tsxaa" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce TSX Async Abort Mitigation (tsx_async_abort=full,nosmt)" \
@@ -29,6 +32,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-taa-vulnerable`"
+
 - name="kernel-option-meltd" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce Meltdown Mitigation (l1d_flush=on)" \
@@ -36,6 +40,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-meltdown-vulnerable`"
+
 - name="kernel-option-mmios" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce MMIO Stale Data Mitigation (mmio_stale_data=full,nosmt)" \
@@ -43,6 +48,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-mmio-stale-data-vulnerable`"
+
 - name="kernel-option-retbl" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce Retbleed Mitigation (retbleed=auto,nosmt)" \
@@ -50,6 +56,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-retbleed-vulnerable`"
+
 - name="kernel-option-srsom" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce SRSO Mitigation (spec_rstack_overflow=ibpb spectre_v2-user=on)" \
@@ -57,6 +64,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-srso-vulnerable`"
+
 - name="kernel-option-gdsfo" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce Gather Data Sampling Mitigation (gather_data_sampling=force)" \
@@ -64,6 +72,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-gds-vulnerable`"
+
 - name="kernel-option-rfdso" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Enforce RFDS Mitigation (reg_file_data_sampling=on)" \
@@ -71,6 +80,7 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT kernel-option-mitof`" \
   default-value="`is-rfds-vulnerable`"
+
 // The following two are to switch off mitigations
 - name="kernel-option-ibtof" \
   dialog-name="CPU Vulnerability Mitigation Options" \
@@ -78,6 +88,7 @@
   long-description="Disable Mitigation for Intel Branch Target Injection: Disables the Intel BTI mitigation to increase system performance. Warning: This exposes the system to certain types of speculative execution attacks like Spectre." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#false
+
 - name="kernel-option-mitof" \
   dialog-name="CPU Vulnerability Mitigation Options" \
   short-description="Disable all Mitigations - Security Risk! (mitigations=off)" \
