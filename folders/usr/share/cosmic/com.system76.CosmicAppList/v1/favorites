@@ -1,7 +1,7 @@
 [
-    "firefox",
-    "com.system76.CosmicFiles",
-    "com.system76.CosmicTerm",
+    "@@COSMIC_BROWSER_ID@@",
+    "@@COSMIC_FILE_MANAGER_ID@@",
+    "@@COSMIC_TERMINAL_ID@@",
     "com.system76.CosmicStore",
     "com.system76.CosmicSettings",
 ]

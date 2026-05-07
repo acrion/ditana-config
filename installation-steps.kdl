@@ -85,12 +85,13 @@ For further information, please consult the following URLs:
         - name="Desktop Appearance" type="radiolist" instruction="""
 Choose your preferred visual style. This selection changes both the system-wide accent color (used for highlights) and the design of your desktop icons.
 """ help-intro="""
-This setting defines the overall look of your desktop. It applies the chosen accent color to menus, highlights, and selections across all applications. It also installs a matching set of icons (for folders, apps, and the panel). 
+This setting defines the overall look of your desktop. It applies the chosen accent color to menus, highlights, and selections across all applications. It also installs a matching set of icons (for folders, apps, and the panel).
 
 The dark base theme of Ditana remains the same for all options — only the colorful accents and icon shapes change to give your system a consistent, personalized look.
 """ help-note=""
 
         - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""
+        - name="File Manager" type="radiolist" instruction="Choose your default file manager:" help-intro="Pick the file manager that will handle inode/directory by default. The radiolist is mutually exclusive; if you want both managers, you can install the second later via pacman. On a combined XFCE + Wayland install, Thunar is auto-pulled alongside COSMIC Files so XFCE sessions retain their native file manager." help-note=""
         - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
         - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
         - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""

@@ -97,15 +97,6 @@
       files "/usr/local/bin/brave"
   }
 
-// === adapt pinned Cosmic panel apps to settings ===
-
-- name="adapted-pinned-cosmic-panel-apps" \
-  default-value="`install-cosmic`" {
-      files "/usr/share/cosmic/com.system76.CosmicAppList/v1/enable_drag_source" \
-            "/usr/share/cosmic/com.system76.CosmicAppList/v1/favorites" \
-            "/usr/share/cosmic/com.system76.CosmicAppList/v1/filter_top_levels"
-  }
-
 // === customize Cosmic panel ===
 
 - name="customize-cosmic-panel" \
@@ -157,3 +148,94 @@
         "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/spacing" \
         "/usr/share/cosmic/com.system76.CosmicPanel/v1/entries"
   }
+
+// === COSMIC AppList configuration ===
+//
+// The favorites list (the icons docked in the COSMIC panel) ships as
+// a template with placeholders for the user-chosen browser, terminal
+// and file manager. Each user choice has its own configure-cosmic-favorites-*
+// component below; they substitute the placeholders via sed at chroot
+// time. The radiolist semantics of the Browser, Terminal Emulator and
+// File Manager dialogs guarantee mutual exclusivity, so exactly one
+// substitution per placeholder fires. The "no-*" components delete the
+// corresponding line entirely.
+
+- name="install-cosmic-applist-config" \
+  default-value="`install-cosmic`" {
+    files "/usr/share/cosmic/com.system76.CosmicAppList/v1/enable_drag_source" \
+          "/usr/share/cosmic/com.system76.CosmicAppList/v1/favorites" \
+          "/usr/share/cosmic/com.system76.CosmicAppList/v1/filter_top_levels"
+}
+
+// --- Browser substitution ---
+- name="configure-cosmic-favorites-firefox" \
+  default-value="`install-cosmic AND install-firefox`" {
+    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|firefox|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-librewolf" \
+  default-value="`install-cosmic AND install-librewolf`" {
+    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|io.gitlab.librewolf-community|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-brave" \
+  default-value="`install-cosmic AND install-brave`" {
+    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|brave|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-mullvad" \
+  default-value="`install-cosmic AND install-mullvad`" {
+    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|net.mullvad.MullvadBrowser|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-no-browser" \
+  default-value="`install-cosmic AND install-no-browser`" {
+    chroot-script "sed -i '/@@COSMIC_BROWSER_ID@@/d' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+// --- Terminal substitution ---
+- name="configure-cosmic-favorites-cosmic-term" \
+  default-value="`install-cosmic AND install-cosmic-term`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|com.system76.CosmicTerm|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-foot" \
+  default-value="`install-cosmic AND install-foot`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|footclient|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-alacritty" \
+  default-value="`install-cosmic AND install-alacritty`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|Alacritty|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-kitty" \
+  default-value="`install-cosmic AND install-kitty`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|kitty|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-ghostty" \
+  default-value="`install-cosmic AND install-ghostty`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|com.mitchellh.ghostty|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-no-terminal" \
+  default-value="`install-cosmic AND install-no-terminal`" {
+    chroot-script "sed -i '/@@COSMIC_TERMINAL_ID@@/d' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+// --- File manager substitution ---
+- name="configure-cosmic-favorites-cosmic-files" \
+  default-value="`install-cosmic AND install-cosmic-files`" {
+    chroot-script "sed -i 's|@@COSMIC_FILE_MANAGER_ID@@|com.system76.CosmicFiles|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-thunar" \
+  default-value="`install-cosmic AND install-thunar`" {
+    chroot-script "sed -i 's|@@COSMIC_FILE_MANAGER_ID@@|thunar|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
+- name="configure-cosmic-favorites-no-file-manager" \
+  default-value="`install-cosmic AND install-no-file-manager`" {
+    chroot-script "sed -i '/@@COSMIC_FILE_MANAGER_ID@@/d' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}

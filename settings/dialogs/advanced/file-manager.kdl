@@ -1,0 +1,88 @@
+// Settings that correspond to the dialog "Configuration Categories" → "File Manager"
+//
+// File-manager radiolist. COSMIC Files is the modern Wayland-native
+// default for any Wayland compositor (Niri, Wayfire, COSMIC). Thunar
+// is the XFCE-traditional default and is auto-pulled as XFCE fallback
+// whenever COSMIC Files is the primary selection but XFCE is also
+// installed (see fallback-thunar-for-xfce further below; this is NOT
+// a radiolist entry).
+
+- name="install-cosmic-files" \
+  dialog-name="File Manager" \
+  short-description="COSMIC Files - Modern Wayland-native file manager" \
+  long-description="COSMIC Files: A modern Wayland-native file manager from System76. Lightweight, GTK-free, written in Rust on the iced toolkit. Works on any Wayland compositor (Niri, Wayfire, COSMIC). Default for all Wayland-based desktop choices in Ditana." \
+  spdx-identifiers="GPL-3.0-only" \
+  available="`install-wayland`" \
+  default-value="`install-wayland`" {
+    arch-packages "cosmic-files"
+    mime-defaults {
+        - "com.system76.CosmicFiles.desktop" "inode/directory"
+    }
+  }
+
+- name="install-thunar" \
+  dialog-name="File Manager" \
+  short-description="Thunar - XFCE's traditional file manager" \
+  long-description="Thunar: The traditional file manager for the XFCE desktop. Mature, fast, and feature-rich with archive integration, media tag support, and removable-volume management via thunar-volman. Default for XFCE-only installs; on combined XFCE + Wayland setups, Thunar is auto-installed alongside COSMIC Files so XFCE sessions retain their native file manager." \
+  spdx-identifiers="GPL-2.0-or-later" \
+  available="`install-desktop-environment`" \
+  default-value="`install-desktop-environment AND NOT install-wayland`" {
+    arch-packages "thunar" \
+                  "catfish" \
+                  "gvfs" \
+                  "thunar-archive-plugin" \
+                  "thunar-media-tags-plugin" \
+                  "thunar-volman" \
+                  "tumbler" \
+                  \ // === Tumbler thumbnailer plugin dependencies ===
+                  "libgepub" \
+                  "libopenraw" \
+                  "libgsf"
+    files \ // === Thunar custom actions ===
+          "/etc/skel/.config/Thunar/uca.xml" \
+          "/usr/lib/ditana/open-disk-manager" \
+          "/usr/lib/ditana/copy-path-to-clipboard"
+    mime-defaults {
+        - "thunar.desktop" "inode/directory"
+    }
+  }
+
+- name="install-no-file-manager" \
+  dialog-name="File Manager" \
+  short-description="None - Do not install a file manager" \
+  long-description="Skip file manager installation. Auto-selected for headless / server installs." \
+  spdx-identifiers="" \
+  default-value="`NOT install-desktop-environment`" {
+    arch-packages ""
+  }
+
+// XFCE fallback for the COSMIC Files-Wayland-only case. COSMIC Files
+// runs only on Wayland, so we install Thunar alongside whenever XFCE
+// is also present. Mirrors fallback-kitty-for-xfce in
+// settings/dialogs/desktop-environment/xfce.kdl.
+- name="fallback-thunar-for-xfce" \
+  default-value="`install-cosmic-files AND install-xfce`" {
+    arch-packages "thunar" \
+                  "catfish" \
+                  "gvfs" \
+                  "thunar-archive-plugin" \
+                  "thunar-media-tags-plugin" \
+                  "thunar-volman" \
+                  "tumbler" \
+                  "libgepub" \
+                  "libopenraw" \
+                  "libgsf"
+    files "/etc/skel/.config/Thunar/uca.xml" \
+          "/usr/lib/ditana/open-disk-manager" \
+          "/usr/lib/ditana/copy-path-to-clipboard"
+    \ // No mime-defaults: COSMIC Files remains the system-wide
+    \ // inode/directory handler. XFCE's helpers.rc redirects
+    \ // XFCE-internal "Open File Manager" actions to Thunar
+    \ // (see install-xfce-thunar in xfce.kdl).
+  }
+
+- name="install-ramdisk-thunar-bookmark" \
+  default-value="`(install-thunar OR fallback-thunar-for-xfce) AND install-ramdisk`" {
+    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
+          "/usr/share/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
+  }

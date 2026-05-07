@@ -125,33 +125,6 @@
         "fi"
   }
 
-- name="install-thunar" default-value="`install-desktop-environment`" {
-    arch-packages "thunar" \
-                  "catfish" \
-                  "gvfs" \
-                  "thunar-archive-plugin" \
-                  "thunar-media-tags-plugin" \
-                  "thunar-volman" \
-                  "tumbler" \
-                  \ // === Tumbler thumbnailer plugin dependencies ===
-                  "libgepub" \
-                  "libopenraw" \
-                  "libgsf"
-    files \ // === Thunar custom actions ===
-          "/etc/skel/.config/Thunar/uca.xml" \
-          "/usr/lib/ditana/open-disk-manager" \
-          "/usr/lib/ditana/copy-path-to-clipboard"
-    mime-defaults {
-        - "thunar.desktop" "inode/directory"
-    }
-  }
-
-- name="install-ramdisk-thunar-bookmark" \
-  default-value="`install-thunar AND install-ramdisk`" {
-    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
-          "/usr/share/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
-  }
-
 - name="install-vlc" default-value="`install-desktop-environment`" {
     arch-packages "vlc"
     mime-defaults {

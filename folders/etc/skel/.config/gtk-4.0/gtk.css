@@ -10,10 +10,13 @@ treeview.view {
 
 row:hover,
 menuitem:hover,
-button:hover,
-.view:hover {
+button:hover {
   background-color: rgba(@@ACCENT_COLOR@@, 0.50);
   color: #000000;
+}
+
+treeview.view:hover {
+  background-color: rgba(40, 40, 40, 1.00);
 }
 
 .view:selected,

@@ -29,7 +29,7 @@
 //                  * Very small memory footprint per instance.
 //                Because foot is Wayland-only, picking it as the
 //                primary on a system that also installs XFCE auto-pulls
-//                Alacritty as the X11 fallback (see fallback-alacritty-for-xfce
+//                Alacritty as the X11 fallback (see fallback-kitty-for-xfce
 //                further below; it is NOT a radiolist entry).
 //
 //   - alacritty: GPU-accelerated, works on both X11 and Wayland.
@@ -59,7 +59,7 @@
   long-description="foot is a Wayland-native terminal emulator with semantic prompt markers (OSC 133), desktop notifications (OSC 9 / OSC 777), Sixel graphics, server / daemon mode, and a very small memory footprint. Recommended default for any Wayland compositor. If XFCE is also installed, kitty is automatically added as the X11 fallback." \
   spdx-identifiers="MIT" \
   available="`install-wayland`" \
-  default-value="`install-wayland AND NOT has-gpu-acceleration`" {
+  default-value="`install-wayland AND NOT has-gpu-acceleration AND NOT install-cosmic-term`" {
     arch-packages "foot" \
                   "libnotify" \
                   "xdg-terminal-exec-git"
@@ -118,7 +118,7 @@
   long-description="Install Ghostty, a modern, GPU-accelerated terminal emulator. Requires OpenGL 4.3+ (compute shaders, SSBOs); in VMs without GPU passthrough, llvmpipe / softpipe cannot satisfy this requirement, so Ghostty is unavailable in pure-software-rendering environments." \
   spdx-identifiers="MIT" \
   available="`install-desktop-environment AND has-gpu-acceleration`" \
-  default-value="`install-desktop-environment AND has-gpu-acceleration`" {
+  default-value="`install-desktop-environment AND has-gpu-acceleration AND NOT install-cosmic-term`" {
     arch-packages "ghostty" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/ghostty/config" \
@@ -129,6 +129,23 @@
                   "echo TERMINAL=ghostty >> /etc/environment.d/set-terminal.conf"
     mime-defaults {
         - "com.mitchellh.ghostty.desktop" "x-scheme-handler/terminal"
+    }
+  }
+
+- name="install-cosmic-term" \
+  dialog-name="Terminal Emulator" \
+  short-description="COSMIC Terminal - Modern Wayland-native, GPU-accelerated" \
+  long-description="COSMIC Terminal: A modern, Wayland-native terminal emulator from System76 written in Rust on the iced toolkit. Lightweight, GPU-accelerated, with familiar tabbed UI conventions. Wayland-only; if XFCE is also installed, kitty is automatically added as the X11 fallback (same mechanism as for foot)." \
+  spdx-identifiers="GPL-3.0-only" \
+  available="`install-wayland`" \
+  default-value="`install-wayland AND profile-windows`" {
+    arch-packages "cosmic-terminal"
+    chroot-script "mkdir -p /etc/xdg" \
+                  "echo com.system76.CosmicTerm.desktop >/etc/xdg/xdg-terminals.list" \
+                  "mkdir -p /etc/environment.d" \
+                  "echo TERMINAL=cosmic-term >> /etc/environment.d/set-terminal.conf"
+    mime-defaults {
+        - "com.system76.CosmicTerm.desktop" "x-scheme-handler/terminal"
     }
   }
 

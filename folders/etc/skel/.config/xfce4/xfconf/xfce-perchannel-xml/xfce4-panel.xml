@@ -81,7 +81,7 @@
       <property name="text" type="string" value="(genmon)"/>
       <property name="update-period" type="int" value="1000"/>
       <property name="enable-single-row" type="bool" value="true"/>
-      <property name="font" type="string" value="@@MONOSPACE_FONT_FAMILY@@ 8"/>>
+      <property name="font" type="string" value="@@MONOSPACE_FONT_FAMILY@@ 8"/>
     </property>
     <property name="plugin-6" type="string" value="systray">
       <property name="square-icons" type="bool" value="false"/>

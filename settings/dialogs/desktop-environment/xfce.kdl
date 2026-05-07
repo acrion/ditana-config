@@ -101,9 +101,10 @@
     }
   }
 
-- name="install-xfce-thunar" default-value="`install-xfce AND install-thunar`" {
+- name="install-xfce-thunar" \
+  default-value="`install-xfce AND (install-thunar OR fallback-thunar-for-xfce)`" {
     first-login-commands #"sed -i "s|^FileManager=.*|FileManager=thunar|" "$HOME/.config/xfce4/helpers.rc""#
-  }
+}
 
 // === related to AI Tools ===
 
@@ -195,12 +196,12 @@
 
 // === related to terminal-emulator.kdl ===
 
-// XFCE fallback for the foot-Wayland-only case. This is a regular
-// dependent setting that fires only when foot is the primary terminal
-// and XFCE is also installed. Writes to xfce-xdg-terminals.list only;
-// xdg-terminals.list still points at footclient for Wayland sessions.
+// XFCE fallback for Wayland-only primary terminals (foot, cosmic-term).
+// Fires when the user picks a Wayland-native terminal AND also installs
+// XFCE. Writes to xfce-xdg-terminals.list only; xdg-terminals.list still
+// points at the primary terminal for Wayland sessions.
 - name="fallback-kitty-for-xfce" \
-  default-value="`install-foot AND install-xfce`" {
+  default-value="`(install-foot OR install-cosmic-term) AND install-xfce`" {
     arch-packages "kitty" \
                   "imagemagick" \
                   "python-pygments" \
@@ -210,7 +211,7 @@
           "/usr/share/pixmaps/ditana-logo-tiny.png"
     chroot-script "mkdir -p /etc/xdg" \
                   "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list"
-  }
+}
 
 - name="install-xfce-alacritty" default-value="`fallback-kitty-for-xfce OR (install-xfce AND install-alacritty)`" {
     first-login-commands \
