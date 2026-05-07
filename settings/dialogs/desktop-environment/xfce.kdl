@@ -212,7 +212,7 @@
                   "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list"
   }
 
-- name="install-xfce-alacritty" default-value="`fallback-alacritty-for-xfce OR (install-xfce AND install-alacritty)`" {
+- name="install-xfce-alacritty" default-value="`fallback-kitty-for-xfce OR (install-xfce AND install-alacritty)`" {
     first-login-commands \
         #"if command -v alacritty &> /dev/null; then"# \
         #"    sed -i "/^pinned=/ s/pinned=/pinned=Alacritty;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \

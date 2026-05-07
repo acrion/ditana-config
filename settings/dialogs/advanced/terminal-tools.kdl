@@ -27,7 +27,7 @@
   }
 
 - name="install-git" \
-  default-value="`install-terminal-utilities" {
+  default-value="`install-terminal-utilities`" {
     arch-packages "git-lfs"
   }
 
