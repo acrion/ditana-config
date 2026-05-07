@@ -43,8 +43,8 @@ LOG_PATH="$HOME/.ditana/first-login.log"
     # Creating a file in /etc/dconf/db/local.d/ does not work for Xfce, presumably due to how Xfce emulates dconf.
     # Example settings that would be configured there:
     # [org/gnome/desktop/interface]
-    # monospace-font-name='JetBrainsMono Nerd Font 9'
-    gsettings set org.gnome.desktop.interface monospace-font-name 'JetBrainsMono Nerd Font 9'
+    # monospace-font-name='@@MONOSPACE_FONT_FAMILY@@ 9'
+    gsettings set org.gnome.desktop.interface monospace-font-name '@@MONOSPACE_FONT_FAMILY@@ 9'
 
     # Workaround for gnome-keyring initialization issue on first login
     # This restarts the gnome-keyring-daemon to ensure proper initialization

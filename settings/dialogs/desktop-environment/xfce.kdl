@@ -86,9 +86,13 @@
           \ // === Qt Scaling ===
           "/etc/skel/.config/systemd/user-environment-generators/50-qt-hidpi-xfce-ditana"
     early-chroot-script \
-      \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
-      #"sed -i 's|@@KEYBOARD_DELAY@@|'"$KEYBOARD_DELAY"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"# \
-      #"sed -i 's|@@KEYBOARD_RATE@@|'"$KEYBOARD_RATE"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"#
+          \ // Patch the xfconf keyboards.xml with the user-selected repeat values.
+          #"sed -i 's|@@KEYBOARD_DELAY@@|'"$KEYBOARD_DELAY"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"# \
+          #"sed -i 's|@@KEYBOARD_RATE@@|'"$KEYBOARD_RATE"'|' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml"# \
+          \ // Patch font family names. Note: backslash-evaluated on installer side.
+          "`sed -i 's|@@INTERFACE_FONT_FAMILY@@|{Settings.instance.get('interface-font-family')}|g' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml`" \
+          "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml`" \
+          "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml`"
     chroot-script "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry
                   "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
     autostart {
@@ -195,11 +199,17 @@
 // dependent setting that fires only when foot is the primary terminal
 // and XFCE is also installed. Writes to xfce-xdg-terminals.list only;
 // xdg-terminals.list still points at footclient for Wayland sessions.
-- name="fallback-alacritty-for-xfce" \
+- name="fallback-kitty-for-xfce" \
   default-value="`install-foot AND install-xfce`" {
-    arch-packages "alacritty"
+    arch-packages "kitty" \
+                  "imagemagick" \
+                  "python-pygments" \
+                  "libcanberra" \
+                  "xdg-terminal-exec-git"
+    files "/etc/skel/.config/kitty/kitty.conf" \
+          "/usr/share/pixmaps/ditana-logo-tiny.png"
     chroot-script "mkdir -p /etc/xdg" \
-                  "echo Alacritty.desktop >/etc/xdg/xfce-xdg-terminals.list"
+                  "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list"
   }
 
 - name="install-xfce-alacritty" default-value="`fallback-alacritty-for-xfce OR (install-xfce AND install-alacritty)`" {

@@ -2,7 +2,12 @@
 # It is sourced by .bashrc and, if zsh is installed, by .zshrc as well.
 # shellcheck shell=bash
 
-if command -v zellij >/dev/null 2>&1 && [[ $- == *i* ]] && [[ -z "${ZELLIJ}" ]] && [[ -z "${SSH_TTY}" ]] && [[ -z "${SSH_CLIENT}" ]]; then
+if command -v zellij >/dev/null 2>&1 \
+   && [[ $- == *i* ]] \
+   && [[ -z "${ZELLIJ}" ]] \
+   && [[ -z "${SSH_TTY}" ]] \
+   && [[ -z "${SSH_CLIENT}" ]] \
+   && [[ "$TERM" == "alacritty" || "$TERM" == "foot" ]]; then
     zellij
 fi
 

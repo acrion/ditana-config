@@ -78,7 +78,7 @@
         - "" "/usr/lib/ditana/first-login"
     }
   }
-  
+
 - name="fonts" \
   default-value="`install-desktop-environment`" {
       files "/etc/fonts/local.conf"
@@ -93,7 +93,25 @@
           "noto-fonts-extra" \
           "noto-fonts-emoji" \
           "ttf-twemoji"
+      chroot-script \
+        "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /etc/fonts/local.conf`" \
+        "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /usr/lib/ditana/first-login`" \
+        "`sed -i 's|@@SERIF_FONT_FAMILY@@|{Settings.instance.get('serif-font-family')}|g' /etc/fonts/local.conf`"
   }
+
+// Internal settings unifying font family references across DEs.
+// Currently not exposed via a dialog — they replace previously hardcoded
+// values in xsettings.xml, xfce4-panel.xml, local.conf, first-login and
+// the COSMIC RON files.
+
+- name="interface-font-family" \
+  default-value="Noto Sans" {}
+
+- name="monospace-font-family" \
+  default-value="JetBrainsMono Nerd Font Mono" {}
+
+- name="serif-font-family" \
+  default-value="Source Serif Pro" {}
 
 - name="xkb-environment" \
   default-value="`install-desktop-environment`" {

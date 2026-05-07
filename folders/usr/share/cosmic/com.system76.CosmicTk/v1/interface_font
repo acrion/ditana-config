@@ -1,0 +1,6 @@
+(
+    family: "@@INTERFACE_FONT_FAMILY@@",
+    weight: Normal,
+    stretch: Normal,
+    style: Normal,
+)

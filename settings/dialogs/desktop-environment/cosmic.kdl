@@ -47,6 +47,49 @@
         "fi"
   }
 
+// === related to installation-steps.kdl
+- name="configure-cosmic-xkb-config" \
+  default-value="`install-cosmic`" {
+      files "/usr/share/cosmic/com.system76.CosmicComp/v1/xkb_config"
+      chroot-script \
+        "`sed -i 's|@@KEYMAP_LAYOUT@@|{Settings.instance.get('keymap-layout')}|' /usr/share/cosmic/com.system76.CosmicComp/v1/xkb_config`" \
+        "`sed -i 's|@@KEYMAP_VARIANT@@|{Settings.instance.get('keymap-variant')}|' /usr/share/cosmic/com.system76.CosmicComp/v1/xkb_config`" \
+        "`sed -i 's|@@KEYBOARD_DELAY@@|{Settings.instance.get('keyboard-delay')}|' /usr/share/cosmic/com.system76.CosmicComp/v1/xkb_config`" \
+        "`sed -i 's|@@KEYBOARD_RATE@@|{Settings.instance.get('keyboard-rate')}|' /usr/share/cosmic/com.system76.CosmicComp/v1/xkb_config`"
+  }
+
+// === related to wayland+x11.kdl
+
+- name="configure-font-for-cosmic" \
+  default-value="`fonts AND install-cosmic`" {
+      files \
+          "/usr/share/cosmic/com.system76.CosmicTk/v1/interface_font" \
+          "/usr/share/cosmic/com.system76.CosmicTk/v1/monospace_font"
+      chroot-script \
+        "`sed -i 's|@@INTERFACE_FONT_FAMILY@@|{Settings.instance.get('interface-font-family')}|' /usr/share/cosmic/com.system76.CosmicTk/v1/interface_font`" \
+        "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|' /usr/share/cosmic/com.system76.CosmicTk/v1/monospace_font`"
+  }
+
+// === related to desktop-appearance.kdl ===
+
+- name="configure-cosmic-icon-theme-kora-yellow" \
+  default-value="`install-cosmic AND amber-rounded-icons`" {
+      chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
+                    #"echo "kora-yellow" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+  }
+
+- name="configure-cosmic-icon-theme-pop" \
+  default-value="`install-cosmic AND blue-vibrant-icons`" {
+      chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
+                    #"echo "Pop" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+  }
+
+- name="configure-cosmic-icon-theme-papirus" \
+  default-value="`install-cosmic AND blue-flat-icons`" {
+      chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
+                    #"echo "Papirus" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+  }
+
 // === related to browser.kdl ===
 
 - name="fix-brave-for-cosmic" \
@@ -54,3 +97,63 @@
       files "/usr/local/bin/brave"
   }
 
+// === adapt pinned Cosmic panel apps to settings ===
+
+- name="adapted-pinned-cosmic-panel-apps" \
+  default-value="`install-cosmic`" {
+      files "/usr/share/cosmic/com.system76.CosmicAppList/v1/enable_drag_source" \
+            "/usr/share/cosmic/com.system76.CosmicAppList/v1/favorites" \
+            "/usr/share/cosmic/com.system76.CosmicAppList/v1/filter_top_levels"
+  }
+
+// === customize Cosmic panel ===
+
+- name="customize-cosmic-panel" \
+  default-value="`install-cosmic`" {
+      files \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/anchor" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/anchor_gap" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/autohide" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/autohover_delay_ms" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/background" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/border_radius" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/exclusive_zone" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/expand_to_edges" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/keyboard_interactivity" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/layer" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/margin" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/name" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/opacity" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/output" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/padding" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/padding_overlap" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/plugins_center" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/plugins_wings" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/size" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/size_center" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/size_wings" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Dock/v1/spacing" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/anchor" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/anchor_gap" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/autohide" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/autohover_delay_ms" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/background" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/border_radius" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/exclusive_zone" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/expand_to_edges" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/keyboard_interactivity" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/layer" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/margin" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/name" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/opacity" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/output" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/padding" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/padding_overlap" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/plugins_center" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/plugins_wings" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/size" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/size_center" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/size_wings" \
+        "/usr/share/cosmic/com.system76.CosmicPanel.Panel/v1/spacing" \
+        "/usr/share/cosmic/com.system76.CosmicPanel/v1/entries"
+  }

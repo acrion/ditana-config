@@ -1,0 +1,9 @@
+(
+    rules: "",
+    model: "",
+    layout: "@@KEYMAP_LAYOUT@@",
+    variant: "@@KEYMAP_VARIANT@@",
+    options: None,
+    repeat_delay: @@KEYBOARD_DELAY@@,
+    repeat_rate: @@KEYBOARD_RATE@@,
+)

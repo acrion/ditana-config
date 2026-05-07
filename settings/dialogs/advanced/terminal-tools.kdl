@@ -84,9 +84,9 @@
 - name="install-zellij" \
   dialog-name="Terminal Tools and Utilities" \
   short-description="Install zellij terminal multiplexer" \
-  long-description="Install zellij: zellij is a modern terminal multiplexer similar to tmux. It enables efficient management of multiple panes, tabs, and sessions within a single terminal window. Ditana automatically invokes zellij in the shell configuration." \
+  long-description="Install zellij: zellij is a modern terminal multiplexer similar to tmux. It enables efficient management of multiple panes, tabs, and sessions within a single terminal window. Ditana automatically invokes zellij in the shell configuration of alacritty and foot." \
   spdx-identifiers="MIT" \
-  default-value="`NOT profile-windows`" {
+  default-value="`install-foot OR install-alacritty`" {
       arch-packages "zellij"
   }
 

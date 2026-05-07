@@ -51,21 +51,21 @@ Indigo Blue Vibrant Icons: A calm indigo blue accent paired with an energetic, s
                           "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
 
-- name="amber-flat-icons" \
+- name="blue-flat-icons" \
   dialog-name="Desktop Appearance" \
-  short-description="Amber with flat icons" \
+  short-description="Blue with flat icons" \
   long-description="""
-Amber Flat Icons: Uses the same warm amber accent color as the default style, but pairs it with a modern, paper-like icon style. Offers a clean, minimalist look with excellent support for almost all applications.
+Blue Flat Icons: Uses the same warm amber accent color as the default style, but pairs it with a modern, paper-like icon style. Offers a clean, minimalist look with excellent support for almost all applications.
 """ \
   spdx-identifiers="GPL-3.0" \
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment AND profile-windows`" {
       arch-packages "papirus-icon-theme"
-      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/255,187,0/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
-                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                          "sed -i 's/@@ACCENT_COLOR@@/ffbb00/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
-                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
-                          "sed -i 's/@@ACCENT_DARK@@/6c4c00/g' /usr/share/qt6ct/colors/DitanaDark.conf"
+      early-chroot-script "sed -i 's/@@ACCENT_COLOR@@/82,148,226/g' /etc/skel/.config/gtk-3.0/gtk.css /etc/skel/.config/gtk-4.0/gtk.css /etc/skel/.config/kdeglobals" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5294E2/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_COLOR@@/5294E2/g' /usr/share/qt6ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt5ct/colors/DitanaDark.conf" \
+                          "sed -i 's/@@ACCENT_DARK@@/376397/g' /usr/share/qt6ct/colors/DitanaDark.conf"
   }
 
 - name="waybar-amber-rounded" \
@@ -84,8 +84,8 @@ Amber Flat Icons: Uses the same warm amber accent color as the default style, bu
                           "dconf update"
   }
 
-- name="waybar-amber-flat" \
-  default-value="`install-waybar AND amber-flat-icons`" {
+- name="waybar-blue-flat" \
+  default-value="`install-waybar AND blue-flat-icons`" {
       early-chroot-script "sed -i 's|@@ICON_THEME@@|Papirus/64x64/apps|g' /etc/skel/.config/waybar/style.css" \
                           "sed -i 's/@@ICON_THEME@@/Papirus/g' /etc/dconf/db/local.d/00-ditana-gtk-settings /etc/skel/.config/qt5ct/qt5ct.conf /etc/skel/.config/qt6ct/qt6ct.conf" \
                           "dconf update"

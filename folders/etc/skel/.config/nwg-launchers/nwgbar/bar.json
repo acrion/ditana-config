@@ -17,7 +17,7 @@
   {
     "name": "System Logs",
     "exec": "xdg-terminal-exec -e bash -c \"journalctl --priority=3 --follow --boot --no-hostname --catalog\"",
-    "icon": "system-utilities-logviewer"
+    "icon": "utilities-log-viewer"
   },
   {
     "name": "Logout",
