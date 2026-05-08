@@ -101,10 +101,9 @@
     }
   }
 
-- name="install-xfce-thunar" \
-  default-value="`install-xfce AND (install-thunar OR fallback-thunar-for-xfce)`" {
+- name="install-xfce-thunar" default-value="`install-xfce AND install-thunar`" {
     first-login-commands #"sed -i "s|^FileManager=.*|FileManager=thunar|" "$HOME/.config/xfce4/helpers.rc""#
-}
+  }
 
 // === related to AI Tools ===
 

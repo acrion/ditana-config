@@ -172,7 +172,7 @@ The installer substitutes a few magic tokens in `long-description`:
 
 This lets you write `"Installs $packages"` instead of duplicating the package list.
 
-## Logical expressions (the first kind of backticks)
+## Logical expressions in `default-value` and `available`
 
 In `default-value` and `available`, a string wrapped in backticks is a **logical expression** over other settings:
 
@@ -207,16 +207,18 @@ In effect: a setting whose `default-value` evaluates to `Unknown` keeps its curr
 - **Setting names must exist.** If you reference a typo'd name like `install-cosmik`, you'll get an exception at install time. Cross-check spellings.
 - **No string interpolation here.** Backticks in `default-value` and `available` are *only* for the logical expression language above. The Raku interpolation rules described next do **not** apply.
 
-## The two backtick semantics
+## Backticks: Raku snippets
 
-This is the single most confusing aspect of the configuration language. The syntax is the same — strings wrapped in backticks — but the **meaning depends on the field**:
+A backtick-wrapped string is a Raku snippet. Where the snippet appears determines what *kind of value* it should produce:
 
-| Where | What backticks mean |
-| --- | --- |
-| `default-value`, `available` | Logical expression over other settings (tristate boolean) |
-| `chroot-script`, `early-chroot-script`, `root-script`, `first-login-commands`, `login-commands` | Raku string interpolation (returns the substituted shell line) |
+| Where | Produces | Example |
+| --- | --- | --- |
+| `default-value`, `available` | A boolean (or `Unknown`) — the snippet is a logical expression over other settings | `` `install-cosmic AND virtual-environment` `` |
+| `chroot-script`, `early-chroot-script`, `root-script`, `first-login-commands`, `login-commands` | A shell line — the snippet is a Raku qq-string with `{...}` interpolations | `` `USER_NAME={Settings.instance.get('user-name')}` `` |
 
-The two contexts never overlap; the field name determines the dialect. When in doubt, look at neighbouring entries in the same field.
+In the first case, the installer first substitutes every setting name with its current value, then evaluates the resulting boolean expression. In the second, the snippet goes through Raku's qq-string interpolation directly. Both forms accept arbitrary Raku — only the expected type of the result differs.
+
+Setting names are referenced differently in the two contexts: as bare names in logical expressions (the substitution layer translates them to Raku-valid values before evaluation), and via `Settings.instance.get('name')` inside qq-string interpolations. Look at neighbouring entries in the same field if you're unsure.
 
 ## Hardware detection
 
@@ -363,7 +365,7 @@ login-commands "if command -v diffuse &> /dev/null; then" \
                "fi"
 ```
 
-### Raku interpolation (the second kind of backticks)
+### Raku interpolation in script entries
 
 Inside `chroot-script`, `early-chroot-script`, `root-script`, `first-login-commands`, and `login-commands`, a line wrapped end-to-end in backticks is **Raku-evaluated at script generation time**:
 
@@ -456,7 +458,7 @@ A condensed list of things the validator catches — or that bite you the first 
 
 1. **`/etc/skel/` in `chroot-script`** — Use `early-chroot-script`. The validator enforces this.
 2. **Boolean / numeric literals in backticks** — `default-value="\`true\`"` is wrong; write `default-value=#true`. Same for integers.
-3. **Misspelled setting reference** — `default-value="\`profilee-developer\`"` will explode at install time with "Referenced variable 'profilee-developer' does not exist". Cross-check before commit.
+3. **Misspelled setting reference** — Caught at commit time by `validate-logic.py`'s setting-existence check.
 4. **Backticks where you wanted bash variables (or vice versa)** — Backticks = Raku interpolation at generation time; `$VAR` = bash variable at runtime, requires `required-by-chroot=#true` on the source setting.
 5. **Order assumptions across settings** — Within a phase, scripts run in undefined order. Never write `setting A's chroot-script line foo before setting B's chroot-script line bar`.
 6. **Unreferenced files in `folders/`** — Every file must be in some setting's `files` array. The validator lists orphans.
@@ -464,7 +466,7 @@ A condensed list of things the validator catches — or that bite you the first 
 8. **`first-login-scripts` are paths, not commands** — Don't put inline shell here; that's `first-login-commands`.
 9. **No interpolation in script paths** — Raku interpolation is only applied to *-commands and *-script (chroot/early-chroot/root) fields.
 10. **Tilde / `$HOME` in chroot phases** — There's no logged-in user yet. Refer to absolute paths or `/root`.
-11. **Forgetting the closing backtick in a logical expression** — e.g. `default-value="\`install-cosmic"`. The string is not a recognised logical expression and will be treated as a literal value, leading to silent misbehaviour. (We've been bitten by this.)
+11. **Forgetting the closing backtick** — Caught at commit time by `validate-logic.py`'s backtick-balance check across `default-value`, `available`, and the script-list fields.
 12. **The `.[0]` indexing pattern** — Some accessors index `[0]` into nested arrays (e.g. `setting.arch-packages[0]`). This is an artifact of the JSON shape. You generally won't write this code, but if you do, look at neighbouring code for the pattern.
 
 ## Validation
@@ -478,6 +480,8 @@ Three pre-commit hooks guard quality:
    - All files in `folders/` must be referenced by some setting.
    - `chroot-script` lines must not touch `/etc/skel/`.
    - Every shell snippet (in any `*-script` or `*-commands` field, plus standalone scripts in `first-login-scripts`/`login-scripts`) must pass `bash -n` and `shellcheck`.
+   - Every backtick-wrapped string is balanced — across `default-value`, `available`, and all script-list fields.
+   - Every setting name referenced from a logical expression in `default-value` or `available` exists. Catches typos that would otherwise crash at install time.
 
 Run them all locally:
 
@@ -488,8 +492,7 @@ pre-commit run --all-files
 Install pre-commit if you don't have it:
 
 ```bash
-pip install pre-commit
-pre-commit install
+pacman -Syu pre-commit
 ```
 
 The CI runs the same hooks — local green = CI green.
