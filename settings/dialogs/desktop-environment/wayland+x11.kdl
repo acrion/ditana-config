@@ -29,6 +29,10 @@
                   "system-config-printer" \
                   "cups-pk-helper" \
                   "python-pysmbc" \
+                  \ // === Software center ===
+                  "pachub" \
+                  \ // === Search utility ===
+                  "fsearch" \
                   \ // === Send Desktop Notifications ===
                   "libnotify" \
                   \ // === implement the secret portal, for certain apps to work ===
@@ -58,8 +62,6 @@
           "/etc/profile.d/ditana-xdg.sh" \
           \ // === Ditana helper scripts ===
           "/usr/lib/ditana/first-login" \
-          \ // === Pacseek launcher ===
-          "/usr/share/applications/pacseek-desktop.desktop" \
           \ // === Logos ===
           "/usr/share/pixmaps/ditana-logo-small.png" \
           "/usr/share/pixmaps/ditana-shakehands.png" \

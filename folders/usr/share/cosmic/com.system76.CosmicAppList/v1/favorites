@@ -1,7 +1,9 @@
 [
     "@@COSMIC_BROWSER_ID@@",
     "@@COSMIC_FILE_MANAGER_ID@@",
+    "io.github.cboxdoerfer.FSearch",
     "@@COSMIC_TERMINAL_ID@@",
+    "io.github.mrks1469.pachub",
     "com.system76.CosmicStore",
     "com.system76.CosmicSettings",
 ]

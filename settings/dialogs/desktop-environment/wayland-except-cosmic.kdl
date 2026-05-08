@@ -6,7 +6,8 @@
                   "rofi" \
                   "wl-clipboard" \
                   "hyprpolkitagent" \
-                  "mako"
+                  "mako" \
+                  "bazaar"
     chroot-script "systemctl --global enable hyprpolkitagent.service"
   }
 
@@ -16,8 +17,7 @@
           "/etc/skel/.config/waybar/style.css" \
           "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
           "/etc/skel/.config/nwg-launchers/nwgbar/bar.json"
-    arch-packages "pacseek" \ // we link pacseek in the waybar config. For XFCE, it is linked only if it’s there (which it usually is, because install-pacman-core-tools is default)
-                  "waybar" \
+    arch-packages "waybar" \
                   "nwg-launchers" \
                   "swaylock"
   }

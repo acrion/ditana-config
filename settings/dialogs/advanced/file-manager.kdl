@@ -28,7 +28,6 @@
   available="`install-desktop-environment`" \
   default-value="`install-xfce`" {
     arch-packages "thunar" \
-                  "catfish" \
                   "gvfs" \
                   "thunar-archive-plugin" \
                   "thunar-media-tags-plugin" \

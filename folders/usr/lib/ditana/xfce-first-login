@@ -74,7 +74,7 @@ LOG_PATH="$HOME/.ditana/xfce-first-login.log"
                     XRANDR_INFO=$line
                 fi
             done < <(xrandr | grep " connected")
-            
+
             XFCE_PRIMARY=${XRANDR_INFO%% *}
         fi
 
@@ -92,7 +92,7 @@ LOG_PATH="$HOME/.ditana/xfce-first-login.log"
         # xfconf-query cannot be executed in chroot, and the xfce4-desktop.xml file contains system specific strings.
         # Hence, this script is intended for first login of each new user.
         XFCE_PRIMARY=$(get_xfce_primary)
-        
+
         if [[ -n "$XFCE_PRIMARY" ]]; then
             for workspace in {0..3}; do
                 xfconf-query -c xfce4-desktop --create --type string --property "/backdrop/screen0/monitor$XFCE_PRIMARY/workspace${workspace}/last-image" --set "$NEW_WALLPAPER"
@@ -111,7 +111,7 @@ LOG_PATH="$HOME/.ditana/xfce-first-login.log"
         fi
         sleep 0.5
     done
-    
+
     if [[ -f "$HOME/.config/user-dirs.dirs" ]]; then
         source "$HOME/.config/user-dirs.dirs"
     fi
@@ -124,7 +124,7 @@ LOG_PATH="$HOME/.ditana/xfce-first-login.log"
 
     # Ditana keyboard shortcuts, as explained in the desktop cheat sheet (except the system monitor, which is adapted but not mentioned)
     xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Primary><Shift>Escape" -n -t string -s "gnome-system-monitor"
-    xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Super>space" -n -t string -s "/usr/bin/catfish"
+    xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Super>space" -n -t string -s "/usr/bin/fsearch"
     xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Alt>Page_Up" -n -t string -s "pactl set-sink-volume @DEFAULT_SINK@ +1%"
     xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Alt>Page_Down" -n -t string -s "pactl set-sink-volume @DEFAULT_SINK@ -1%"
     xfconf-query -c xfce4-keyboard-shortcuts -p "/xfwm4/custom/<Primary>Page_Up" -n -t string -s "prev_workspace_key"

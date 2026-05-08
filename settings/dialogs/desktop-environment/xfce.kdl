@@ -139,10 +139,20 @@
 
 // === related to Advanced Settings / Dev Tools ===
 
-- name="install-xfce-pacseek" default-value="`install-xfce AND install-pacman-core-tools`" {
+- name="configure-xfce-package-managers" default-value="`install-xfce`" {
     first-login-commands \
-        #"if command -v pacseek &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/$/pacseek-desktop;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"if command -v bazaar &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/io.github.kolunmi.Bazaar;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"# \
+        #"if command -v pachub &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/io.github.mrks1469.pachub;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"fi"#
+  }
+
+- name="configure-xfce-fsearch" default-value="`install-xfce`" {
+    first-login-commands \
+        #"if command -v fsearch &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/$/io.github.cboxdoerfer.FSearch;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"fi"#
   }
 

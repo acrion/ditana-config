@@ -9,22 +9,19 @@
         "cosmic-applets" \
         "cosmic-bg" \
         "cosmic-comp" \
-        "cosmic-files" \ // TODO
         "cosmic-icon-theme" \
         "cosmic-idle" \
-        "cosmic-initial-setup" \
         "cosmic-launcher" \
         "cosmic-notifications" \
         "cosmic-osd" \
         "cosmic-panel" \
         "cosmic-player" \ // TODO
         "cosmic-randr" \
-        "cosmic-screenshot" \ // TODO
+        "cosmic-screenshot" \
         "cosmic-session" \
         "cosmic-settings" \
         "cosmic-settings-daemon" \
-        "cosmic-store" \ // TODO
-        "cosmic-terminal" \ // TODO
+        "cosmic-store" \
         "cosmic-text-editor" \ // TODO
         "cosmic-wallpapers" \
         "cosmic-workspaces" \

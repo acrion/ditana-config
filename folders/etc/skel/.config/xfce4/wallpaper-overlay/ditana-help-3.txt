@@ -3,18 +3,6 @@
 - System update: Double-click blue arrow-shaped tray icon "kalu"
 - Search/install software: Click "Add/Remove Software" icon
 
-Ditana uses pikaur as AUR helper. It forwards to pacman
-for official packages:
-
-pikaur -Ss <string> — Search for a package
-pikaur -Si <package> — Show package info
-pikaur -Qs <string> — Search installed packages
-pikaur -Q | less — List all installed packages
-pikaur -G <package> — Clone package's git repo
-pikaur -Qo <path> — Find package that installed a file or dir
-pikaur -F <path> — Find package, possibly not installed, that
-                                provides a file. This does not cover AUR.
-
 === Micro Terminal Editor ===
 
 Ctrl+Q — Quit editor

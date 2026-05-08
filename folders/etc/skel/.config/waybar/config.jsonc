@@ -7,9 +7,11 @@
   "modules-left": [
     "custom/start",
     "custom/file-manager",
+    "custom/search",
     "custom/browser",
     "custom/terminal",
-    "custom/package-manager",
+    "custom/arch-package-manager",
+    "custom/flatpak-manager",
     "custom/resources",
     "custom/display-settings",
     "custom/settings"
@@ -45,7 +47,13 @@
     "format": " ",
     "tooltip": true,
     "tooltip-format": "File Manager",
-    "on-click": "thunar",
+    "on-click": "xdg-open \"$HOME\"",
+  },
+  "custom/search": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "File Search",
+    "on-click": "fsearch"
   },
   "custom/browser": {
     "format": " ",
@@ -59,11 +67,17 @@
     "tooltip-format": "Terminal",
     "on-click": "xdg-terminal-exec"
   },
-  "custom/package-manager": {
+  "custom/arch-package-manager": {
     "format": " ",
     "tooltip": true,
-    "tooltip-format": "Package Manager (Add/Remove Software)",
-    "on-click": "xdg-terminal-exec -e pacseek"
+    "tooltip-format": "Arch Package Manager (Add/Remove Software)",
+    "on-click": "pachub"
+  },
+  "custom/flatpak-manager": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Flatpak Manager (Add/Remove Software)",
+    "on-click": "bazaar"
   },
   "custom/resources": {
     "format": " ",

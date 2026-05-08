@@ -15,7 +15,7 @@
                   "    fi" \
                   #"    BETTERBIRD="betterbird-bin""# \
                   "fi" #"echo -e "\033[32m--- Installing $BETTERBIRD ---\033[0m""# \
-                  #"runuser -u builduser -- pikaur -S "$BETTERBIRD" --noconfirm || true"#
+                  #"runuser -u builduser -- paru -S "$BETTERBIRD" --noconfirm || true"#
     mime-defaults {
         - "betterbird.desktop" "message/rfc822" "x-scheme-handler/mailto"
     }

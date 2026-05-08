@@ -205,12 +205,14 @@ button:hover {
 }
 
 #custom-file-manager,
+#custom-search,
 #custom-display-settings,
 #custom-settings,
 #custom-ditana-assistant,
 #custom-terminal,
 #custom-browser,
-#custom-package-manager,
+#custom-arch-package-manager,
+#custom-flatpak-manager,
 #custom-resources {
   background-color: #3a3a3a;
   background-repeat: no-repeat;
@@ -226,39 +228,26 @@ button:hover {
 }
 
 #custom-file-manager:hover,
+#custom-search:hover,
 #custom-display-settings:hover,
 #custom-settings:hover,
 #custom-ditana-assistant:hover,
 #custom-terminal:hover,
 #custom-browser:hover,
-#custom-package-manager:hover,
+#custom-arch-package-manager:hover,
+#custom-flatpak-manager:hover,
 #custom-resources:hover {
   background-color: #4f4f4f;
-}
-
-#custom-terminal {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
-}
-
-#custom-browser {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
-}
-
-#custom-package-manager {
-  background-image: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
-  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
-}
-
-#custom-resources {
-  background-image: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
-  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
 }
 
 #custom-file-manager {
   background-image: url("/usr/share/icons/@@ICON_THEME@@/system-file-manager.svg");
   -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-file-manager.svg");
+}
+
+#custom-search {
+  background-image: url("/usr/share/icons/hicolor/scalable/apps/io.github.cboxdoerfer.FSearch.svg");
+  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/io.github.cboxdoerfer.FSearch.svg");
 }
 
 #custom-display-settings {
@@ -274,6 +263,31 @@ button:hover {
 #custom-ditana-assistant {
   background-image: url("/usr/share/icons/hicolor/256x256/apps/ditana-assistant.png");
   -gtk-icon-source: url("/usr/share/icons/hicolor/256x256/apps/ditana-assistant.png");
+}
+
+#custom-terminal {
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/utilities-terminal.svg");
+}
+
+#custom-browser {
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/internet-web-browser.svg");
+}
+
+#custom-arch-package-manager {
+  background-image: url("/usr/share/icons/hicolor/scalable/apps/io.github.mrks1469.pachub.svg");
+  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/io.github.mrks1469.pachub.svg");
+}
+
+#custom-flatpak-manager {
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/system-software-install.svg");
+}
+
+#custom-resources {
+  background-image: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
+  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
 }
 
 #custom-start {

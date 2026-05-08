@@ -5,7 +5,7 @@
                   "`LOWERCASE_LOCALE={Settings.instance.get('locale').lc}`" \
                   #"LOCALIZED_MAN_PAGES="man-pages-$LOWERCASE_LOCALE""# \
                   #"if ! is_package_available "$LOCALIZED_MAN_PAGES"; then LOCALIZED_MAN_PAGES="man-pages-$MAIN_LOCALE"; fi"# \
-                  #"if is_package_available "$LOCALIZED_MAN_PAGES"; then echo -e "\033[32m--- Installing $LOCALIZED_MAN_PAGES ---\033[0m"; runuser -u builduser -- pikaur -S "$LOCALIZED_MAN_PAGES" --noconfirm || true; fi"#
+                  #"if is_package_available "$LOCALIZED_MAN_PAGES"; then echo -e "\033[32m--- Installing $LOCALIZED_MAN_PAGES ---\033[0m"; runuser -u builduser -- paru -S "$LOCALIZED_MAN_PAGES" --noconfirm || true; fi"#
   }
 - name="standardized-locale" \
   dialog-name="Development Tools and Libraries" \
@@ -34,7 +34,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   default-value="`profile-developer`" {
     arch-packages ""
     chroot-script "`LOWERCASE_LOCALE={Settings.instance.get('locale').lc}`" \
-                  #"if [[ "$LOWERCASE_LOCALE" != "en_us" ]]; then echo -e "\033[32m--- Installing hunspell-en_us for English system output ---\033[0m"; runuser -u builduser -- pikaur -S hunspell-en_us --noconfirm || true; fi"#
+                  #"if [[ "$LOWERCASE_LOCALE" != "en_us" ]]; then echo -e "\033[32m--- Installing hunspell-en_us for English system output ---\033[0m"; runuser -u builduser -- paru -S hunspell-en_us --noconfirm || true; fi"#
   }
 
 - name="configure-git" \
@@ -191,7 +191,7 @@ Install Tools for Arch package maintainers:
   spdx-identifiers="GPL GPL-3.0-or-later PerlArtistic MIT" \
   default-value="`profile-developer`" {
     arch-packages "auracle-git" \
-                  "devtools" \ // optional dependency of pikaur
+                  "devtools" \ // optional dependency of paru
                   "perl-locale-gettext" // translation support in makepkg-template
   }
 

@@ -19,7 +19,7 @@
                   #"    LIBREOFFICE="libreoffice-still""# \
                   "fi" \
                   #"echo -e "\033[32m--- Installing $LIBREOFFICE ---\033[0m""# \
-                  #"runuser -u builduser -- pikaur -S "$LIBREOFFICE" --noconfirm || true"#
+                  #"runuser -u builduser -- paru -S "$LIBREOFFICE" --noconfirm || true"#
     mime-defaults {
         - "libreoffice-writer.desktop" \
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
