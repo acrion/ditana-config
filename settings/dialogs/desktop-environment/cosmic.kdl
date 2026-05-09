@@ -49,7 +49,10 @@
 // Cosmic’s default may be intentional for their target hardware; this is a deliberate Ditana-specific adaptation.
 - name="patch-cosmic" \
   default-value="`install-cosmic`" {
-      first-login-commands #"cosmic-randr list --kdl | sed 's/scale [0-9.]\+/scale 1.25/' | cosmic-randr kdl"#
+      autostart {
+          - "COSMIC;" "/usr/lib/ditana/cosmic-first-login"
+      }
+      files "/usr/lib/ditana/cosmic-first-login"
   }
 
 // === related to installation-steps.kdl

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2024, 2025 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of Ditana Installer, see
+# https://github.com/acrion/ditana-installer and https://ditana.org/installer.
+#
+# Ditana Installer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Ditana Installer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ditana Installer. If not, see <https://www.gnu.org/licenses/>.
+
+# This script is executed once after the first COSMIC login of each user via
+# /etc/xdg/autostart/ditana-cosmic-first-login.desktop.
+# After execution, it disables itself for the current user using the XDG
+# autostart override mechanism (Hidden=true in ~/.config/autostart/).
+
+shopt -s dotglob
+mkdir -p "$HOME/.ditana"
+LOG_PATH="$HOME/.ditana/cosmic-first-login.log"
+
+{
+    # Cosmic's hardcoded display scaling logic (based on EDID/DPI) produces
+    # excessively large UI elements on all our testing systems. We force
+    # a fixed 1.25 scale for consistency with Ditana's other desktop environments.
+    # cosmic-randr is a Wayland client and requires cosmic-comp to be running and
+    # to have bound the wlr-output-management global. Although autostart fires
+    # after graphical-session.target, there is a brief race window where the
+    # protocol is not yet advertised — hence the short retry loop.
+    for _ in {1..20}; do
+        if out=$(cosmic-randr list --kdl 2>/dev/null) && [[ -n "$out" ]]; then
+            printf '%s\n' "$out" | sed 's/scale [0-9.]\+/scale 1.25/' | cosmic-randr kdl
+            echo "Applied 1.25 display scale via cosmic-randr."
+            break
+        fi
+        sleep 0.5
+    done
+
+    # Disable this autostart entry for the current user using the XDG override mechanism
+    AUTOSTART_NAME="ditana-cosmic-first-login.desktop"
+    mkdir -p "$HOME/.config/autostart"
+    cp "/etc/xdg/autostart/$AUTOSTART_NAME" "$HOME/.config/autostart/$AUTOSTART_NAME"
+    sed -i 's/^Hidden=false/Hidden=true/' "$HOME/.config/autostart/$AUTOSTART_NAME"
+} 2>&1 | tee -a "$LOG_PATH"
