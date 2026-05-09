@@ -11,28 +11,46 @@
 // protocols take precedence; the McIlroy ideal remains a tie-breaker
 // among otherwise-equivalent options, not a hard rule.
 //
+// Among image-capable, fully featured terminals (kitty, wezterm,
+// ghostty), kitty is Ditana's default. Reasons:
+//   * Stability: anecdotal reports plus tracker activity suggest
+//     wezterm exhibits occasional unexplained freezes (both the
+//     2024 release and the current development version); ghostty
+//     still has small rough edges of its own.
+//   * Hardware reach: kitty needs only OpenGL 3.3, so it also runs
+//     under llvmpipe in VMs without GPU passthrough - whereas
+//     ghostty requires OpenGL 4.3+ (compute shaders, SSBOs).
+//   * Maturity: kitty has been a reference for image-capable
+//     terminals since 2017 and ships an extensible kittens ecosystem.
+// wezterm and ghostty stay as alternatives; both are excellent in
+// their own right and superior to kitty in some details (e.g.
+// wezterm's Lua configurability), so the choice is left to the user.
+//
 // Each entry below is one option in the «Terminal Emulator» radiolist
-// shown under «Advanced Settings». Exactly one of install-wezterm,
-// install-foot, install-alacritty, install-kitty, install-ghostty,
+// shown under «Advanced Settings». Exactly one of install-kitty,
+// install-wezterm, install-foot, install-alacritty, install-ghostty,
 // install-cosmic-term, install-no-terminal is active at any time
 // (radiolist semantics).
 //
-//   - wezterm:   GPU-accelerated, X11 + Wayland, full-featured. Default
-//                for any system with a desktop environment except
-//                profile-windows. No environmental constraints: works
-//                under any OpenGL version, across both display servers,
-//                with or without GPU passthrough. Ships built-in tabs,
-//                splits, scrollback search, OSC 133 prompt markers,
-//                Sixel and Kitty image protocols, hyperlinks, and Lua
-//                configuration. Ditana preconfigures it with a zellij-
-//                style keyboard layout (Alt+1..9 tabs, Alt+hjkl pane
-//                navigation, Alt+Shift+hjkl splits, Alt+m pane swap,
-//                Alt+e dump scrollback to $EDITOR);
-//                ~/.config/wezterm/wezterm.lua is per-user editable.
-//                The package is named wezterm-git in the Ditana repo
-//                because upstream releases infrequently; it is built
-//                natively in the Ditana repository, not pulled from
-//                the AUR.
+//   - kitty:     GPU-accelerated, works on both X11 and Wayland with
+//                OpenGL 3.3 (so it also runs under llvmpipe in VMs
+//                without GPU passthrough). Built-in tabs, splits,
+//                Kitty image protocol, kittens ecosystem, configurable
+//                shaders. Default for any system with a desktop
+//                environment.
+//
+//   - wezterm:   GPU-accelerated, X11 + Wayland, full-featured. A
+//                feature-equivalent alternative to kitty: built-in
+//                tabs, splits, scrollback search, OSC 133 prompt
+//                markers, Sixel and Kitty image protocols, hyperlinks,
+//                Lua configuration. Ditana ships ~/.config/wezterm/
+//                wezterm.lua with a zellij-style keyboard layout
+//                (Alt+1..9 tabs, Alt+hjkl pane navigation,
+//                Alt+Shift+hjkl splits, Alt+m pane swap, Alt+e dump
+//                scrollback to $EDITOR). The package is named
+//                wezterm-git in the Ditana repo because upstream
+//                releases infrequently; it is built natively in the
+//                Ditana repository, not pulled from the AUR.
 //
 //   - foot:      Wayland-native, very small footprint. Pick this on
 //                Wayland systems where minimalism matters more than
@@ -53,7 +71,7 @@
 //                  * Very small memory footprint per instance.
 //                Because foot is Wayland-only, picking it as the
 //                primary on a system that also installs XFCE auto-pulls
-//                wezterm as the X11 fallback (see fallback-wezterm-for-xfce
+//                kitty as the X11 fallback (see fallback-kitty-for-xfce
 //                further below; it is NOT a radiolist entry).
 //
 //   - alacritty: GPU-accelerated, works on both X11 and Wayland.
@@ -63,13 +81,6 @@
 //                A clean counterpart to zellij on both display servers,
 //                at the cost of no inline graphics; pick this if you
 //                value that strict, principled trade-off.
-//
-//   - kitty:     GPU-accelerated, works on both X11 and Wayland with
-//                OpenGL 3.3 (so it also runs under llvmpipe in VMs
-//                without GPU passthrough). Built-in tabs, splits,
-//                image protocol, and configurable shaders. A capable
-//                alternative to wezterm; pick this if you prefer
-//                kitty's specific feature set and ecosystem (kittens).
 //
 //   - ghostty:   GPU-accelerated, modern. Requires OpenGL 4.3+
 //                (compute shaders, SSBOs); in VMs without GPU passthrough,
@@ -88,7 +99,7 @@
 //                  driven workflows. cosmic-term fits that expectation
 //                  while staying consistent with the rest of the COSMIC
 //                  stack. Same XFCE fallback mechanism as for foot: when
-//                  picked alongside XFCE, wezterm is auto-pulled as the
+//                  picked alongside XFCE, kitty is auto-pulled as the
 //                  X11 fallback.
 
 - name="install-wezterm" \
@@ -153,7 +164,7 @@
   long-description="Install kitty, a GPU-accelerated terminal emulator with built-in tabs, splits, image protocol and configurable shaders. Works with OpenGL 3.3, so it also runs in VMs without GPU passthrough where Ghostty fails. Pick this if you want a feature-rich, batteries-included terminal across X11 and Wayland." \
   spdx-identifiers="GPL-3.0-only" \
   available="`install-desktop-environment`" \
-  default-value=#false {
+  default-value="`install-desktop-environment AND NOT (install-wayland AND profile-windows)`" {
     arch-packages "kitty" \
                   "imagemagick" \
                   "python-pygments" \

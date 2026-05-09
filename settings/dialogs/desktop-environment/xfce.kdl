@@ -208,22 +208,21 @@
 // XFCE fallback for Wayland-only primary terminals (foot, cosmic-term).
 // Fires when the user picks a Wayland-native terminal AND also installs
 // XFCE. Writes to xfce-xdg-terminals.list only; xdg-terminals.list still
-// points at the primary terminal for Wayland sessions. wezterm is the
-// fallback because it has no environmental constraints (X11 + Wayland,
-// works with any OpenGL version) AND it preserves capability parity
-// with the user's primary choice - integrated tabs/splits and inline
-// graphics (Sixel, Kitty image protocol).
-- name="fallback-wezterm-for-xfce" \
+// points at the primary terminal for Wayland sessions.
+- name="fallback-kitty-for-xfce" \
   default-value="`(install-foot OR install-cosmic-term) AND install-xfce`" {
-    arch-packages "wezterm-git" \
+    arch-packages "kitty" \
+                  "imagemagick" \
+                  "python-pygments" \
+                  "libcanberra" \
                   "xdg-terminal-exec-git"
-    files "/etc/skel/.config/wezterm/wezterm.lua" \
+    files "/etc/xdg/kitty/kitty.conf" \
           "/usr/share/pixmaps/ditana-logo-tiny.png"
     chroot-script "mkdir -p /etc/xdg" \
-                  "echo org.wezfurlong.wezterm.desktop >/etc/xdg/xfce-xdg-terminals.list"
+                  "echo kitty.desktop >/etc/xdg/xfce-xdg-terminals.list"
 }
 
-- name="install-xfce-wezterm" default-value="`fallback-wezterm-for-xfce OR (install-xfce AND install-wezterm)`" {
+- name="install-xfce-wezterm" default-value="`install-xfce AND install-wezterm`" {
     files "/etc/skel/.local/share/xfce4/helpers/wezterm.desktop"
     first-login-commands \
         #"if command -v wezterm &> /dev/null; then"# \
@@ -240,7 +239,7 @@
         #"fi"#
   }
 
-- name="install-xfce-kitty" default-value="`install-xfce AND install-kitty`" {
+- name="install-xfce-kitty" default-value="`fallback-kitty-for-xfce OR (install-xfce AND install-kitty)`" {
     first-login-commands \
         #"if command -v kitty &> /dev/null; then"# \
         #"    sed -i "/^pinned=/ s/pinned=/pinned=kitty;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
