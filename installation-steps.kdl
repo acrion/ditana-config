@@ -179,7 +179,7 @@ Both BusyBox and systemd are installed, as they are required by other parts of t
                 - name="Repository & Package Management Configuration" type="checklist" instruction="" help-intro="" help-note=""
                 - name="Network and Security Tools" type="checklist" instruction="Choose network options:" help-intro="" help-note=""
                 - name="System Maintenance Tools" type="checklist" instruction="Choose system maintenance options:" help-intro="" help-note=""
-                - name="Terminal Emulator" type="radiolist" instruction="Choose your default terminal emulator:" help-intro="The radiolist picks the primary terminal emulator. If you select foot and also install XFCE, Alacritty is added automatically as the X11 fallback (foot is Wayland-only)." help-note=""
+                - name="Terminal Emulator" type="radiolist" instruction="Choose your default terminal emulator:" help-intro="The radiolist picks the primary terminal emulator. Default is WezTerm (X11 + Wayland, GPU-accelerated, full-featured). If you select a Wayland-only terminal (foot, cosmic-term) and also install XFCE, WezTerm is added automatically as the X11 fallback." help-note=""
                 - name="Terminal Tools and Utilities" type="checklist" instruction="Choose terminal options:" help-intro="" help-note=""
                 - name="Development Tools and Libraries" type="checklist" instruction="Choose development options:" help-intro="" help-note=""
               }

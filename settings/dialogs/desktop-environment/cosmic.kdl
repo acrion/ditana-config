@@ -196,6 +196,11 @@
     chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|com.system76.CosmicTerm|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
 }
 
+- name="configure-cosmic-favorites-wezterm" \
+  default-value="`install-cosmic AND install-wezterm`" {
+    chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|org.wezfurlong.wezterm|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+}
+
 - name="configure-cosmic-favorites-foot" \
   default-value="`install-cosmic AND install-foot`" {
     chroot-script "sed -i 's|@@COSMIC_TERMINAL_ID@@|footclient|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"

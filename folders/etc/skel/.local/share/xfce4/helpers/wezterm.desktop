@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Type=X-XFCE-Helper
+NoDisplay=true
+Name=WezTerm
+Icon=org.wezfurlong.wezterm
+X-XFCE-Category=TerminalEmulator
+X-XFCE-Commands=wezterm
+X-XFCE-CommandsWithParameter=wezterm -e "%s"
+X-XFCE-Binaries=wezterm
