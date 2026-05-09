@@ -44,6 +44,14 @@
         "fi"
   }
 
+// Cosmic’s hardcoded display scaling logic (based on EDID/DPI) produces excessively large UI elements on all
+// our testing systems. We force a fixed 1.25 scale for consistency with Ditana’s other desktop environments.
+// Cosmic’s default may be intentional for their target hardware; this is a deliberate Ditana-specific adaptation.
+- name="patch-cosmic" \
+  default-value="`install-cosmic`" {
+      first-login-commands #"cosmic-randr list --kdl | sed 's/scale [0-9.]\+/scale 1.25/' | cosmic-randr kdl"#
+  }
+
 // === related to installation-steps.kdl
 - name="configure-cosmic-xkb-config" \
   default-value="`install-cosmic`" {
