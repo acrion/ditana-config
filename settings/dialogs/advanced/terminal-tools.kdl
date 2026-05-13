@@ -134,6 +134,10 @@ Install fresh editor and set it as default: fresh is a lightweight, fast termina
                   "imagemagick" \ // for image and font preview
                   "poppler" \ // for PDF preview
                   "resvg" // for SVG preview
+  }
+
+- name="configure-yazi-default" \
+  default-value="`install-no-file-manager AND install-yazi`" {
     mime-defaults {
         - "yazi.desktop" "inode/directory"
     }
