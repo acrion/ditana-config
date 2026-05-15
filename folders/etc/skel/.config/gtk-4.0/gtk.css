@@ -20,7 +20,24 @@ treeview.view:hover {
 }
 
 .view:selected,
+.view:selected:focus,
+treeview.view:selected,
+treeview.view:selected:focus,
+flowbox > flowboxchild:selected,
+flowbox > flowboxchild:selected:focus,
+iconview:selected,
+iconview:selected:focus,
 selection {
   background-color: rgba(@@ACCENT_COLOR@@, 0.50);
+  color: #000000;
+}
+
+.view:selected:hover,
+treeview.view:selected:hover,
+flowbox > flowboxchild:selected:hover,
+iconview:selected:hover {
+  background-color: rgba(@@ACCENT_COLOR@@, 0.50);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.18),
+                                    rgba(255, 255, 255, 0.18));
   color: #000000;
 }
