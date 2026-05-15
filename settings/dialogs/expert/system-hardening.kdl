@@ -8,14 +8,14 @@
   \ // https://wiki.archlinux.org/title/Security#Sandboxing_applications. Chromium-based flatpak packages that require this (e.g. com.brave.Browser)
   \ // are not used. Instead their corresponding Arch/AUR packages are used (e.g. brave-bin) because they work flawlessly with this setting
   \ // (they do not even require bubblewrap-suid).
-  default-value="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" {
+  default-value="`NOT install-hardened-stable-kernel`" {
     chroot-script "echo 'kernel.unprivileged_userns_clone=0 # Disable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
   }
 
 - name="enable-unprivileged-namespaces" \
   \ // Forces kernel.unprivileged_userns_clone=1 on hardened kernels when the user explicitly disables kernel-option-duurn
   \ // (i.e. overrules Ditana’s security default). This is the only case where userns=1 is set.
-  default-value="`(install-hardened-stable-kernel OR install-hardened-lts-kernel) AND NOT kernel-option-duurn`" {
+  default-value="`install-hardened-stable-kernel AND NOT kernel-option-duurn`" {
     chroot-script "echo 'kernel.unprivileged_userns_clone=1 # Enable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
   }
 
@@ -24,7 +24,7 @@
   short-description="Disable kexec (kernel.kexec_load_disabled=1)" \
   long-description="Disable kexec: Prevents loading a replacement kernel at runtime via the kexec system call. An attacker with sufficient privileges could use kexec to boot a malicious kernel, bypassing Secure Boot and other boot-time protections. Once set to 1 at runtime, this cannot be changed back without a reboot." \
   spdx-identifiers="GPL-2.0-only" \
-  available="`NOT (install-hardened-stable-kernel OR install-hardened-lts-kernel)`" \
+  available="`NOT install-hardened-stable-kernel`" \
   default-value=#true {
     chroot-script "echo 'kernel.kexec_load_disabled=1 # disable kexec' >> /etc/sysctl.d/ditana.conf"
   }
