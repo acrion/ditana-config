@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Type=Link
+Type=Application
 Name=Best Practices
 Comment=Best Practices in Ditana
 Icon=/usr/share/pixmaps/ditana-logo-small.png
-URL=https://ditana.org/best-practices
+Exec=xdg-open https://ditana.org/best-practices

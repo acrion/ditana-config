@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Type=Link
+Type=Application
 Name=Donate to Ditana
 Comment=Support the development of Ditana
 Icon=/usr/share/pixmaps/ditana-shakehands.png
-URL=https://ditana.org/donate
+Exec=xdg-open https://ditana.org/donate
