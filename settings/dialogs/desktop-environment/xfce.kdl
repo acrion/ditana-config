@@ -75,9 +75,6 @@
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-4.txt" \
           \ // === Kalu config ===
           "/etc/skel/.config/kalu/kalu.conf" \
-          \ // === Desktop shortcuts ===
-          "/etc/skel/Desktop/Donate to Ditana.desktop" \
-          "/etc/skel/Desktop/Best Practices.desktop" \
           \ // === Ditana XFCE helper scripts ===
           "/usr/lib/ditana/xfce-first-login" \
           \ // === Wallpapers ===

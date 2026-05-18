@@ -1,0 +1,6 @@
+- name="install-cosmic-or-xfce" \
+  default-value="`install-xfce OR install-cosmic`" {
+    files \ // === Desktop shortcuts ===
+          "/etc/skel/Desktop/Donate to Ditana.desktop" \
+          "/etc/skel/Desktop/Best Practices.desktop"
+  }
