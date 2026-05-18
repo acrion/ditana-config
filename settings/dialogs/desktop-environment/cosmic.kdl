@@ -83,19 +83,19 @@
 - name="configure-cosmic-icon-theme-kora-yellow" \
   default-value="`install-cosmic AND amber-rounded-icons`" {
       chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
-                    #"echo "kora-yellow" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+                    #"echo -n '"kora-yellow"' > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
   }
 
 - name="configure-cosmic-icon-theme-pop" \
   default-value="`install-cosmic AND blue-vibrant-icons`" {
       chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
-                    #"echo "Pop" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+                    #"echo -n '"Pop"' > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
   }
 
 - name="configure-cosmic-icon-theme-papirus" \
   default-value="`install-cosmic AND blue-flat-icons`" {
       chroot-script "mkdir -p /usr/share/cosmic/com.system76.CosmicTk/v1" \
-                    #"echo "Papirus" > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
+                    #"echo -n '"Papirus"' > /usr/share/cosmic/com.system76.CosmicTk/v1/icon_theme"#
   }
 
 // === related to browser.kdl ===
