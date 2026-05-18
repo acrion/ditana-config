@@ -71,8 +71,6 @@
           "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/keyboards.xml" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-1.txt" \
           "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-2.txt" \
-          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-3.txt" \
-          "/etc/skel/.config/xfce4/wallpaper-overlay/ditana-help-4.txt" \
           \ // === Kalu config ===
           "/etc/skel/.config/kalu/kalu.conf" \
           \ // === Ditana XFCE helper scripts ===
