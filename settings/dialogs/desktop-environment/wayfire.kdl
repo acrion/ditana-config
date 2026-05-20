@@ -40,6 +40,15 @@
       login-commands \
         #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
         "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+        "fi"
+  }
+
+- name="enable-wayfire-without-gpu-acceleration" \
+  default-value="`install-wayfire AND NOT has-gpu-acceleration`" {
+      login-commands \
+        #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
         "    export WLR_RENDERER_ALLOW_SOFTWARE=1" \ // for VMs without 3D acceleration
+        "    export LIBGL_ALWAYS_SOFTWARE=1" \ // Force CPU rendering (llvmpipe) for OpenGL, as the VM's graphics card does not support 3D
+        "    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe" \
         "fi"
   }
