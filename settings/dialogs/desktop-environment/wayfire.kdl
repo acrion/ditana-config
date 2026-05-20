@@ -40,5 +40,6 @@
       login-commands \
         #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
         "    export WLR_NO_HARDWARE_CURSORS=1" \ // prevent upside down cursor in Wayfire
+        "    export WLR_RENDERER_ALLOW_SOFTWARE=1" \ // for VMs without 3D acceleration
         "fi"
   }
