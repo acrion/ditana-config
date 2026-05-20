@@ -220,7 +220,7 @@ The options listed below are mitigations for CPU vulnerabilities detected on you
 
 If you choose to uncheck all mitigations, the kernel will revert to its standard vulnerability management strategy. However, it is important to note that the standard kernel settings may introduce security vulnerabilities. The purpose of this dialog is to present you with the most secure kernel settings available, allowing you to make an informed decision based on the provided documentation. While some users may prioritize potential performance improvements, it is generally recommended to maintain the default mitigations to ensure robust security.
 
-For more information about each mitigation, click the Help button below. Comprehensive details are also available at ditana.org/mitigations.
+For more information about each mitigation, click the Help button below. Comprehensive details are also available at ditana.org.
 """ \
                     help-intro="" \
                     help-note="""
