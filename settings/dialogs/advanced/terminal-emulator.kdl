@@ -86,7 +86,7 @@
 //                (compute shaders, SSBOs); in VMs without GPU passthrough,
 //                llvmpipe crashes due to an LLVM JIT bug (MGATHER
 //                instruction selection), and softpipe only supports
-//                OpenGL 3.3. The has-gpu-acceleration check on the
+//                OpenGL 3.3. The has-wayland-compatible-gpu check on the
 //                `available` field hides this option in those
 //                environments.
 //
@@ -186,7 +186,7 @@
   short-description="Ghostty - GPU-accelerated, modern, requires OpenGL 4.3+" \
   long-description="Install Ghostty, a modern, GPU-accelerated terminal emulator. Requires OpenGL 4.3+ (compute shaders, SSBOs); in VMs without GPU passthrough, llvmpipe / softpipe cannot satisfy this requirement, so Ghostty is unavailable in pure-software-rendering environments." \
   spdx-identifiers="MIT" \
-  available="`install-desktop-environment AND has-gpu-acceleration`" \
+  available="`install-desktop-environment AND has-wayland-compatible-gpu`" \
   default-value=#false {
     arch-packages "ghostty" \
                   "xdg-terminal-exec-git"

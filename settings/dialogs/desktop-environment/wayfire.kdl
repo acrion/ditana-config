@@ -44,7 +44,7 @@
   }
 
 - name="enable-wayfire-without-gpu-acceleration" \
-  default-value="`install-wayfire AND NOT has-gpu-acceleration`" {
+  default-value="`install-wayfire AND NOT has-wayland-compatible-gpu`" {
       login-commands \
         #"if [[ "$DESKTOP_SESSION" == "wayfire-ditana" ]]; then"# \
         "    export WLR_RENDERER_ALLOW_SOFTWARE=1" \ // for VMs without 3D acceleration
