@@ -46,6 +46,13 @@ for s in settings:
         else:
             referenced_files.add(path)
 
+print("🔍 Checking uniqueness of settings...")
+all_names = [s['name'] for s in settings if 'name' in s]
+duplicates = {n for n in all_names if all_names.count(n) > 1}
+if duplicates:
+    print(f"❌ Duplicate setting names: {sorted(duplicates)}")
+    errors = True
+
 scripts_to_check =[]
 
 print("🔍 Validating chroot scripts and shell code...")
