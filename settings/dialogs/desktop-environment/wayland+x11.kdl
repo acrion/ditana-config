@@ -25,10 +25,6 @@
                   "resources" \
                   \ // === Disk management ===
                   "gnome-disk-utility" \
-                  \ // === Printing ===
-                  "system-config-printer" \
-                  "cups-pk-helper" \
-                  "python-pysmbc" \
                   \ // === Software center ===
                   "pachub" \
                   \ // === Search utility ===
@@ -79,6 +75,19 @@
     autostart {
         - "" "/usr/lib/ditana/first-login"
     }
+  }
+
+- name="install-printing" \
+  default-value="`install-desktop-environment`" {
+      arch-packages \
+          "cups" \                  // CUPS daemon (pulls in cups-filters)
+          "cups-pdf" \              // virtual PDF printer; also needed for the IPP Everywhere (driverless) filter chain
+          "ghostscript" \           // required for non-PDF / PostScript printers
+          "gsfonts" \               // base fonts for PostScript printing
+          "system-config-printer" \
+          "cups-pk-helper" \
+          "python-pysmbc"
+      chroot-script "systemctl enable cups.socket" // socket activation: start cupsd on demand (also auto-starts on USB printer hotplug)
   }
 
 - name="fonts" \
