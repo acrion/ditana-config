@@ -6,7 +6,7 @@
   spdx-identifiers="GPL-3.0-or-later" \
   available="`install-desktop-environment`" \
   default-value=#false {
-    arch-packages "phoronix-test-suite"
+    aur-packages "phoronix-test-suite"
   }
 
 - name="install-audacity" \
