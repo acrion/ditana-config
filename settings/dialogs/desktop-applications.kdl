@@ -39,9 +39,6 @@
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment`" {
     arch-packages "pdfarranger"
-    mime-defaults {
-        - "com.github.jeromerobert.pdfarranger.desktop" "application/pdf"
-    }
   }
 
 - name="install-xournalpp" \
@@ -53,7 +50,7 @@
   default-value="`install-desktop-environment`" {
     arch-packages "xournalpp"
     mime-defaults {
-        - "com.github.xournalpp.xournalpp.desktop" "application/pdf" "application/x-xoj" "application/x-xopt"
+        - "com.github.xournalpp.xournalpp.desktop" "application/x-xoj" "application/x-xopt"
     }
   }
 
