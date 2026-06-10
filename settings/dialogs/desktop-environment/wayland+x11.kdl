@@ -188,6 +188,9 @@
 
 - name="install-xreader" default-value="`install-desktop-environment`" {
     arch-packages "xreader"
+    mime-defaults {
+        - "xreader.desktop" "application/pdf"
+    }
   }
 
 - name="install-engrampa" default-value="`install-desktop-environment`" {
