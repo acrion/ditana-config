@@ -29,12 +29,20 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
 
 - name="zram-overcommit" \
   dialog-name="Storage & File System Options" \
-  short-description="Extended ZRAM Overcommit (zram-size = ram * 1.75)" \
-  long-description="Extended ZRAM Overcommit: Increases the virtual size of the compressed in-RAM swap space from 100% to 175% of physical RAM. This benefits memory-intensive workloads whose contents compress well (e.g. large graph, text or scientific data processing), allowing the system to hold roughly twice its RAM in compressed form before touching the disk swap partition. Trade-off: the gradual overflow to a disk swap partition only begins once the ZRAM device is completely filled. With doubled size, reaching that point within the physical memory cap (75% of RAM) requires a sustained compression ratio of about 2.35:1. If the actual data compresses worse, the memory cap triggers first: further swap writes fail and the kernel will OOM-kill the largest memory consumer instead of degrading gradually. Enable this only if your workloads' memory is known to compress well; the default size of 100% of RAM reaches the disk overflow path at any compression ratio above 1.33:1." \
+  short-description="Extended ZRAM Overcommit" \
+  long-description="""
+Extended ZRAM Overcommit: Increases the virtual size of the compressed in-RAM swap space from 100% to 175% of physical RAM and raises the zstd compression effort from level 3 to level 6. This benefits memory-intensive workloads whose contents compress well (e.g. large graph, text or scientific data processing), allowing the system to hold roughly 1.75 times its RAM in compressed form before touching the disk swap partition. The higher compression effort also substantially reduces the share of borderline pages that would otherwise be stored uncompressed. Page-in latency is unaffected, since zstd decompression speed is independent of the compression level. The additional CPU cost occurs only while pages are being swapped out; in swap-out-heavy phases this can moderately slow down the workload itself, because page compression runs partly in the allocating process when the kernel swap thread cannot keep up.
+
+Trade-off: Ditana caps the physical memory the ZRAM device may consume at 75% of RAM (a safety backstop against incompressible memory contents). The gradual overflow to the disk swap partition only begins once the ZRAM device is completely filled, and filling 175% of RAM within the 75% cap requires a sustained effective compression ratio of about 2.3:1. Typical desktop workloads compress at roughly 2.5:1 to 3.5:1; with the raised compression effort, large-scale data processing workloads have been measured at about 2.6:1. However, workloads that keep large amounts of already-compressed, encrypted or high-entropy data in memory (media editing, virtual machines, machine-learning tensors) may fall below the threshold. In that case the memory cap triggers before the ZRAM slots are exhausted: further swap writes fail (the kernel logs «Write-error on swap-device»), the disk swap partition remains unused because the kernel selects swap targets by free slots and priority, and the kernel will eventually OOM-kill the largest memory consumer — effectively providing less usable swap capacity than the default. With the default size of 100% of RAM, the overflow path to the disk partition is reached at any compression ratio above 1.33:1, which virtually all workloads satisfy.
+
+Enable this option only if your memory contents are known to compress well. You can verify your actual effective ratio under load by comparing the DATA and TOTAL columns of «zramctl».
+""" \
   spdx-identifiers="GPL-2.0-only" \
   available="`install-zram`" \
   default-value=#false {
-    chroot-script "sed -i 's|^zram-size = ram$|zram-size = ram * 1.75|' /etc/systemd/zram-generator.conf"
+    chroot-script \
+      "sed -i 's|^zram-size = ram$|zram-size = ram * 1.75|' /etc/systemd/zram-generator.conf" \
+      "sed -i 's|^compression-algorithm = zstd$|compression-algorithm = zstd(level=6)|' /etc/systemd/zram-generator.conf"
   }
 
 - name="limit-zfs-arc" \
