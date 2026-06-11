@@ -14,6 +14,7 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
 """ \
   spdx-identifiers="" \
   default-value=#true
+
 - name="install-zram" \
   dialog-name="Storage & File System Options" \
   short-description="Install ZRAM" \
@@ -23,6 +24,7 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
     arch-packages "zram-generator"
     files "/etc/systemd/zram-generator.conf"
   }
+
 - name="install-ramdisk" \
   dialog-name="Storage & File System Options" \
   short-description="Install RAM Disk" \
@@ -51,4 +53,15 @@ pipelines, or anything temporary that benefits from zero-latency storage.
           \ // Expose the RAMDISK variable to interactive login shells (TTY, SSH)
           "/etc/profile.d/ditana-ramdisk.sh"
     chroot-script "systemctl --global enable systemd-tmpfiles-setup.service"
+  }
+
+- name="limit-zfs-arc" \
+  dialog-name="Storage & File System Options" \
+  short-description="Limit ZFS ARC cache size" \
+  long-description="Limit ZFS ARC cache size: By default, OpenZFS allows its Adaptive Replacement Cache to grow to nearly all system memory (RAM minus 1 GiB). This default targets dedicated storage servers. On Linux, ARC memory is reclaimed via a shrinker callback that reacts slower than regular page cache reclaim, which can cause allocation stalls when applications suddenly demand large amounts of memory — especially in combination with ZRAM. This option caps the ARC at 25% of RAM (minimum 1 GiB, maximum 8 GiB), keeping memory available for applications while retaining effective metadata and hot-data caching. Disable this option for dedicated storage servers where caching is the primary workload." \
+  spdx-identifiers="CDDL" \
+  available="`zfs-filesystem`" \
+  default-value="`zfs-filesystem`" {
+    files "/etc/modprobe.d/ditana-zfs.conf"
+    chroot-script "`sed -i 's|@@ZFS_ARC_MAX@@|{ min(8, max(1, Settings.instance.get('total-ram-gib') div 4)) * 1024 * 1024 * 1024 }|' /etc/modprobe.d/ditana-zfs.conf`"
   }
