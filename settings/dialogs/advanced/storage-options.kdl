@@ -29,12 +29,12 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
 
 - name="zram-overcommit" \
   dialog-name="Storage & File System Options" \
-  short-description="Extended ZRAM Overcommit (zram-size = ram * 2)" \
-  long-description="Extended ZRAM Overcommit: Doubles the virtual size of the compressed in-RAM swap space from 100% to 200% of physical RAM. This benefits memory-intensive workloads whose contents compress well (e.g. large graph, text or scientific data processing), allowing the system to hold roughly twice its RAM in compressed form before touching the disk swap partition. Trade-off: the gradual overflow to a disk swap partition only begins once the ZRAM device is completely filled. With doubled size, reaching that point within the physical memory cap (75% of RAM) requires a sustained compression ratio of about 2.7:1. If the actual data compresses worse, the memory cap triggers first: further swap writes fail and the kernel will OOM-kill the largest memory consumer instead of degrading gradually. Enable this only if your workloads' memory is known to compress well; the default size of 100% of RAM reaches the disk overflow path at any compression ratio above 1.33:1." \
+  short-description="Extended ZRAM Overcommit (zram-size = ram * 1.75)" \
+  long-description="Extended ZRAM Overcommit: Increases the virtual size of the compressed in-RAM swap space from 100% to 175% of physical RAM. This benefits memory-intensive workloads whose contents compress well (e.g. large graph, text or scientific data processing), allowing the system to hold roughly twice its RAM in compressed form before touching the disk swap partition. Trade-off: the gradual overflow to a disk swap partition only begins once the ZRAM device is completely filled. With doubled size, reaching that point within the physical memory cap (75% of RAM) requires a sustained compression ratio of about 2.35:1. If the actual data compresses worse, the memory cap triggers first: further swap writes fail and the kernel will OOM-kill the largest memory consumer instead of degrading gradually. Enable this only if your workloads' memory is known to compress well; the default size of 100% of RAM reaches the disk overflow path at any compression ratio above 1.33:1." \
   spdx-identifiers="GPL-2.0-only" \
   available="`install-zram`" \
   default-value=#false {
-    chroot-script "sed -i 's|^zram-size = ram$|zram-size = ram * 2|' /etc/systemd/zram-generator.conf"
+    chroot-script "sed -i 's|^zram-size = ram$|zram-size = ram * 1.75|' /etc/systemd/zram-generator.conf"
   }
 
 - name="limit-zfs-arc" \
