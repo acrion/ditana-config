@@ -22,7 +22,30 @@ While «noatime» is beneficial for most users, it can be disabled if specific a
   spdx-identifiers="MIT" \
   default-value=#true {
     arch-packages "zram-generator"
-    files "/etc/systemd/zram-generator.conf"
+    files "/etc/systemd/zram-generator.conf" \
+          "/etc/systemd/system/systemd-zram-setup@zram0.service.d/ditana-mem-limit.conf"
+    chroot-script "`sed -i 's|@@ZRAM_MEM_LIMIT_GIB@@|{ (Settings.instance.get('total-ram-gib') * 3) div 4 }|' /etc/systemd/system/systemd-zram-setup@zram0.service.d/ditana-mem-limit.conf`"
+  }
+
+- name="zram-overcommit" \
+  dialog-name="Storage & File System Options" \
+  short-description="Extended ZRAM Overcommit (zram-size = ram * 2)" \
+  long-description="Extended ZRAM Overcommit: Doubles the virtual size of the compressed in-RAM swap space from 100% to 200% of physical RAM. This benefits memory-intensive workloads whose contents compress well (e.g. large graph, text or scientific data processing), allowing the system to hold roughly twice its RAM in compressed form before touching the disk swap partition. Trade-off: the gradual overflow to a disk swap partition only begins once the ZRAM device is completely filled. With doubled size, reaching that point within the physical memory cap (75% of RAM) requires a sustained compression ratio of about 2.7:1. If the actual data compresses worse, the memory cap triggers first: further swap writes fail and the kernel will OOM-kill the largest memory consumer instead of degrading gradually. Enable this only if your workloads' memory is known to compress well; the default size of 100% of RAM reaches the disk overflow path at any compression ratio above 1.33:1." \
+  spdx-identifiers="GPL-2.0-only" \
+  available="`install-zram`" \
+  default-value=#false {
+    chroot-script "sed -i 's|^zram-size = ram$|zram-size = ram * 2|' /etc/systemd/zram-generator.conf"
+  }
+
+- name="limit-zfs-arc" \
+  dialog-name="Storage & File System Options" \
+  short-description="Limit ZFS ARC cache size" \
+  long-description="Limit ZFS ARC cache size: By default, OpenZFS allows its Adaptive Replacement Cache to grow to nearly all system memory (RAM minus 1 GiB). This default targets dedicated storage servers. On Linux, ARC memory is reclaimed via a shrinker callback that reacts slower than regular page cache reclaim, which can cause allocation stalls when applications suddenly demand large amounts of memory — especially in combination with ZRAM. This option caps the ARC at 25% of RAM (minimum 1 GiB, maximum 8 GiB), keeping memory available for applications while retaining effective metadata and hot-data caching. Disable this option for dedicated storage servers where caching is the primary workload." \
+  spdx-identifiers="CDDL" \
+  available="`zfs-filesystem`" \
+  default-value="`zfs-filesystem`" {
+    files "/etc/modprobe.d/ditana-zfs.conf"
+    chroot-script "`sed -i 's|@@ZFS_ARC_MAX@@|{ min(8, max(1, Settings.instance.get('total-ram-gib') div 4)) * 1024 * 1024 * 1024 }|' /etc/modprobe.d/ditana-zfs.conf`"
   }
 
 - name="install-ramdisk" \
@@ -53,15 +76,4 @@ pipelines, or anything temporary that benefits from zero-latency storage.
           \ // Expose the RAMDISK variable to interactive login shells (TTY, SSH)
           "/etc/profile.d/ditana-ramdisk.sh"
     chroot-script "systemctl --global enable systemd-tmpfiles-setup.service"
-  }
-
-- name="limit-zfs-arc" \
-  dialog-name="Storage & File System Options" \
-  short-description="Limit ZFS ARC cache size" \
-  long-description="Limit ZFS ARC cache size: By default, OpenZFS allows its Adaptive Replacement Cache to grow to nearly all system memory (RAM minus 1 GiB). This default targets dedicated storage servers. On Linux, ARC memory is reclaimed via a shrinker callback that reacts slower than regular page cache reclaim, which can cause allocation stalls when applications suddenly demand large amounts of memory — especially in combination with ZRAM. This option caps the ARC at 25% of RAM (minimum 1 GiB, maximum 8 GiB), keeping memory available for applications while retaining effective metadata and hot-data caching. Disable this option for dedicated storage servers where caching is the primary workload." \
-  spdx-identifiers="CDDL" \
-  available="`zfs-filesystem`" \
-  default-value="`zfs-filesystem`" {
-    files "/etc/modprobe.d/ditana-zfs.conf"
-    chroot-script "`sed -i 's|@@ZFS_ARC_MAX@@|{ min(8, max(1, Settings.instance.get('total-ram-gib') div 4)) * 1024 * 1024 * 1024 }|' /etc/modprobe.d/ditana-zfs.conf`"
   }
