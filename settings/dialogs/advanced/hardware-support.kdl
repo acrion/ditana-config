@@ -127,3 +127,21 @@ Please note that although the actual package is licensed under the FOSS GPL2, it
     "rmdir /tmp/virtualbox-guest" \
     #"echo "Finished installing VirtualBox guest additions.""#
   }
+// On some machines the ACPI S3 resume path leaves the CPU unable to enter any
+// C-state deeper than C1. The cores then run at full clock whenever idle,
+// drawing close to TDP, until the next reboot. This cannot be detected during
+// installation -- no suspend has happened yet -- and fingerprinting the
+// affected models would be endless, so the guard measures the symptom on the
+// running system instead: package power against the package power limit while
+// idle. Affected machines sit above 80% of the limit doing nothing, healthy
+// ones below 20%. When the symptom appears, s2idle is selected permanently,
+// which bypasses the firmware entirely. We do not pre-empt this, because
+// s2idle costs noticeably more power while suspended.
+- name="install-cpu-idle-guard" \
+  default-value="`NOT virtual-environment`" {
+    files "/usr/lib/ditana/cpu-idle-guard" \
+          "/etc/systemd/system/ditana-cpu-idle-guard.service" \
+          "/etc/systemd/system/ditana-cpu-idle-guard-boot.service"
+    chroot-script "systemctl enable ditana-cpu-idle-guard.service" \
+                  "systemctl enable ditana-cpu-idle-guard-boot.service"
+  }

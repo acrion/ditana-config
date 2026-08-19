@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2026 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of ditana-config, see https://github.com/acrion/ditana-config
+#
+# ditana-config is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ditana-config is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
+
+# Detects firmware that corrupts the CPU idle configuration when resuming from
+# S3 ("deep") suspend, and switches the system to s2idle when it happens.
+#
+# Background: on some machines the ACPI S3 resume path leaves the processor
+# unable to enter any C-state deeper than C1. The cores then sit at full clock
+# whenever they are not executing anything, drawing close to TDP while the
+# system is idle -- fans at full speed, battery draining, and the machine
+# throttling under trivial load. The condition persists until the next reboot.
+#
+# It is invisible from userspace the obvious way: the kernel's cpuidle
+# statistics under /sys/devices/system/cpu/cpu*/cpuidle keep reporting near
+# 100% residency in the deepest state, because they count what the governor
+# *requested*, not what the hardware granted. Only the hardware counters, or
+# the power draw itself, reveal the truth.
+#
+# We therefore measure the symptom rather than fingerprint the hardware: while
+# the system is close to idle, package power is compared against the package
+# power limit (TDP). A healthy machine idles at a small fraction of it; an
+# affected one sits near the limit. The ratio is self-normalising, so no
+# model-specific thresholds or CPU-generation knowledge are needed, and the
+# check works on any vendor whose package exposes a RAPL powercap domain.
+#
+# The remedy is s2idle, which never hands control to the firmware and therefore
+# cannot be corrupted by it. Its cost is higher power draw while suspended, so
+# it is enabled only on machines that demonstrably need it -- never pre-emptively.
+#
+# Usage:
+#   cpu-idle-guard check   run after resume; measure and act
+#   cpu-idle-guard apply   run at boot; re-apply a verdict reached earlier
+
+set -uo pipefail
+
+readonly MARKER=/var/lib/ditana/deep-suspend-breaks-cpu-idle
+readonly MEM_SLEEP=/sys/power/mem_sleep
+
+# Only judge when the system is at least this idle. Above it, high package
+# power is legitimate and says nothing about C-state health.
+readonly MAX_BUSY_PERCENT=20
+
+# Package power above this percentage of the package power limit, while idle,
+# means the cores are not reaching deep C-states. Healthy systems measure well
+# below 20%, affected ones well above 80%.
+readonly MAX_TDP_PERCENT=45
+
+readonly SAMPLE_SECONDS=5
+readonly SETTLE_SECONDS=25
+readonly MAX_ATTEMPTS=6
+
+log() {
+    echo "ditana-cpu-idle-guard: $*"
+}
+
+# Locate the RAPL domain describing the CPU package. Vendor-neutral: matches
+# whatever powercap domain calls itself package-0.
+find_rapl_domain() {
+    local dir name
+    for dir in /sys/class/powercap/*:0; do
+        [[ -r "$dir/name" ]] || continue
+        read -r name < "$dir/name" || continue
+        if [[ "$name" == "package-0" ]]; then
+            [[ -r "$dir/energy_uj" && -r "$dir/constraint_0_power_limit_uw" ]] || continue
+            echo "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Switch the default suspend mode to s2idle for the remainder of this boot.
+select_s2idle() {
+    if ! grep -qw s2idle "$MEM_SLEEP"; then
+        log "s2idle is not offered by this kernel, cannot apply workaround"
+        return 1
+    fi
+
+    if grep -q '\[s2idle\]' "$MEM_SLEEP"; then
+        return 0
+    fi
+
+    if echo s2idle > "$MEM_SLEEP"; then
+        log "suspend mode set to s2idle"
+        return 0
+    fi
+
+    log "failed to write $MEM_SLEEP"
+    return 1
+}
+
+# Print "<busy percent> <package watts>" sampled over SAMPLE_SECONDS.
+sample() {
+    local rapl=$1
+    local energy_before energy_after idle_before idle_after total_before total_after
+
+    read -r energy_before < "$rapl/energy_uj" || return 1
+    read -r idle_before total_before < <(cpu_times) || return 1
+
+    sleep "$SAMPLE_SECONDS"
+
+    read -r energy_after < "$rapl/energy_uj" || return 1
+    read -r idle_after total_after < <(cpu_times) || return 1
+
+    # The RAPL counter wraps; a negative delta means we straddled a wrap and the
+    # sample is unusable.
+    if (( energy_after <= energy_before || total_after <= total_before )); then
+        return 1
+    fi
+
+    awk -v ib="$idle_before" -v ia="$idle_after" \
+        -v tb="$total_before" -v ta="$total_after" \
+        -v eb="$energy_before" -v ea="$energy_after" \
+        -v secs="$SAMPLE_SECONDS" \
+        'BEGIN { printf "%.2f %.3f\n", 100 * (1 - (ia - ib) / (ta - tb)), (ea - eb) / secs / 1000000 }'
+}
+
+# Print "<idle jiffies> <total jiffies>" from /proc/stat.
+cpu_times() {
+    awk '/^cpu /{ total = 0; for (i = 2; i <= NF; i++) total += $i; print $5, total; exit }' /proc/stat
+}
+
+check() {
+    local rapl limit_uw attempt busy watts tdp_percent
+
+    if [[ -e "$MARKER" ]]; then
+        # Verdict already reached; the boot unit keeps it applied.
+        select_s2idle
+        return 0
+    fi
+
+    if ! grep -qw s2idle "$MEM_SLEEP"; then
+        return 0
+    fi
+
+    if ! rapl=$(find_rapl_domain); then
+        log "no RAPL package domain available, skipping check"
+        return 0
+    fi
+
+    read -r limit_uw < "$rapl/constraint_0_power_limit_uw" || return 0
+    (( limit_uw > 0 )) || return 0
+
+    # Give the desktop time to finish everything it does on resume.
+    sleep "$SETTLE_SECONDS"
+
+    for (( attempt = 1; attempt <= MAX_ATTEMPTS; attempt++ )); do
+        read -r busy watts < <(sample "$rapl") || continue
+
+        if awk -v b="$busy" -v m="$MAX_BUSY_PERCENT" 'BEGIN { exit !(b > m) }'; then
+            # Too busy to tell. Wait for a quieter moment.
+            continue
+        fi
+
+        tdp_percent=$(awk -v w="$watts" -v l="$limit_uw" 'BEGIN { printf "%.1f", 100 * w / (l / 1000000) }')
+
+        if awk -v p="$tdp_percent" -v m="$MAX_TDP_PERCENT" 'BEGIN { exit !(p > m) }'; then
+            log "package draws ${watts}W (${tdp_percent}% of limit) at ${busy}% load after resume from deep suspend"
+            log "the firmware left the CPU unable to enter deep C-states; switching to s2idle permanently"
+            mkdir -p "$(dirname "$MARKER")"
+            printf '%s\n' \
+                "# Written by ditana-cpu-idle-guard." \
+                "# Resuming from S3 left this machine drawing ${watts}W (${tdp_percent}% of the" \
+                "# package power limit) while ${busy}% busy, which means the cores were no longer" \
+                "# reaching deep C-states. s2idle is used instead from now on." \
+                > "$MARKER"
+            select_s2idle
+            log "a reboot is required to restore deep C-states for the current session"
+        else
+            log "package draws ${watts}W (${tdp_percent}% of limit) at ${busy}% load, CPU idle states are healthy"
+        fi
+
+        return 0
+    done
+
+    log "system stayed too busy to assess CPU idle behaviour, will retry after the next resume"
+    return 0
+}
+
+apply() {
+    [[ -e "$MARKER" ]] || return 0
+    select_s2idle
+}
+
+case "${1-}" in
+    check) check ;;
+    apply) apply ;;
+    *)
+        echo "usage: ${0##*/} {check|apply}" >&2
+        exit 2
+        ;;
+esac

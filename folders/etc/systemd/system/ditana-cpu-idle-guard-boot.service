@@ -1,0 +1,11 @@
+[Unit]
+Description=Select s2idle because deep suspend is known to break CPU idle states here
+Documentation=file:/usr/lib/ditana/cpu-idle-guard
+ConditionPathExists=/var/lib/ditana/deep-suspend-breaks-cpu-idle
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ditana/cpu-idle-guard apply
+
+[Install]
+WantedBy=multi-user.target
