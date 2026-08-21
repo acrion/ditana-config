@@ -9,7 +9,20 @@
   \ // within days/weeks of release, see https://github.com/openzfs/zfs/releases for current status.
   available="`install-standard-lts-kernel`" \
   default-value="`install-standard-lts-kernel AND NOT profile-quick`" {
-    arch-packages "zfs-utils"
+    // What a ZFS system consists of, all from the Ditana repository: zfs-utils
+    // is the userspace, zfs-dkms carries the module sources that DKMS compiles
+    // locally, and zfsbootmenu is the bootloader such a system boots through.
+    //
+    // zfsbootmenu declares a dependency on the virtual package 'zfs', which
+    // zfs-dkms provides. It stays a dependency on 'zfs' rather than on
+    // 'zfs-dkms' so that it also resolves against a prebuilt module.
+    //
+    // pacstrap runs the DKMS build, and the initramfs it generates there
+    // predates the ZFS hooks; install-and-configure-bootloader.sh writes the
+    // mkinitcpio configuration and regenerates the image.
+    arch-packages "zfs-utils" \
+                  "zfs-dkms" \
+                  "zfsbootmenu"
   }
 - name="btrfs-filesystem" \
   dialog-name="File System" \
