@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Type=X-XFCE-Helper
+NoDisplay=true
+Name=LibreWolf
+Icon=librewolf
+X-XFCE-Category=WebBrowser
+X-XFCE-Commands=librewolf
+X-XFCE-CommandsWithParameter=librewolf "%s"
+X-XFCE-Binaries=librewolf

@@ -1,21 +1,34 @@
 // Settings that correspond to the dialog "Configuration Categories" -> "Expert Settings" → "System Hardening"
 - name="kernel-option-duurn" \
   dialog-name="System Hardening" \
-  short-description="Disable unprivileged user namespaces (unprivileged_userns_clone=0)" \
-  long-description="Disable unprivileged user namespaces: Enhances system security by eliminating a historically common kernel attack surface exploited in local privilege escalations. This option is only exposed with the standard kernel, because both Hardened Kernel variants apply the same patch unconditionally. Trade-offs to consider: Ditana ships bubblewrap-suid whenever this option is active, so the outer Flatpak / Bubblejail sandbox keeps working through a well-audited setuid binary instead of relying on unprivileged user namespaces. Firefox-derived browsers (including LibreWolf, whether native or as a Flatpak) still lose the user-namespace layer of their inner browser sandbox (chroot and IPC/network isolation of content processes); their seccomp-BPF syscall filtering and process sandboxing remain active, and Mozilla deliberately ships no setuid fallback for that inner layer. Chromium-based browsers as native Arch/AUR packages are unaffected because they ship their own setuid helper (chrome-sandbox); Chromium-based Flatpaks remain unsupported, because their inner zypak layer creates additional user namespaces that bubblewrap-suid cannot satisfy. Ditana therefore packages Chromium browsers (e.g. brave-bin) from AUR instead of using their Flatpaks. The reason this trade-off is worth accepting: a kernel exploit compromises the entire system irreversibly — every process, every file, all data — while the user-namespace layer is only one of several defense-in-depth mechanisms in a browser sandbox." \
-  \ // Unprivileged user namespaces are disabled by default in Ditana because otherwise the attack surface is greatly increased, see
-  \ // https://wiki.archlinux.org/title/Security#Sandboxing_applications. Chromium-based flatpak packages that require this (e.g. com.brave.Browser)
-  \ // are not used. Instead their corresponding Arch/AUR packages are used (e.g. brave-bin) because they work flawlessly with this setting
-  \ // (they do not even require bubblewrap-suid).
-  default-value="`NOT install-hardened-stable-kernel`" {
-    chroot-script "echo 'kernel.unprivileged_userns_clone=0 # Disable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
+  short-description="Restrict unprivileged user namespaces to the programs that need them" \
+  long-description="Restrict unprivileged user namespaces: User namespaces let an unprivileged process gain capabilities inside a namespace of its own, and they are a historically common ingredient of local privilege escalations — of the sixteen Linux kernel entries CISA added to its Known Exploited Vulnerabilities catalogue in three years, six are exploitable through them. Sandboxes need them all the same: every Flatpak, and Bubblejail too, runs bubblewrap to build its outer sandbox, and bubblewrap creates a user namespace. Ditana therefore neither switches them off for everybody nor on for everybody. With this option active, the kernel refuses a user namespace to every program except those a setting has explicitly asked for — today that is bubblewrap, and each request is declared next to the package that needs it. The permission is enforced by ditana-userns-guard, which attaches a BPF program to the kernel's own userns_create hook and is installed together with this option. Should that program ever fail to load, the system keeps unprivileged user namespaces switched off entirely, so a failure costs you your sandboxes and never your protection. Turn this option off only if you want unprivileged user namespaces available to every program on the system." \
+  spdx-identifiers="GPL-2.0-only" \
+  default-value=#true {
+    arch-packages "ditana-userns-guard"
+    \ // The sysctl is written as 0 even though the guard needs it at 1, and that
+    \ // is the whole safety argument rather than an oversight. A BPF LSM hook can
+    \ // only ever deny; it cannot grant. So the allowlist is worthless while the
+    \ // kernel refuses every unprivileged user namespace outright, and the guard's
+    \ // service unit raises the value itself once the program is verifiably
+    \ // attached. A machine that cannot load it therefore boots as locked as it
+    \ // was installed.
+    sysctl {
+        - "kernel.unprivileged_userns_clone" "0"
+    }
+    chroot-script "systemctl enable ditana-userns-guard.service"
   }
 
 - name="enable-unprivileged-namespaces" \
-  \ // Forces kernel.unprivileged_userns_clone=1 on hardened kernels when the user explicitly disables kernel-option-duurn
-  \ // (i.e. overrules Ditana’s security default). This is the only case where userns=1 is set.
-  default-value="`install-hardened-stable-kernel AND NOT kernel-option-duurn`" {
-    chroot-script "echo 'kernel.unprivileged_userns_clone=1 # Enable unprivileged user namespaces' >> /etc/sysctl.d/ditana.conf"
+  \ // The complement of kernel-option-duurn, and the only place where Ditana sets
+  \ // this value to 1 from the configuration. The two cannot both be enabled,
+  \ // because this one's default is the negation of the other's value — and if a
+  \ // future edit ever breaks that, the installer refuses two settings writing the
+  \ // same key differently rather than letting the last one win unseen.
+  default-value="`NOT kernel-option-duurn`" {
+    sysctl {
+        - "kernel.unprivileged_userns_clone" "1"
+    }
   }
 
 - name="sysctl-kexec-disabled" \
@@ -25,16 +38,20 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT install-hardened-stable-kernel`" \
   default-value=#true {
-    chroot-script "echo 'kernel.kexec_load_disabled=1 # disable kexec' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.kexec_load_disabled" "1"
+    }
   }
 
 - name="sysctl-bpf-disabled" \
   dialog-name="System Hardening" \
   short-description="Disable unprivileged BPF (kernel.unprivileged_bpf_disabled=1)" \
-  long-description="Disable Unprivileged BPF: Restricts the BPF JIT compiler to root. BPF is a powerful in-kernel virtual machine that can be abused for attacks such as heap spraying. Normal users and applications rarely need direct BPF access." \
+  long-description="Disable Unprivileged BPF: Restricts the BPF JIT compiler to root. BPF is a powerful in-kernel virtual machine that can be abused for attacks such as heap spraying. Normal users and applications rarely need direct BPF access. This does not affect ditana-userns-guard, which is loaded by a system service running as root." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'kernel.unprivileged_bpf_disabled=1 # restrict BPF to root' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.unprivileged_bpf_disabled" "1"
+    }
   }
 
 - name="sysctl-ptrace-restrict" \
@@ -44,7 +61,9 @@
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT sysctl-ptrace-unrestricted`" \
   default-value="`NOT profile-developer`" {
-    chroot-script "echo 'kernel.yama.ptrace_scope=2 # restrict ptrace to root' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.yama.ptrace_scope" "2"
+    }
   }
 
 - name="sysctl-kptr-restrict" \
@@ -53,7 +72,9 @@
   long-description="Hide Kernel Pointers: Prevents all users, including root, from reading kernel symbol addresses via /proc/kallsyms. These addresses can help attackers develop exploits targeting specific kernel functions. This setting has no impact on normal system operation." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'kernel.kptr_restrict=2 # hide kernel pointers' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.kptr_restrict" "2"
+    }
   }
 
 - name="sysctl-dmesg-restrict" \
@@ -62,7 +83,9 @@
   long-description="Restrict Kernel Log Access: Prevents unprivileged users from reading kernel log messages via dmesg. The kernel log can reveal hardware details, loaded modules, and error messages that help attackers map out the system. Administrators can still access logs via journalctl or by running dmesg as root." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'kernel.dmesg_restrict=1 # restrict dmesg to root' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.dmesg_restrict" "1"
+    }
   }
 
 - name="disable-core-dumps" \
@@ -84,7 +107,10 @@ Core dumps capture the memory state of a program during crashes, which is useful
   long-description="Protect FIFOs and Regular Files in Sticky Directories: Prevents users from writing to FIFOs or regular files they do not own in world-writable sticky directories such as /tmp. This mitigates a class of privilege escalation attacks where an attacker creates or replaces files in shared directories to trick privileged processes into reading or writing attacker-controlled data. The Linux default protects hardlinks and symlinks (fs.protected_hardlinks=1, fs.protected_symlinks=1) but leaves FIFOs and regular files unprotected." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'fs.protected_fifos=2 # protect FIFOs in sticky dirs' >> /etc/sysctl.d/ditana.conf" "echo 'fs.protected_regular=2 # protect regular files in sticky dirs' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "fs.protected_fifos" "2"
+        - "fs.protected_regular" "2"
+    }
   }
 
 - name="sysctl-net-hardening" \
@@ -102,7 +128,13 @@ These settings are broadly recommended and unlikely to cause compatibility issue
 """ \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'net.ipv4.tcp_syncookies=1 # SYN flood protection' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.accept_redirects=0 # reject ICMP redirects' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv6.conf.all.accept_redirects=0 # reject ICMP redirects (IPv6)' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.accept_source_route=0 # disable source routing' >> /etc/sysctl.d/ditana.conf" "echo 'net.ipv4.conf.all.rp_filter=1 # reverse-path filtering' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "net.ipv4.tcp_syncookies" "1"
+        - "net.ipv4.conf.all.accept_redirects" "0"
+        - "net.ipv6.conf.all.accept_redirects" "0"
+        - "net.ipv4.conf.all.accept_source_route" "0"
+        - "net.ipv4.conf.all.rp_filter" "1"
+    }
   }
 
 - name="kernel-option-perf1" \
@@ -112,7 +144,9 @@ These settings are broadly recommended and unlikely to cause compatibility issue
     spdx-identifiers="GPL-2.0-only" \
     default-value="`profile-developer`" {
     \ // https://docs.kernel.org/admin-guide/sysctl/kernel.html#perf-event-paranoid
-    chroot-script "echo 'kernel.perf_event_paranoid=1 # Allow normal users to access performance profiling tools' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.perf_event_paranoid" "1"
+    }
   }
 
 - name="sysctl-ptrace-unrestricted" \
@@ -126,5 +160,7 @@ This restores the classic Linux behavior where any process of the same user can 
   spdx-identifiers="GPL-2.0-only" \
   available="`NOT sysctl-ptrace-restrict`" \
   default-value="`profile-developer`" {
-    chroot-script "echo 'kernel.yama.ptrace_scope=0 # unrestricted ptrace - important for developers' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.yama.ptrace_scope" "0"
+    }
   }

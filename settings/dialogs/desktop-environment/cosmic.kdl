@@ -183,7 +183,7 @@
 
 - name="configure-cosmic-favorites-librewolf" \
   default-value="`install-cosmic AND install-librewolf`" {
-    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|io.gitlab.librewolf-community|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
+    chroot-script "sed -i 's|@@COSMIC_BROWSER_ID@@|librewolf|' /usr/share/cosmic/com.system76.CosmicAppList/v1/favorites"
 }
 
 - name="configure-cosmic-favorites-brave" \

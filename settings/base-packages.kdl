@@ -91,27 +91,17 @@
     // application deployment happens at first boot via the
     // ditana-flatpak-finalize.service systemd unit.
     arch-packages "flatpak"
+    \ // Every Flatpak, not only the browsers, runs bwrap to build its outer
+    \ // sandbox, and bwrap needs a user namespace. This is the declaration that
+    \ // buys it one: Ditana keeps unprivileged user namespaces shut for
+    \ // everything else, and each program that needs one asks here, beside the
+    \ // package it belongs to.
+    userns-allow "/usr/bin/bwrap"
     files "/etc/systemd/system/ditana-flatpak-finalize.service" \
           "/etc/systemd/system/greetd.service.d/wait-for-flatpaks.conf" \
           "/usr/lib/ditana/flatpak-finalize" \
           "/usr/lib/ditana/flatpak-show-progress"
     chroot-script "systemctl enable ditana-flatpak-finalize.service"
-  }
-
-- name="install-bubblewrap-suid" \
-  \ // https://wiki.archlinux.org/title/Bubblewrap
-  \ // Ditana never enables kernel.unprivileged_userns_clone=1, because that would broaden the
-  \ // kernel attack surface significantly. The trade-off is the setuid variant of bubblewrap:
-  \ // every Flatpak — not just browsers — invokes bwrap to set up its outer sandbox, and without
-  \ // user namespaces the suid binary is the only way bwrap can still create them. bubblewrap-suid
-  \ // replaces the regular bubblewrap package cleanly (same files plus the suid bit). Without this,
-  \ // every Flatpak fails at startup with "bwrap: No permissions to create a new namespace".
-  \ // Bubblejail (opt-in) has the same requirement, hence the OR. Chromium-based Flatpaks (e.g.
-  \ // com.brave.Browser) remain unsupported even with this package, because their inner zypak
-  \ // layer creates additional user namespaces that bubblewrap-suid cannot satisfy — Ditana
-  \ // therefore ships Chromium browsers (brave-bin) from AUR instead.
-  default-value="`(flatpak OR install-bubblejail) AND (kernel-option-duurn OR install-hardened-stable-kernel)`" {
-    arch-packages "bubblewrap-suid"
   }
 
 - name="ditana-mirrorlist" default-value="`release-version`" {

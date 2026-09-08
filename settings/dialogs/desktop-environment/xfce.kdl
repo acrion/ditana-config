@@ -165,11 +165,11 @@
 // === related to browser.kdl ===
 
 - name="install-xfce-librewolf" default-value="`install-xfce AND install-librewolf`" {
-    files "/etc/skel/.local/share/xfce4/helpers/librewolf-flatpak.desktop"
+    files "/etc/skel/.local/share/xfce4/helpers/librewolf.desktop"
     first-login-commands \
-        #"if [[ -f /var/lib/flatpak/exports/share/applications/io.gitlab.librewolf-community.desktop ]]; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=io.gitlab.librewolf-community;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
-        #"    sed -i "s|^WebBrowser=.*|WebBrowser=librewolf-flatpak|" "$HOME/.config/xfce4/helpers.rc""# \
+        #"if command -v librewolf &> /dev/null; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=librewolf;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"    sed -i "s|^WebBrowser=.*|WebBrowser=librewolf|" "$HOME/.config/xfce4/helpers.rc""# \
         #"fi"#
   }
 

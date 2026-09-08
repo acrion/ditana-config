@@ -5,7 +5,9 @@
   long-description="Enable Magic System Request Keys: Enables the SysRq (commonly «Print Screen») key for emergency recovery actions, such as Alt+SysRq+B to reboot." \
   spdx-identifiers="GPL-2.0-only" \
   default-value=#true {
-    chroot-script "echo 'kernel.sysrq=1 # Enable Magic SysRq Keys' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "kernel.sysrq" "1"
+    }
   }
 
 - name="kernel-option-vfsca" \
@@ -14,7 +16,9 @@
   long-description="Reduce background reclaiming of file system cache: Retains more file system metadata in memory for faster access, increasing RAM usage." \
   spdx-identifiers="GPL-2.0-only" \
   default-value="`total-ram-gib >= 24`" {
-    chroot-script "echo 'vm.vfs_cache_pressure=50 # Reduce background reclaiming of file system cache' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "vm.vfs_cache_pressure" "50"
+    }
   }
 
 - name="kernel-option-compa" \
@@ -23,7 +27,9 @@
   long-description="Minimize background memory compaction: Reduces effort spent on memory compaction in the background, which may decrease CPU load at the cost of increased RAM consumption." \
   spdx-identifiers="GPL-2.0-only" \
   default-value="`total-ram-gib >= 24`" {
-    chroot-script "echo 'vm.compaction_proactiveness=1 # Minimize background memory compaction' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "vm.compaction_proactiveness" "1"
+    }
   }
 
 - name="kernel-option-swapp" \
@@ -47,7 +53,9 @@
   spdx-identifiers="GPL-2.0-only" \
   default-value="`install-zram`" {
     \ // # https://wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
-    chroot-script "echo 'vm.page-cluster=0 # Disable Swap Readahead - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "vm.page-cluster" "0"
+    }
   }
 
 - name="kernel-option-wmboo" \
@@ -57,7 +65,9 @@
   spdx-identifiers="GPL-2.0-only" \
   default-value="`install-zram`" {
     \ // https: //wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
-    chroot-script "echo 'vm.watermark_boost_factor=0 # Disable Extra Memory Reclaim - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "vm.watermark_boost_factor" "0"
+    }
   }
 
 - name="kernel-option-wmsca" \
@@ -67,7 +77,9 @@
   spdx-identifiers="GPL-2.0-only" \
   default-value="`install-zram`" {
     \ // https://wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram
-    chroot-script "echo 'vm.watermark_scale_factor=125 # Maintain free memory - recommended for ZRAM' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "vm.watermark_scale_factor" "125"
+    }
   }
 
 - name="kernel-option-fwdpe" \

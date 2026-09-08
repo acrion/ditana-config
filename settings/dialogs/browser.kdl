@@ -5,14 +5,14 @@
 - name="install-librewolf" \
   dialog-name="Browser" \
   short-description="LibreWolf - Privacy-hardened Firefox fork" \
-  long-description="LibreWolf is a community-maintained fork of Firefox that ships with stronger default privacy and security settings out of the box (no telemetry, stricter cookie / referrer policy, hardened TLS settings). Distributed as a Flatpak; the download is one of the longest network steps in a default Ditana install." \
+  long-description="LibreWolf is a community-maintained fork of Firefox that ships with stronger default privacy and security settings out of the box (no telemetry, stricter cookie / referrer policy, hardened TLS settings). Ditana installs the package from the official Arch repositories." \
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment AND NOT (profile-quick OR profile-windows)`" {
     files "/etc/skel/.librewolf/librewolf.overrides.cfg"
-    flatpak-packages "io.gitlab.librewolf-community"
+    arch-packages "librewolf"
     mime-defaults {
-        - "io.gitlab.librewolf-community.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
+        - "librewolf.desktop" "text/html" "text/xml" "application/xhtml+xml" "application/xml" "x-scheme-handler/http" "x-scheme-handler/https" "x-scheme-handler/about"
     }
   }
 
@@ -38,10 +38,12 @@
   spdx-identifiers="MPL-2.0" \
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment AND profile-windows`" {
-    \ // We do not use the Flatpak com.brave.Browser because it would require kernel.unprivileged_userns_clone=1
-    \ // for its inner zypak/Chromium sandbox (increasing the kernel attack surface). Installation of bubblewrap-suid
-    \ // does not help. Instead we use the native AUR package brave-bin, which works flawlessly with userns=0
-    \ // via its own chrome-sandbox helper. See https://wiki.archlinux.org/title/Security#Sandboxing_applications
+    \ // The Flatpak com.brave.Browser is not used. Its inner zypak layer creates further user
+    \ // namespaces from a binary of its own inside the sandbox, and it is untested whether the
+    \ // per-executable allowlist reaches those at all. A binary inside a Flatpak would also fall
+    \ // out of the allowlist on the next flatpak update, which the pacman hook cannot see.
+    \ // brave-bin brings its own chrome-sandbox helper and needs none of this.
+    \ // See https://wiki.archlinux.org/title/Security#Sandboxing_applications
     aur-packages "brave-bin"
   }
 

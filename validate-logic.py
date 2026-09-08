@@ -53,6 +53,8 @@ if duplicates:
     print(f"❌ Duplicate setting names: {sorted(duplicates)}")
     errors = True
 
+SYSCTL_KEY_RE = re.compile(r'[a-z][a-z0-9_]*(\.[a-z0-9_*-]+)+')
+
 scripts_to_check =[]
 
 print("🔍 Validating chroot scripts and shell code...")
@@ -62,6 +64,25 @@ for s in settings:
     for line in s.get('chroot-script',[]):
         if '/etc/skel/' in line:
             print(f"❌ Setting '{name}' uses '/etc/skel/' in 'chroot-script'. Use 'early-chroot-script' instead. Line: {line}")
+            errors = True
+
+    # The guard matches an executable by the file it finds at this path, so a
+    # relative path would be resolved against whatever directory the loader
+    # happens to run in. There is no sensible reading of one here.
+    for path in s.get('userns-allow',[]):
+        if not path.startswith('/'):
+            print(f"❌ Setting '{name}' declares 'userns-allow' with a relative path: {path}")
+            errors = True
+
+    for entry in s.get('sysctl',[]):
+        key, value = entry[0], entry[1]
+        if not SYSCTL_KEY_RE.fullmatch(key):
+            print(f"❌ Setting '{name}' declares a sysctl key that is not one: {key}")
+            errors = True
+        # The value ends up to the right of '=' on a line of its own, so a value
+        # carrying a newline or a '#' would silently write something else.
+        if value == '' or any(c in value for c in '#\n\r'):
+            print(f"❌ Setting '{name}' declares an unusable sysctl value for '{key}': {value!r}")
             errors = True
 
     for key in['first-login-commands', 'login-commands', 'chroot-script', 'early-chroot-script', 'root-script']:

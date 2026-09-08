@@ -83,11 +83,12 @@ Install Bubblejail, a sandboxing utility that provides application isolation wit
  • X11/Wayland display server integration
  • Custom home directory isolation per application
  • User-friendly graphical interface for sandbox configuration
-Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for process isolation. When those are disabled — either by selecting a Hardened Kernel or by enabling the «Disable unprivileged user namespaces» option — Ditana installs bubblewrap-suid as a setuid fallback, which keeps all bwrap-based sandboxes working (Bubblejail and the outer Flatpak sandbox alike).
+Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for process isolation. Ditana keeps those switched off for programs that have not asked for them, and bubblewrap is one of the programs that has, so Bubblejail works under that restriction like any other bwrap-based sandbox.
 """ \
   spdx-identifiers="GPL-3.0-or-later" \
   default-value=#false {
     arch-packages "bubblejail"
+    userns-allow "/usr/bin/bwrap"
   }
 - name="install-protonvpn" \
   dialog-name="Network and Security Tools" \
@@ -125,7 +126,8 @@ Disable this option only if you deliberately rely on the weak host model — for
   spdx-identifiers="" \
   available="`enable-network`" \
   default-value=#true {
-    chroot-script \
-      "echo 'net.ipv4.conf.all.arp_ignore=1 # Answer ARP requests only for addresses of the receiving interface (prevents ARP flux)' >> /etc/sysctl.d/ditana.conf" \
-      "echo 'net.ipv4.conf.all.arp_announce=2 # Announce the local address belonging to the outgoing interface (prevents ARP flux)' >> /etc/sysctl.d/ditana.conf"
+    sysctl {
+        - "net.ipv4.conf.all.arp_ignore" "1"
+        - "net.ipv4.conf.all.arp_announce" "2"
+    }
   }
