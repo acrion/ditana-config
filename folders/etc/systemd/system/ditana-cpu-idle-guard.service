@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify that the CPU still reaches deep C-states after resume
+Documentation=file:/usr/lib/ditana/cpu-idle-guard
+After=suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ditana/cpu-idle-guard check
+
+[Install]
+WantedBy=suspend.target

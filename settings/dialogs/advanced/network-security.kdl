@@ -53,6 +53,27 @@ Install basic network tools:
     arch-packages "firewalld"
     chroot-script "systemctl enable firewalld"
   }
+- name="allow-mdns" \
+  dialog-name="Network and Security Tools" \
+  short-description="Allow multicast DNS through the firewall" \
+  long-description="""
+Open UDP port 5353 so this machine can see what the local network offers:
+
+Multicast DNS is how devices announce themselves where no server keeps a directory. Printers, scanners, network shares, media receivers and «.local» host names all rely on it, and firewalld's default «public» zone drops it. The loss is silent — nothing reports an error, devices simply never appear.
+
+A network printer is the usual casualty. Modern printers advertise themselves over mDNS as AirPrint or Mopria devices, and CUPS creates a queue for such a printer as soon as it sees the announcement. With port 5353 closed CUPS never sees it, the print dialog stays empty, and the machine looks as though it had no printing support at all — while the same printer prints from any phone on the same network. That is what makes the fault hard to attribute: the obvious suspects are the printer and CUPS, and both are innocent.
+
+Why this is not a meaningful widening of the firewall:
+
+The firewalld service definition binds the port to the link-local multicast addresses 224.0.0.251 and ff02::fb. Routers do not forward either of them, so nothing beyond the local segment can reach the port or learn anything from it. What the machine gains is the ability to hear announcements that its neighbours are broadcasting anyway.
+
+Disable this option on a machine that has no business discovering its surroundings — a server in a rack, or a host on an untrusted network where even the names of your devices should stay to themselves.
+""" \
+  spdx-identifiers="" \
+  available="`install-firewalld`" \
+  default-value=#true {
+    chroot-script "firewall-offline-cmd --add-service=mdns" // firewall-cmd needs a running daemon; the offline variant writes the permanent configuration, which is all a chroot can do
+  }
 - name="install-bubblejail" \
   dialog-name="Network and Security Tools" \
   short-description="Install Bubblejail" \
@@ -76,4 +97,35 @@ Bubblejail is built on bubblewrap, which uses unprivileged user namespaces for p
   available="`enable-network AND install-desktop-environment`" \
   default-value=#false {
     arch-packages "proton-vpn-gtk-app"
+  }
+- name="prevent-arp-flux" \
+  dialog-name="Network and Security Tools" \
+  short-description="Bind ARP responses to the receiving interface" \
+  long-description="""
+Prevent ARP flux when the machine reaches one network over two interfaces:
+
+By default, Linux treats an IP address as belonging to the host rather than to a particular interface. A laptop that is on the same network through both Ethernet and Wi-Fi therefore answers ARP requests for either of its addresses on either interface, and may announce whichever address it likes. The router then learns the wrong MAC address, replies arrive on the interface that did not send the request, and connections are reset at seemingly random moments.
+
+This is called ARP flux. It is easy to run into — plugging a cable into a docked laptop while Wi-Fi stays connected is enough — and unpleasant to diagnose, because name resolution and most traffic keep working. Typical symptoms are sporadic «connection reset by peer» errors, stalled downloads, and package managers failing halfway through.
+
+Enabling this option confines ARP to the interface it belongs to:
+ • net.ipv4.conf.all.arp_ignore=1 — answer ARP requests only for addresses configured on the interface the request arrived on.
+ • net.ipv4.conf.all.arp_announce=2 — always announce the local address belonging to the outgoing interface.
+
+Why Ditana deviates from the kernel default here:
+
+The kernel ships arp_ignore=0 and arp_announce=0, and no major distribution changes them. That default implements the weak host model of RFC 1122, which is deliberate and correct for a router — but a workstation is not a router, and for it the model buys nothing while costing correctness the moment a second interface reaches the same subnet.
+
+The change is therefore free where it does not apply and valuable where it does. On a machine with a single active connection the requested address is always configured on the receiving interface, so arp_ignore=1 decides exactly as arp_ignore=0 would and nothing is observable. On a multi-homed machine it removes a failure that is silent, intermittent, and hard to attribute: DNS keeps resolving, most connections succeed, and only some are reset — which sends people looking for the fault in the application rather than in the ARP table of their router.
+
+This applies to every profile, including Server: two network cards on one switch produce the same flux as a docked laptop, and a service interruption is worse than a browser hiccup.
+
+Disable this option only if you deliberately rely on the weak host model — for example a service address held on a loopback or dummy interface that a physical interface must answer for, or certain high-availability failover configurations. Note that Linux Virtual Server in direct-routing mode is not such a case: it requires arp_ignore=1 itself.
+""" \
+  spdx-identifiers="" \
+  available="`enable-network`" \
+  default-value=#true {
+    chroot-script \
+      "echo 'net.ipv4.conf.all.arp_ignore=1 # Answer ARP requests only for addresses of the receiving interface (prevents ARP flux)' >> /etc/sysctl.d/ditana.conf" \
+      "echo 'net.ipv4.conf.all.arp_announce=2 # Announce the local address belonging to the outgoing interface (prevents ARP flux)' >> /etc/sysctl.d/ditana.conf"
   }

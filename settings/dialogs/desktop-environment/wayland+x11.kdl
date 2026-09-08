@@ -81,13 +81,17 @@
   default-value="`install-desktop-environment`" {
       arch-packages \
           "cups" \                  // CUPS daemon (pulls in cups-filters)
-          "cups-pdf" \              // virtual PDF printer; also needed for the IPP Everywhere (driverless) filter chain
+          "cups-pdf" \              // virtual PDF printer
           "ghostscript" \           // required for non-PDF / PostScript printers
           "gsfonts" \               // base fonts for PostScript printing
           "system-config-printer" \
           "cups-pk-helper" \
           "python-pysmbc"
-      chroot-script "systemctl enable cups.socket" // socket activation: start cupsd on demand (also auto-starts on USB printer hotplug)
+      chroot-script "systemctl enable cups.socket" \ // socket activation: start cupsd on demand (also auto-starts on USB printer hotplug)
+                    \ // CUPS discovers AirPrint and Mopria printers via DNS-SD using Avahi and creates a queue for one the
+                    \ // moment it receives the announcement. Avahi is a hard dependency of cups, yet an Arch package never
+                    \ // enables its own unit, meaning without this line the daemon would be installed and never run.
+                    "systemctl enable avahi-daemon.service"
   }
 
 - name="fonts" \
