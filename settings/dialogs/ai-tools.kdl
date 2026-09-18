@@ -67,8 +67,15 @@ Ditana Assistant respects your privacy by running locally and asks for confirmat
                         "install -Dm644 package.json /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/package.json" \
                         "cp -r dist /etc/skel/.logseq/plugins/logseq-plugin-gpt3-openai/dist" \
                         "rm -rf /tmp/logseq-plugin-gpt3-openai"
+    // The package ships Chromium's sandbox helper without the setuid bit, and
+    // under the default hardening that helper is Logseq's only sandbox. The
+    // package is installed by pacstrap, prior to the hook below being active,
+    // so the first instance occurs here; the hook performs it after every
+    // upgrade.
+    chroot-script "chmod 4755 /opt/logseq-desktop/chrome-sandbox"
     files "/etc/skel/.logseq/settings/logseq-plugin-gpt3-openai.json" \
-          "/etc/skel/.logseq/config/plugins.edn"
+          "/etc/skel/.logseq/config/plugins.edn" \
+          "/etc/pacman.d/hooks/ditana-logseq-chrome-sandbox.hook"
   }
 
 - name="install-gpu-libraries" \
