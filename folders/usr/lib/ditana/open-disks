@@ -19,8 +19,9 @@
 # along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
 
 # Shows the storage located at PATH. The disk module in waybar passes the path
-# for which it shows available space, so this opens where that figure comes
-# from.
+# whose available space it presents, so this opens where that value comes
+# from; Thunar's "Open Disk Management" action passes the selected directory.
+# A PATH that is a block device in itself opens that device.
 #
 # A filesystem residing on a block device opens in GNOME Disks. ZFS does not
 # provide a block device: instead, the mount source is a dataset, and the free
@@ -29,18 +30,46 @@
 # the pool's FREE. Consequently, a terminal presents the dataset before the
 # pool. The classification depends on the filesystem type, not on the look of
 # the source, ensuring that an overlay or tmpfs root is not taken for a pool.
+#
+# This process begins without a terminal for both callers, meaning any failure
+# would remain invisible. It is communicated via a desktop notification and
+# logged in the journal, identified by ditana-open-disks. GNOME Disks reports
+# a device it fails to look up only on stderr and exits with exit code 1,
+# which is why it runs in the foreground in this context.
 
 set -u
+shopt -s execfail
+
+log() {
+    printf '%s\n' "$2" | systemd-cat -t ditana-open-disks -p "$1"
+}
+
+fail() {
+    printf '%s: %s\n' "${0##*/}" "$1" >&2
+    log err "$1"
+    notify-send --app-name="Disk Management" --icon=org.gnome.DiskUtility "Disk Management" "$1" 2>/dev/null
+    exit 1
+}
 
 if (( $# != 1 )); then
     printf 'usage: %s PATH\n' "${0##*/}" >&2
     exit 2
 fi
 
-fstype=$(findmnt -n -o FSTYPE -T "$1")
-mount_source=$(findmnt -n -v -o SOURCE -T "$1")
+device=
+if [[ -b $1 ]]; then
+    log debug "$1 is a block device"
+    device=$1
+else
+    fstype=$(findmnt -n -o FSTYPE -T "$1") || fail "No mounted filesystem holds $1."
+    mount_source=$(findmnt -n -v -o SOURCE -T "$1") || fail "No mounted filesystem holds $1."
+    log debug "$1 is on $fstype from $mount_source"
+    if [[ $mount_source == /dev/* ]]; then
+        device=$mount_source
+    fi
+fi
 
-if [[ $fstype == zfs ]]; then
+if [[ ${fstype-} == zfs ]]; then
     # The inner script takes dataset and pool as inputs, not as interpolated
     # values.
     # shellcheck disable=SC2016
@@ -60,10 +89,11 @@ if [[ $fstype == zfs ]]; then
         printf "Press Enter to close. "
         read -r _
     ' sh "$mount_source" "${mount_source%%/*}"
+    fail "No terminal could be opened for the ZFS dataset $mount_source."
 fi
 
-if [[ $mount_source == /dev/* ]]; then
-    exec gnome-disks --block-device="$mount_source"
+if [[ -n $device ]]; then
+    gnome-disks --block-device="$device" || fail "GNOME Disks could not open $device."
+else
+    gnome-disks || fail "GNOME Disks could not be started."
 fi
-
-exec gnome-disks

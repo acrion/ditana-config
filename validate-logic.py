@@ -5,11 +5,13 @@ import re
 import secrets
 import shlex
 import signal
+import stat
 import subprocess
 import sys
 import shutil
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 
 config_path = '/tmp/ditana-config.json'
 try:
@@ -532,39 +534,81 @@ def user_manager_reachable():
     return os.path.exists(os.path.join(runtime_dir, "systemd", "private")) and shutil.which("systemd-run")
 
 
-def open_disks_run(workdir, path, fstype, source):
-    """Runs open-disks with findmnt, gnome-disks and xdg-terminal-exec stubbed.
+OPEN_DISKS_STUBS = {
+    "findmnt": '#!/bin/sh\nprintf "%s\\n" "$*" >> "$STUB_LOG_FINDMNT"\n'
+               '[ "$STUB_FINDMNT_STATUS" = 0 ] || exit "$STUB_FINDMNT_STATUS"\n'
+               'case "$*" in *FSTYPE*) echo "$STUB_FSTYPE" ;; *SOURCE*) echo "$STUB_SOURCE" ;; esac\n',
+    "gnome-disks": '#!/bin/sh\nprintf "%s\\0" gnome-disks "$@"\nexit "$STUB_GNOME_DISKS_STATUS"\n',
+    "xdg-terminal-exec": '#!/bin/sh\nprintf "%s\\0" xdg-terminal-exec "$@"\n',
+    "notify-send": '#!/bin/sh\nprintf "%s\\n" "$*" >> "$STUB_LOG_NOTIFY"\n',
+    "systemd-cat": '#!/bin/sh\nprio=info\n'
+                   'while [ $# -gt 0 ]; do [ "$1" = -p ] && prio=$2; shift; done\n'
+                   'while IFS= read -r line; do printf "%s %s\\n" "$prio" "$line" >> "$STUB_LOG_JOURNAL"; done\n',
+}
 
-    Returns the findmnt target it asked about and the argv it ends in.
+
+def read_lines(path):
+    try:
+        with open(path) as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        return []
+
+
+def open_disks_run(workdir, path, fstype="", source="", findmnt_status=0, gnome_disks_status=0, without=()):
+    """Runs open-disks against stubs, with nothing but the stubs and bash on its PATH.
+
+    The closed PATH keeps the checks from ever opening GNOME Disks, a terminal or
+    a notification on the machine that runs them, and makes a program missing
+    from the stubs (`without`) really missing. Returns the findmnt targets it
+    asked about, the argv of the program it started, its exit status, the
+    notifications it sent and the journal lines it wrote as "priority message".
     """
     stubs = tempfile.mkdtemp(dir=workdir)
-    log = os.path.join(stubs, "findmnt.log")
-    fixtures = {
-        "findmnt": '#!/bin/sh\nprintf "%s\\n" "$*" >> "$STUB_LOG"\n'
-                   'case "$*" in *FSTYPE*) echo "$STUB_FSTYPE" ;; *SOURCE*) echo "$STUB_SOURCE" ;; esac\n',
-        "gnome-disks": '#!/bin/sh\nprintf "%s\\0" gnome-disks "$@"\n',
-        "xdg-terminal-exec": '#!/bin/sh\nprintf "%s\\0" xdg-terminal-exec "$@"\n',
-    }
-    for name, body in fixtures.items():
+    for name, body in OPEN_DISKS_STUBS.items():
+        if name in without:
+            continue
         with open(os.path.join(stubs, name), "w") as f:
             f.write(body)
         os.chmod(os.path.join(stubs, name), 0o755)
-    env = dict(os.environ, PATH=stubs + os.pathsep + os.environ["PATH"],
-               STUB_LOG=log, STUB_FSTYPE=fstype, STUB_SOURCE=source)
+    os.symlink(shutil.which("bash"), os.path.join(stubs, "bash"))
+    logs = {name: os.path.join(stubs, f"{name}.log") for name in ("findmnt", "notify", "journal")}
+    env = dict(os.environ, PATH=stubs,
+               STUB_LOG_FINDMNT=logs["findmnt"], STUB_LOG_NOTIFY=logs["notify"], STUB_LOG_JOURNAL=logs["journal"],
+               STUB_FSTYPE=fstype, STUB_SOURCE=source,
+               STUB_FINDMNT_STATUS=str(findmnt_status), STUB_GNOME_DISKS_STATUS=str(gnome_disks_status))
     res = subprocess.run([repo_path(OPEN_DISKS), path], env=env, capture_output=True, text=True)
-    with open(log) as f:
-        targets = {line.split("-T ", 1)[1].strip() for line in f if "-T " in line}
-    return targets, res.stdout.split("\0")[:-1]
+    return {
+        "targets": {line.split("-T ", 1)[1].strip() for line in read_lines(logs["findmnt"]) if "-T " in line},
+        "argv": res.stdout.split("\0")[:-1],
+        "status": res.returncode,
+        "notifications": read_lines(logs["notify"]),
+        "journal": read_lines(logs["journal"]),
+    }
+
+
+def some_block_device():
+    """A block device node of the machine running the checks, or None."""
+    for name in sorted(os.listdir("/dev")):
+        path = os.path.join("/dev", name)
+        try:
+            if stat.S_ISBLK(os.stat(path).st_mode):
+                return path
+        except OSError:
+            pass
+    return None
 
 
 def check_open_disks(workdir, out_errors):
-    """open-disks opens the storage behind the path waybar's disk module measures.
+    """open-disks opens the storage behind a path: waybar's disk button, Thunar's disk action.
 
     On ZFS the mount source is a dataset, which GNOME Disks cannot show; the
     terminal lists that dataset (its AVAIL is the free space in the bar) and its
     pool, which is the first component of the dataset name. The file system type
     decides, not whether the source looks like a device path: the root of the
     live ISO is an overlay whose source is a bare word, and that is no pool.
+    A path that is itself a block device goes to GNOME Disks as it is, as it did
+    in open-disk-manager, which open-disks replaced.
     """
     cases = [
         ("/", "zfs", "ditana-root/ROOT/default", ["sh", "ditana-root/ROOT/default", "ditana-root"]),
@@ -573,10 +617,11 @@ def check_open_disks(workdir, out_errors):
         ("/", "overlay", "airootfs", ["gnome-disks"]),
     ]
     for path, fstype, source, expected in cases:
-        targets, argv = open_disks_run(workdir, path, fstype, source)
+        run = open_disks_run(workdir, path, fstype, source)
         label = f"open-disks {path} on {fstype} ({source})"
-        if targets != {path}:
-            out_errors.append(f"❌ {label} asked findmnt about {sorted(targets)} instead of {path!r}.")
+        argv = run["argv"]
+        if run["targets"] != {path}:
+            out_errors.append(f"❌ {label} asked findmnt about {sorted(run['targets'])} instead of {path!r}.")
         if fstype == "zfs":
             if argv[:3] != ["xdg-terminal-exec", "sh", "-c"] or argv[4:] != expected:
                 out_errors.append(f"❌ {label} ran {argv!r}; expected a terminal for {expected[1:]}.")
@@ -584,6 +629,69 @@ def check_open_disks(workdir, out_errors):
                 out_errors.append(f"❌ {label} does not list the AVAIL of the dataset itself.")
         elif argv != expected:
             out_errors.append(f"❌ {label} ran {argv!r} instead of {expected!r}.")
+        if run["status"] != 0 or run["notifications"] or any(l.startswith("err ") for l in run["journal"]):
+            out_errors.append(f"❌ {label} reported a failure: exit {run['status']}, "
+                              f"notifications {run['notifications']!r}, journal {run['journal']!r}.")
+
+    device = some_block_device()
+    if device is None:
+        print("ℹ️  No block device node in /dev here: skipping the block-device case of open-disks.")
+    else:
+        run = open_disks_run(workdir, device)
+        if run["argv"] != ["gnome-disks", f"--block-device={device}"] or run["targets"]:
+            out_errors.append(f"❌ open-disks {device} (a block device) ran {run['argv']!r} after asking findmnt "
+                              f"about {sorted(run['targets'])}; expected GNOME Disks on the device itself.")
+
+
+def check_open_disks_reports_failures(workdir, out_errors):
+    """A failure of open-disks shows up as a notification and in the journal.
+
+    waybar and Thunar both start open-disks without a terminal, so an error on
+    stderr goes unseen and the click seems to do nothing. open-disk-manager, which
+    open-disks replaced, showed a zenity dialog in these cases; zenity comes only
+    with XFCE, while libnotify comes with every Ditana desktop. GNOME Disks
+    prints a device it cannot look up only on stderr and exits with 1.
+    """
+    cases = [
+        ("no filesystem holds the path",
+         dict(path="/gone", findmnt_status=1), []),
+        ("GNOME Disks fails",
+         dict(path="/home", fstype="btrfs", source="/dev/nvme0n1p2", gnome_disks_status=1),
+         ["gnome-disks", "--block-device=/dev/nvme0n1p2"]),
+        ("no terminal for a ZFS dataset",
+         dict(path="/", fstype="zfs", source="tank", without=("xdg-terminal-exec",)), []),
+    ]
+    for label, kwargs, expected_argv in cases:
+        run = open_disks_run(workdir, **kwargs)
+        if run["argv"] != expected_argv:
+            out_errors.append(f"❌ open-disks, {label}: ran {run['argv']!r}, expected {expected_argv!r}.")
+        if run["status"] != 1:
+            out_errors.append(f"❌ open-disks, {label}: exit status {run['status']}, expected 1.")
+        if len(run["notifications"]) != 1:
+            out_errors.append(f"❌ open-disks, {label}: sent {run['notifications']!r} instead of one notification.")
+        if not any(l.startswith("err ") for l in run["journal"]):
+            out_errors.append(f"❌ open-disks, {label}: wrote no error to the journal ({run['journal']!r}).")
+
+
+THUNAR_ACTIONS = '/etc/skel/.config/Thunar/uca.xml'
+
+
+def check_thunar_actions(all_settings, out_errors):
+    """Every program that a Thunar custom action calls by its path is shipped with the actions.
+
+    To the other checks uca.xml is only data: none of them would notice an action
+    that keeps calling a script after the script is gone, as open-disk-manager
+    went when the disk action moved to open-disks.
+    """
+    owner = next((s for s in all_settings if THUNAR_ACTIONS in s.get('files', [])), None)
+    if owner is None:
+        out_errors.append(f"❌ No setting ships {THUNAR_ACTIONS}.")
+        return
+    for action in ET.parse(repo_path(THUNAR_ACTIONS)).getroot().iter("action"):
+        argv = shlex.split(action.findtext("command") or "")
+        if argv and argv[0].startswith("/") and argv[0] not in owner['files']:
+            out_errors.append(f"❌ Thunar action '{action.findtext('name')}' runs {argv[0]}, "
+                              f"which '{owner['name']}' does not ship.")
 
 
 def restart_waybar_calls(uwsm_session):
@@ -675,6 +783,7 @@ with tempfile.TemporaryDirectory() as workdir:
         print("ℹ️  No systemd user manager here: skipping the scope checks of launch.")
 
     check_open_disks(workdir, waybar_errors)
+    check_open_disks_reports_failures(workdir, waybar_errors)
 
 check_display_scale_respawn(waybar_errors)
 check_display_scale_restarts(waybar_errors)
@@ -682,6 +791,14 @@ check_display_scale_restarts(waybar_errors)
 for line in waybar_errors:
     print(line)
 if waybar_errors:
+    errors = True
+
+print("🔍 Checking Thunar custom actions...")
+thunar_errors = []
+check_thunar_actions(settings, thunar_errors)
+for line in thunar_errors:
+    print(line)
+if thunar_errors:
     errors = True
 
 # ---------------------------------------------------------------------------

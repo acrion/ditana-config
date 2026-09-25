@@ -39,7 +39,7 @@
                   "libgsf"
     files \ // === Thunar custom actions ===
           "/etc/skel/.config/Thunar/uca.xml" \
-          "/usr/lib/ditana/open-disk-manager" \
+          "/usr/lib/ditana/open-disks" \
           "/usr/lib/ditana/copy-path-to-clipboard"
     mime-defaults {
         - "thunar.desktop" "inode/directory"
