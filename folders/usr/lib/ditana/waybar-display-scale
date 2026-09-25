@@ -96,8 +96,12 @@ restart_waybar() {
         log "respawning waybar via 'uwsm app -t service'"
         uwsm app -t service -- waybar
     else
-        log "respawning waybar via setsid (no uwsm session detected)"
-        setsid -f waybar </dev/null >/dev/null 2>&1
+        # Running `setsid` by itself would leave waybar and all processes
+        # launched from its bar within the cgroup associated with this service,
+        # meaning that halting the service would terminate them all. The `launch`
+        # command grants waybar its own distinct scope.
+        log "respawning waybar via launch (no uwsm session detected)"
+        /usr/lib/ditana/launch waybar </dev/null >/dev/null 2>&1
     fi
 }
 

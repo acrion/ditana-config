@@ -8,7 +8,11 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 ExecStart=/usr/lib/ditana/waybar-display-scale
-Restart=on-failure
+# `pkill waybar` also matches this script (its process name is
+# "waybar-display-"), and since systemd counts SIGTERM as a clean exit,
+# the scaling will remain disabled until the next login when using
+# on-failure.
+Restart=always
 RestartSec=3s
 
 [Install]

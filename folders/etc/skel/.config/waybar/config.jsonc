@@ -40,68 +40,68 @@
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Start",
-    "on-click": "nwggrid -p",
-    "on-click-right": "nwggrid -f",
+    "on-click": "/usr/lib/ditana/launch nwggrid -p",
+    "on-click-right": "/usr/lib/ditana/launch nwggrid -f",
   },
   "custom/file-manager": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "File Manager",
-    "on-click": "xdg-open \"$HOME\"",
+    "on-click": "/usr/lib/ditana/launch xdg-open \"$HOME\"",
   },
   "custom/search": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "File Search",
-    "on-click": "fsearch"
+    "on-click": "/usr/lib/ditana/launch fsearch"
   },
   "custom/browser": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Web Browser",
-    "on-click": "sh -c 'gtk-launch $(xdg-settings get default-web-browser)'"
+    "on-click": "/usr/lib/ditana/launch sh -c 'gtk-launch $(xdg-settings get default-web-browser)'"
   },
   "custom/terminal": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Terminal",
-    "on-click": "xdg-terminal-exec"
+    "on-click": "/usr/lib/ditana/launch xdg-terminal-exec"
   },
   "custom/arch-package-manager": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Arch Package Manager (Add/Remove Software)",
-    "on-click": "pachub"
+    "on-click": "/usr/lib/ditana/launch pachub"
   },
   "custom/flatpak-manager": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Flatpak Manager (Add/Remove Software)",
-    "on-click": "bazaar"
+    "on-click": "/usr/lib/ditana/launch bazaar"
   },
   "custom/resources": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "System Monitor",
-    "on-click": "resources"
+    "on-click": "/usr/lib/ditana/launch resources"
   },
   "custom/display-settings": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Display Settings",
-    "on-click": "sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wdisplays ;; *) exec monique ;; esac'",
+    "on-click": "/usr/lib/ditana/launch sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wdisplays ;; *) exec monique ;; esac'",
   },
   "custom/settings": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "Settings",
-    "on-click": "sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wcm ;; *) exec niri-settings ;; esac'",
+    "on-click": "/usr/lib/ditana/launch sh -c 'case \"$XDG_CURRENT_DESKTOP\" in *[Ww]ayfire*) exec wcm ;; *) exec niri-settings ;; esac'",
   },
   "custom/shutdown": {
     "format": " ",
     "tooltip": true,
     "tooltip-format": "System Actions &amp; Power Menu",
-    "on-click": "nwgbar",
+    "on-click": "/usr/lib/ditana/launch nwgbar",
   },
   "wlr/taskbar": {
     "format": "{icon}",
@@ -166,18 +166,19 @@
   },
   "cpu": {
     "format": "{usage}% ",
-    "on-click": "resources --open-tab-id processes",
+    "on-click": "/usr/lib/ditana/launch resources --open-tab-id processes",
     "tooltip": false,
     "justify": "center",
   },
   "memory": {
     "format": "{avail}GiB\nRAM",
-    "on-click": "resources --open-tab-id memory",
+    "on-click": "/usr/lib/ditana/launch resources --open-tab-id memory",
     "justify": "center",
   },
   "disk": {
+    "path": "/",
     "format": "{free}\ndisk space",
-    "on-click": "/usr/lib/ditana/open-disks",
+    "on-click": "/usr/lib/ditana/launch /usr/lib/ditana/open-disks /",
     "justify": "center",
   },
   "temperature": {
@@ -272,7 +273,7 @@
         ""
       ],
     },
-    "on-click": "pavucontrol",
+    "on-click": "/usr/lib/ditana/launch pavucontrol",
   },
   "custom/media": {
     "format": "{icon} {text}",

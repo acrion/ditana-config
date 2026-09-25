@@ -2,9 +2,14 @@
 import json
 import os
 import re
+import secrets
+import shlex
+import signal
 import subprocess
 import sys
 import shutil
+import tempfile
+import time
 
 config_path = '/tmp/ditana-config.json'
 try:
@@ -244,6 +249,485 @@ for line in logic_errors:
     print(line)
 if logic_errors:
     errors = True
+
+# ---------------------------------------------------------------------------
+# Applications launched from waybar are required to persist beyond its
+# lifespan.
+#
+# waybar 0.15 sends SIGTERM to the process group associated with each click
+# command upon module removal, while any application launched via the bar
+# remains within waybar's cgroup by default. The script at
+# `/usr/lib/ditana/launch` relocates the application out of both.
+# ---------------------------------------------------------------------------
+
+WAYBAR_CONFIG = '/etc/skel/.config/waybar/config.jsonc'
+LAUNCH = '/usr/lib/ditana/launch'
+OPEN_DISKS = '/usr/lib/ditana/open-disks'
+WAYBAR_DISPLAY_SCALE = '/usr/lib/ditana/waybar-display-scale'
+WAYBAR_DISPLAY_SCALE_UNIT = '/usr/lib/systemd/user/waybar-display-scale.service'
+
+# Within these modules, the on-click value names one of the module's own
+# actions (minimize-raise, close, ...), rather than representing a command.
+ACTION_MODULES = {'wlr/taskbar', 'ext/workspaces'}
+USER_EVENT_KEY_RE = re.compile(r'on-(click|double-click|triple-click|scroll)')
+
+# The stand-in program, once launched: it reports its pid, then simply remains
+# active.
+MARKER_SCRIPT = 'echo $$ > "$0"; exec sleep 300'
+
+
+def repo_path(path):
+    return os.path.join("folders", path.lstrip("/"))
+
+
+def jsonc_loads(text):
+    """Parses JSON with // and /* */ comments and trailing commas, as waybar does."""
+    out = []
+    i, n = 0, len(text)
+    in_string = False
+    while i < n:
+        c = text[i]
+        if in_string:
+            out.append(c)
+            if c == '\\':
+                out.append(text[i + 1])
+                i += 1
+            elif c == '"':
+                in_string = False
+            i += 1
+        elif c == '"':
+            in_string = True
+            out.append(c)
+            i += 1
+        elif text.startswith('//', i):
+            end = text.find('\n', i)
+            i = n if end < 0 else end
+        elif text.startswith('/*', i):
+            end = text.find('*/', i + 2)
+            i = n if end < 0 else end + 2
+        else:
+            if c in '}]':
+                k = len(out) - 1
+                while k >= 0 and out[k].isspace():
+                    k -= 1
+                if k >= 0 and out[k] == ',':
+                    del out[k]
+            out.append(c)
+            i += 1
+    return json.loads(''.join(out))
+
+
+def installed_waybar_config(all_settings, workdir):
+    """config.jsonc as the installer leaves it.
+
+    Settings may edit the file in their early-chroot-script: the Ditana Assistant
+    button is inserted by sed. Those scripts run here against a copy below
+    workdir, so the checks see their result, and a script that breaks the JSON
+    fails here rather than on a user's machine.
+    """
+    target = os.path.join(workdir, WAYBAR_CONFIG.lstrip("/"))
+    os.makedirs(os.path.dirname(target))
+    shutil.copy(repo_path(WAYBAR_CONFIG), target)
+    for s in all_settings:
+        lines = [l for l in s.get('early-chroot-script', []) if not is_backtick_code(l.strip())]
+        if not any(WAYBAR_CONFIG in l for l in lines):
+            continue
+        script = "\n".join(lines).replace("/etc/skel/", workdir + "/etc/skel/")
+        res = subprocess.run(["bash", "-e", "-c", script], capture_output=True, text=True)
+        if res.returncode != 0:
+            raise RuntimeError(f"early-chroot-script of '{s.get('name')}' failed on {WAYBAR_CONFIG}: {res.stderr.strip()}")
+    with open(target) as f:
+        return jsonc_loads(f.read())
+
+
+def waybar_user_commands(bar_config):
+    """(module, key, command) for every command the bar runs on a click or scroll."""
+    bars = bar_config if isinstance(bar_config, list) else [bar_config]
+    for bar in bars:
+        for module, conf in bar.items():
+            if not isinstance(conf, dict) or module.split('#')[0] in ACTION_MODULES:
+                continue
+            for key, value in conf.items():
+                if USER_EVENT_KEY_RE.match(key) and isinstance(value, str):
+                    yield module, key, value
+
+
+def check_waybar_launchers(bar_config, shipped_files, out_errors):
+    """Every click or scroll command starts its program through launch.
+
+    Without it, a reload of waybar (SIGUSR2, which is also what the waybar.service
+    of the package sends on reload), a SIGINT, or the bar's monitor going away
+    kills the program; so does stopping the unit waybar runs in. Every absolute
+    program path a command names must be shipped by the setting that installs
+    the config, so that it exists wherever the button does.
+    """
+    for module, key, command in waybar_user_commands(bar_config):
+        argv = shlex.split(command)
+        if argv[0] != LAUNCH or len(argv) < 2:
+            out_errors.append(
+                f"❌ waybar '{module}' {key} runs {command!r} directly. Start it through "
+                f"'{LAUNCH} ...' so that it survives a reload or restart of waybar.")
+            continue
+        for program in argv[:2]:
+            if program.startswith("/") and program not in shipped_files:
+                out_errors.append(
+                    f"❌ waybar '{module}' {key} runs {program}, which the setting installing "
+                    f"{WAYBAR_CONFIG} does not ship.")
+
+
+def check_disk_opens_what_it_shows(bar_config, out_errors):
+    """The disk module shows the free space of its "path" (waybar's default is "/").
+
+    Its click has to hand exactly that path to open-disks; otherwise the button
+    opens another filesystem than the one its number belongs to.
+    """
+    bars = bar_config if isinstance(bar_config, list) else [bar_config]
+    for bar in bars:
+        for module, conf in bar.items():
+            if module.split('#')[0] != 'disk' or not isinstance(conf, dict) or 'on-click' not in conf:
+                continue
+            expected = [LAUNCH, OPEN_DISKS, conf.get('path', '/')]
+            if shlex.split(conf['on-click']) != expected:
+                out_errors.append(
+                    f"❌ waybar '{module}' on-click should be {shlex.join(expected)!r}, the path "
+                    f"whose free space it shows, but is {conf['on-click']!r}.")
+
+
+def wait_for_file(path, timeout=10.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with open(path) as f:
+                content = f.read()
+            if content.strip():
+                return content
+        except FileNotFoundError:
+            pass
+        time.sleep(0.05)
+    return None
+
+
+def process_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    with open(f"/proc/{pid}/stat") as f:
+        return f.read().rsplit(')', 1)[1].split()[0] != 'Z'
+
+
+def marker_pid(content):
+    """The pid the stand-in program wrote, or None if its script arrived altered."""
+    try:
+        return int(content)
+    except (TypeError, ValueError):
+        return None
+
+
+def stop_marker(pid):
+    if pid is not None:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def check_launch_passes_arguments(workdir, env, mode, out_errors):
+    """launch hands its arguments to the program unchanged.
+
+    Blanks, quotes, glob characters, an empty argument and a literal $ have to
+    arrive as given, whether launch goes through systemd-run or not.
+    """
+    result = os.path.join(workdir, f"arguments-{mode}")
+    args = ["a b", "", 'c"d', "*", "$HOME"]
+    subprocess.run([repo_path(LAUNCH), "sh", "-c", 'printf "%s|" "$@" > "$0.tmp" && mv "$0.tmp" "$0"', result] + args,
+                   env=env, check=True)
+    got = wait_for_file(result)
+    if got != "|".join(args) + "|":
+        out_errors.append(f"❌ launch ({mode}) passed the arguments {args!r} on as {got!r}.")
+
+
+def check_launch_leaves_process_group(workdir, env, mode, out_errors):
+    """What waybar's module teardown does to a click command.
+
+    waybar runs the command with /bin/sh in a process group of its own and later
+    sends SIGTERM to that group. The group is kept alive here by the shell that
+    ran launch, so the SIGTERM has something to hit; the launched program has to
+    be in a session of its own and survive it.
+    """
+    pidfile = os.path.join(workdir, f"marker-pgid-{mode}")
+    on_click = f"{shlex.quote(repo_path(LAUNCH))} sh -c {shlex.quote(MARKER_SCRIPT)} {shlex.quote(pidfile)}; exec sleep 300"
+    bar = subprocess.Popen(["/bin/sh", "-c", on_click], env=env, process_group=0)
+    pid = None
+    try:
+        content = wait_for_file(pidfile)
+        if content is None:
+            out_errors.append(f"❌ launch ({mode}) did not start the program within 10 s.")
+            return
+        pid = marker_pid(content)
+        if pid is None:
+            out_errors.append(f"❌ launch ({mode}) altered the program's script: it wrote {content!r}, not its pid.")
+            return
+        if os.getsid(pid) != pid:
+            out_errors.append(f"❌ launch ({mode}) left the program in session {os.getsid(pid)} instead of its own.")
+        os.killpg(bar.pid, signal.SIGTERM)
+        bar.wait(timeout=10)
+        time.sleep(0.2)
+        if not process_alive(pid):
+            out_errors.append(f"❌ launch ({mode}): the program died with the process group of its caller.")
+    finally:
+        stop_marker(pid)
+        if bar.poll() is None:
+            bar.kill()
+            bar.wait()
+
+
+def check_launch_leaves_cgroup(workdir, out_errors):
+    """What stopping the unit that holds waybar does: systemd kills its whole cgroup.
+
+    Here the caller runs in a transient scope of its own, which is then stopped.
+    The launched program has to keep running, in an app-ditana-<program>-<random>
+    scope that ends with the graphical session.
+    """
+    pidfile = os.path.join(workdir, "marker-cgroup")
+    unit = f"ditana-validate-bar-{os.getpid()}-{secrets.token_hex(4)}.scope"
+    on_click = f"{shlex.quote(repo_path(LAUNCH))} sh -c {shlex.quote(MARKER_SCRIPT)} {shlex.quote(pidfile)}; exec sleep 300"
+    bar = subprocess.Popen(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--expand-environment=no",
+                            f"--unit={unit}", "--", "/bin/sh", "-c", on_click], process_group=0)
+    pid = None
+    try:
+        content = wait_for_file(pidfile)
+        if content is None:
+            out_errors.append("❌ launch (scope) did not start the program within 10 s.")
+            return
+        pid = marker_pid(content)
+        if pid is None:
+            out_errors.append(f"❌ launch (scope) altered the program's script: it wrote {content!r}, not its pid.")
+            return
+        subprocess.run(["systemctl", "--user", "stop", unit], check=True)
+        bar.wait(timeout=10)
+        time.sleep(0.2)
+        if not process_alive(pid):
+            out_errors.append("❌ launch (scope): the program died when the unit of its caller was stopped.")
+            return
+        with open(f"/proc/{pid}/cgroup") as f:
+            scope = f.read().strip().rsplit("/", 1)[1]
+        if not re.fullmatch(r"app-ditana-sh-[0-9a-f]{8}\.scope", scope):
+            out_errors.append(f"❌ launch (scope) put the program into {scope!r}, not app-ditana-sh-<random>.scope.")
+            return
+        part_of = subprocess.run(["systemctl", "--user", "show", "-p", "PartOf", "--value", scope],
+                                 capture_output=True, text=True).stdout.split()
+        if "graphical-session.target" not in part_of:
+            out_errors.append(f"❌ launch (scope): {scope} is not PartOf=graphical-session.target.")
+    finally:
+        stop_marker(pid)
+        if bar.poll() is None:
+            bar.kill()
+            bar.wait()
+        subprocess.run(["systemctl", "--user", "stop", unit], capture_output=True)
+
+
+def user_manager_reachable():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    return os.path.exists(os.path.join(runtime_dir, "systemd", "private")) and shutil.which("systemd-run")
+
+
+def open_disks_run(workdir, path, fstype, source):
+    """Runs open-disks with findmnt, gnome-disks and xdg-terminal-exec stubbed.
+
+    Returns the findmnt target it asked about and the argv it ends in.
+    """
+    stubs = tempfile.mkdtemp(dir=workdir)
+    log = os.path.join(stubs, "findmnt.log")
+    fixtures = {
+        "findmnt": '#!/bin/sh\nprintf "%s\\n" "$*" >> "$STUB_LOG"\n'
+                   'case "$*" in *FSTYPE*) echo "$STUB_FSTYPE" ;; *SOURCE*) echo "$STUB_SOURCE" ;; esac\n',
+        "gnome-disks": '#!/bin/sh\nprintf "%s\\0" gnome-disks "$@"\n',
+        "xdg-terminal-exec": '#!/bin/sh\nprintf "%s\\0" xdg-terminal-exec "$@"\n',
+    }
+    for name, body in fixtures.items():
+        with open(os.path.join(stubs, name), "w") as f:
+            f.write(body)
+        os.chmod(os.path.join(stubs, name), 0o755)
+    env = dict(os.environ, PATH=stubs + os.pathsep + os.environ["PATH"],
+               STUB_LOG=log, STUB_FSTYPE=fstype, STUB_SOURCE=source)
+    res = subprocess.run([repo_path(OPEN_DISKS), path], env=env, capture_output=True, text=True)
+    with open(log) as f:
+        targets = {line.split("-T ", 1)[1].strip() for line in f if "-T " in line}
+    return targets, res.stdout.split("\0")[:-1]
+
+
+def check_open_disks(workdir, out_errors):
+    """open-disks opens the storage behind the path waybar's disk module measures.
+
+    On ZFS the mount source is a dataset, which GNOME Disks cannot show; the
+    terminal lists that dataset (its AVAIL is the free space in the bar) and its
+    pool, which is the first component of the dataset name. The file system type
+    decides, not whether the source looks like a device path: the root of the
+    live ISO is an overlay whose source is a bare word, and that is no pool.
+    """
+    cases = [
+        ("/", "zfs", "ditana-root/ROOT/default", ["sh", "ditana-root/ROOT/default", "ditana-root"]),
+        ("/", "zfs", "tank", ["sh", "tank", "tank"]),
+        ("/home", "btrfs", "/dev/nvme0n1p2", ["gnome-disks", "--block-device=/dev/nvme0n1p2"]),
+        ("/", "overlay", "airootfs", ["gnome-disks"]),
+    ]
+    for path, fstype, source, expected in cases:
+        targets, argv = open_disks_run(workdir, path, fstype, source)
+        label = f"open-disks {path} on {fstype} ({source})"
+        if targets != {path}:
+            out_errors.append(f"❌ {label} asked findmnt about {sorted(targets)} instead of {path!r}.")
+        if fstype == "zfs":
+            if argv[:3] != ["xdg-terminal-exec", "sh", "-c"] or argv[4:] != expected:
+                out_errors.append(f"❌ {label} ran {argv!r}; expected a terminal for {expected[1:]}.")
+            elif 'zfs list -o name,used,avail,refer,mountpoint "$1"' not in argv[3]:
+                out_errors.append(f"❌ {label} does not list the AVAIL of the dataset itself.")
+        elif argv != expected:
+            out_errors.append(f"❌ {label} ran {argv!r} instead of {expected!r}.")
+
+
+def restart_waybar_calls(uwsm_session):
+    """Runs restart_waybar from waybar-display-scale against stubs that record each call."""
+    with open(repo_path(WAYBAR_DISPLAY_SCALE)) as f:
+        match = re.search(r"^restart_waybar\(\) \{$.*?^\}$", f.read(), re.M | re.S)
+    if match is None:
+        return None
+    stubs = """
+calls=()
+record() { calls+=("$*"); }
+log() { :; }
+systemctl() { return 1; }
+running=1
+pgrep() { (( running )); }
+pkill() { record pkill "$@"; running=0; }
+sleep() { :; }
+setsid() { record setsid "$@"; }
+uwsm() { if [[ $1 == check ]]; then return UWSM_CHECK; fi; record uwsm "$@"; }
+/usr/lib/ditana/launch() { record launch "$@"; }
+""".replace("UWSM_CHECK", "0" if uwsm_session else "1")
+    res = subprocess.run(["bash", "-c", stubs + match.group(0) + '\nrestart_waybar\nprintf "%s\\n" "${calls[@]}"'],
+                         capture_output=True, text=True)
+    return res.stdout.splitlines()
+
+
+def check_display_scale_respawn(out_errors):
+    """waybar-display-scale respawns waybar outside its own service.
+
+    Without a uwsm session it used to run `setsid -f waybar`. That left waybar,
+    and everything later started from its bar, inside waybar-display-scale.service;
+    `pkill waybar` also matches the script, whose process name is
+    "waybar-display-", so systemd stopped the service and killed the whole cgroup
+    with it. With a uwsm session, `uwsm app -t service` already gave waybar a unit
+    of its own.
+    """
+    expectations = {
+        False: ["pkill -x waybar", "launch waybar"],
+        True: ["pkill -x waybar", "uwsm app -t service -- waybar"],
+    }
+    for uwsm_session, expected in expectations.items():
+        calls = restart_waybar_calls(uwsm_session)
+        if calls is None:
+            out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE} has no restart_waybar() to check.")
+            return
+        if calls != expected:
+            out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE} restarts waybar ({'with' if uwsm_session else 'without'} "
+                              f"a uwsm session) by {calls!r}, expected {expected!r}.")
+
+
+def check_display_scale_restarts(out_errors):
+    """waybar-display-scale.service comes back after a SIGTERM.
+
+    `pkill waybar` kills the script as well (its process name is
+    "waybar-display-"). systemd counts SIGTERM as a clean exit, so with
+    Restart=on-failure the scaling stayed off until the next login.
+    """
+    with open(repo_path(WAYBAR_DISPLAY_SCALE_UNIT)) as f:
+        restart = [l.split("=", 1)[1].strip() for l in f if l.startswith("Restart=")]
+    if restart != ["always"]:
+        out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE_UNIT} has Restart={restart}, expected always.")
+
+
+print("🔍 Checking that programs started from waybar outlive it...")
+waybar_errors = []
+waybar_setting = next((s for s in settings if WAYBAR_CONFIG in s.get('files', [])), None)
+with tempfile.TemporaryDirectory() as workdir:
+    if waybar_setting is None:
+        waybar_errors.append(f"❌ No setting ships {WAYBAR_CONFIG}.")
+    else:
+        try:
+            bar_config = installed_waybar_config(settings, workdir)
+        except (RuntimeError, ValueError) as e:
+            waybar_errors.append(f"❌ {WAYBAR_CONFIG} as installed cannot be read: {e}")
+        else:
+            check_waybar_launchers(bar_config, set(waybar_setting['files']), waybar_errors)
+            check_disk_opens_what_it_shows(bar_config, waybar_errors)
+
+    no_user_manager = os.path.join(workdir, "no-user-manager")
+    os.mkdir(no_user_manager)
+    setsid_env = dict(os.environ, XDG_RUNTIME_DIR=no_user_manager)
+    check_launch_passes_arguments(workdir, setsid_env, "setsid", waybar_errors)
+    check_launch_leaves_process_group(workdir, setsid_env, "setsid", waybar_errors)
+    if user_manager_reachable():
+        check_launch_passes_arguments(workdir, os.environ, "scope", waybar_errors)
+        check_launch_leaves_process_group(workdir, os.environ, "scope", waybar_errors)
+        check_launch_leaves_cgroup(workdir, waybar_errors)
+    else:
+        print("ℹ️  No systemd user manager here: skipping the scope checks of launch.")
+
+    check_open_disks(workdir, waybar_errors)
+
+check_display_scale_respawn(waybar_errors)
+check_display_scale_restarts(waybar_errors)
+
+for line in waybar_errors:
+    print(line)
+if waybar_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# Each shell script included with Ditana must successfully pass shellcheck.
+# ---------------------------------------------------------------------------
+
+# Scripts that failed shellcheck at the time this check was introduced. The
+# list can only decrease in size: all other shell scripts that are shipped
+# must pass.
+SHELLCHECK_PENDING = {
+    "folders/etc/profile.d/ditana-bash-setup.sh",
+    "folders/usr/lib/ditana/create-debug-user",
+    "folders/usr/lib/ditana/flatpak-finalize",
+    "folders/usr/lib/ditana/flatpak-show-progress",
+    "folders/usr/lib/ditana/print-system-load",
+    "folders/usr/lib/ditana/start-xfce4-greetd",
+    "folders/usr/lib/ditana/xfce-first-login",
+    "folders/usr/local/bin/brave",
+}
+
+
+def shell_interpreter(path):
+    with open(path, "rb") as f:
+        first = f.readline().decode(errors="replace").strip()
+    if not first.startswith("#!"):
+        return None
+    words = first[2:].split()
+    if words and os.path.basename(words[0]) == "env":
+        words = words[1:]
+    name = os.path.basename(words[0]) if words else None
+    return name if name in ("sh", "bash") else None
+
+
+print("🔍 Running shellcheck on shipped shell scripts...")
+for path in sorted(referenced_files):
+    if shell_interpreter(path) is None:
+        continue
+    ok, msg = run_check(["shellcheck", "--norc", "-s", "bash", "--enable=require-double-brackets",
+                         "-e", "SC2129,SC1091,SC2219,SC2207,SC2145", path])
+    if path in SHELLCHECK_PENDING:
+        if ok:
+            print(f"❌ {path} passes shellcheck now; remove it from SHELLCHECK_PENDING in validate-logic.py.")
+            errors = True
+    elif not ok:
+        print(f"❌ Shellcheck failed for {path}:\n{msg.strip()}")
+        errors = True
 
 # ---------------------------------------------------------------------------
 

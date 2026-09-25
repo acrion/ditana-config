@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2026 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of ditana-config, see https://github.com/acrion/ditana-config
+#
+# ditana-config is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ditana-config is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
+
+# Starts a program so that it continues to exist beyond the lifespan of the
+# entity that started it.
+#
+# waybar executes every on-click command via `/bin/sh` within an isolated
+# process group and issues a SIGTERM signal to that group when the module
+# ceases to exist: upon receiving SIGINT, during a reload (SIGUSR2), or when
+# the bar's monitor vanishes. Any program started from the bar remains within
+# waybar's cgroup, meaning that terminating or restarting the unit managing
+# waybar also terminates it.
+#
+# By invoking setsid, the program acquires a session and process group
+# isolated from the influence of killpg. systemd-run --scope places it within
+# a dedicated cgroup, identified as app-ditana-<program>-<random>.scope, as
+# described in systemd.io/DESKTOP_ENVIRONMENTS; in contrast to a transient
+# service, a scope keeps the caller's environment and current working
+# directory. The PartOf directive terminates the scope in tandem with the
+# graphical session.
+#
+# If no user manager is accessible, systemd-run would start nothing
+# whatsoever, thus the program is then solely relocated outside the process
+# group.
+
+set -u
+
+if (( $# == 0 )); then
+    printf 'usage: %s COMMAND [ARG...]\n' "${0##*/}" >&2
+    exit 2
+fi
+
+if [[ -S ${XDG_RUNTIME_DIR:-/run/user/$UID}/systemd/private ]] && command -v systemd-run >/dev/null; then
+    name=${1##*/}
+    # systemd-run would otherwise expand $VAR, ${VAR}, and $$ within the
+    # arguments, and turn $(...) into an empty string.
+    exec setsid -f systemd-run --user --scope --quiet --collect \
+        --expand-environment=no \
+        --slice=app.slice \
+        --property=PartOf=graphical-session.target \
+        --property=After=graphical-session.target \
+        --unit="app-ditana-$(systemd-escape -- "${name:-app}")-$(printf '%08x' "$SRANDOM")" \
+        -- "$@"
+fi
+
+exec setsid -f -- "$@"
