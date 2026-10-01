@@ -111,8 +111,8 @@
 
 - name="install-xfce-logseq" default-value="`install-xfce AND install-logseq`" {
     first-login-commands \
-        #"if command -v logseq &> /dev/null; then"# \
-        #"    sed -i "/^pinned=/ s/pinned=/pinned=logseq-desktop;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
+        #"if [[ -f /var/lib/flatpak/exports/share/applications/com.logseq.Logseq.desktop ]]; then"# \
+        #"    sed -i "/^pinned=/ s/pinned=/pinned=com.logseq.Logseq;/" "$HOME/.config/xfce4/panel/docklike-2.rc""# \
         #"fi"#
   }
 
