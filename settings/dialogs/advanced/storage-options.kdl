@@ -56,6 +56,58 @@ Enable this option only if your memory contents are known to compress well. You 
     chroot-script "`sed -i 's|@@ZFS_ARC_MAX@@|{ min(8, max(1, Settings.instance.get('total-ram-gib') div 4)) * 1024 * 1024 * 1024 }|' /etc/modprobe.d/ditana-zfs.conf`"
   }
 
+// The next two settings name the root pool. ditana-root refers to the name
+// set by Partition.rakumod inside ditana-installer; no component in this
+// repository has the ability to confirm that the two stay aligned, therefore
+// a change of name there must also be performed here.
+- name="enable-zfs-trim" \
+  dialog-name="Storage & File System Options" \
+  short-description="Weekly TRIM of the ZFS pool" \
+  long-description="""
+Weekly TRIM of the ZFS pool: TRIM tells an SSD which blocks no longer hold data, so that the drive can erase them in the background. ZFS never overwrites data in place (copy-on-write), so it frees blocks all the time. As long as the drive is not told about them, it has to treat every block that was ever written as still in use. Over time this lowers write performance and adds wear, because the drive keeps copying data that is no longer needed while it reclaims space internally.
+
+The weekly «fstrim.timer» (System Maintenance Tools) does not cover ZFS, and Ditana leaves the pool property «autotrim» of its pool «ditana-root» at its default, off. This option enables «zfs-trim-weekly@ditana-root.timer» from zfs-utils, which runs «zpool trim» on the pool once a week. A run missed while the computer was off is caught up after the next boot; a run that falls due while the computer runs on battery power is skipped.
+
+«autotrim» is deliberately not used instead: the ZFS documentation (zpoolprops(7)) warns that automatic trimming of recently freed blocks can put significant stress on the storage device, and that for lower-end devices a periodic on-demand trim often achieves most of the benefit.
+
+On a drive that does not support TRIM, such as a hard disk, an SSD behind a USB adapter that does not pass TRIM on, or a virtual disk without discard, every run fails and «zfs-trim@ditana-root.service» is listed as failed; disable this option there. In a virtual machine it is off by default, because many virtual disks do not support TRIM. Enable it there if the virtual disk supports TRIM (discard).
+""" \
+  spdx-identifiers="CDDL" \
+  available="`zfs-filesystem`" \
+  default-value="`zfs-filesystem AND NOT virtual-environment`" {
+    chroot-script "systemctl enable zfs-trim-weekly@ditana-root.timer"
+  }
+
+- name="enable-zfs-scrub" \
+  dialog-name="Storage & File System Options" \
+  short-description="Monthly ZFS scrub (integrity check)" \
+  long-description="""
+Monthly ZFS scrub: A scrub reads every block in the pool and verifies it against its checksum. ZFS verifies data whenever it reads it, but data that is rarely or never read, such as old files and snapshots, is otherwise never checked. A scrub finds silent corruption and a failing drive while there is still time to act.
+
+The self-healing ZFS is known for needs a second copy to repair from. Ditana creates its pool on a single drive. There, ZFS can repair damaged metadata, of which it keeps an extra copy by default, while damaged file data can only be detected: «zpool status -v» then names the affected files, so that they can be restored from a backup. On a pool with redundancy (a mirror or RAID-Z), a scrub also repairs damaged file data from an intact copy, and so it does on a single drive for data written while its dataset had the property copies=2.
+
+This option enables «zfs-scrub-monthly@ditana-root.timer» from zfs-utils, which runs «zpool scrub» on the pool «ditana-root» once a month. A run missed while the computer was off is caught up after the next boot; a run that falls due while the computer runs on battery power is skipped. A scrub still running at shutdown is paused and continues with the next monthly run. ZFS gives regular reads and writes precedence over a scrub, but a scrub reads the whole pool, so the drive stays busy for a while.
+""" \
+  spdx-identifiers="CDDL" \
+  available="`zfs-filesystem`" \
+  default-value="`zfs-filesystem`" {
+    chroot-script "systemctl enable zfs-scrub-monthly@ditana-root.timer"
+  }
+
+- name="enable-zfs-zed" \
+  dialog-name="Storage & File System Options" \
+  short-description="ZFS Event Daemon: log pool events to the journal" \
+  long-description="""
+ZFS Event Daemon: zed receives the events of the ZFS kernel module and writes them to the system journal: changes in the state of the pool or of one of its devices, checksum and I/O errors, I/O requests that took unusually long (by default longer than 30 seconds, see the module parameter «zio_slow_io_ms»), and the start and end of every scrub and TRIM. Without zed these events stay in a small queue inside the kernel, where only «zpool events» shows them until newer events push them out; they never reach the journal. With zed, «journalctl -t zed» lists them.
+
+The service comes with zfs-utils but is not enabled on installation. Its configuration (/etc/zfs/zed.d/zed.rc) also names root as the recipient of e-mail notifications about device faults, finished resilvers, and scrubs that leave the pool unhealthy. Ditana installs no mail program, so zed only records in the journal that it could not send them; configure a mail program or one of the push services in /etc/zfs/zed.d/zed.rc to receive them.
+""" \
+  spdx-identifiers="CDDL" \
+  available="`zfs-filesystem`" \
+  default-value="`zfs-filesystem`" {
+    chroot-script "systemctl enable zfs-zed.service"
+  }
+
 - name="install-ramdisk" \
   dialog-name="Storage & File System Options" \
   short-description="Install RAM Disk" \

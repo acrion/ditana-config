@@ -10,6 +10,7 @@ import subprocess
 import sys
 import shutil
 import tempfile
+import threading
 import time
 import xml.etree.ElementTree as ET
 
@@ -377,6 +378,33 @@ def check_waybar_launchers(bar_config, shipped_files, out_errors):
                     f"{WAYBAR_CONFIG} does not ship.")
 
 
+DITANA_PROGRAM_RE = re.compile(r"(?<![\w./-])/usr/lib/ditana/[\w.+-]+")
+
+
+def check_waybar_module_programs(bar_config, shipped_files, out_errors):
+    """Every Ditana helper that a module runs for its content is shipped with the config.
+
+    check_waybar_launchers looks at click and scroll commands only, so a helper
+    named in "exec" or "exec-if" alone was never checked. A missing one fails
+    silently: waybar hides a custom module whose exec-if fails or whose exec
+    prints nothing, so the module would never appear on an installed system,
+    and nothing would report why.
+    """
+    bars = bar_config if isinstance(bar_config, list) else [bar_config]
+    for bar in bars:
+        for module, conf in bar.items():
+            if not isinstance(conf, dict):
+                continue
+            for key in ('exec', 'exec-if'):
+                if not isinstance(conf.get(key), str):
+                    continue
+                for program in DITANA_PROGRAM_RE.findall(conf[key]):
+                    if program not in shipped_files:
+                        out_errors.append(
+                            f"❌ waybar '{module}' {key} names {program}, which the setting installing "
+                            f"{WAYBAR_CONFIG} does not ship.")
+
+
 def check_disk_opens_what_it_shows(bar_config, out_errors):
     """The disk module shows the free space of its "path" (waybar's default is "/").
 
@@ -393,6 +421,34 @@ def check_disk_opens_what_it_shows(bar_config, out_errors):
                 out_errors.append(
                     f"❌ waybar '{module}' on-click should be {shlex.join(expected)!r}, the path "
                     f"whose free space it shows, but is {conf['on-click']!r}.")
+
+
+def check_io_pressure_label_width(bar_config, out_errors):
+    """The second line of custom/io-pressure is no longer than that of the disk module beside it.
+
+    A two-line box is as wide as its longer line. The value line of the I/O
+    pressure module holds at most "100%", so its label alone sets the width:
+    "IO pressure" made the box wider than the "disk space" box next to it,
+    although its value needs less room, which is why the label became "IO
+    wait". Characters stand in for the rendered width, which depends on the
+    font; in Noto Sans, DejaVu Sans, Cantarell and Roboto alike, "IO wait"
+    renders narrower than "disk space" and "IO pressure" wider.
+    """
+    bars = bar_config if isinstance(bar_config, list) else [bar_config]
+    for bar in bars:
+        io = bar.get('custom/io-pressure')
+        disk = bar.get('disk')
+        if not isinstance(io, dict) or not isinstance(disk, dict):
+            continue
+        io_format, disk_format = io.get('format', ''), disk.get('format', '')
+        if '\n' not in io_format or '\n' not in disk_format:
+            continue
+        io_label = io_format.rpartition('\n')[2]
+        disk_label = disk_format.rpartition('\n')[2]
+        if len(io_label) > len(disk_label):
+            out_errors.append(
+                f"❌ waybar 'custom/io-pressure' label {io_label!r} is longer than the label {disk_label!r} "
+                f"of 'disk' beside it, which makes its box wider than the disk box.")
 
 
 def wait_for_file(path, timeout=10.0):
@@ -695,10 +751,16 @@ def check_thunar_actions(all_settings, out_errors):
 
 
 def restart_waybar_calls(uwsm_session):
-    """Runs restart_waybar from waybar-display-scale against stubs that record each call."""
+    """Runs restart_waybar from waybar-display-scale against stubs that record each call.
+
+    The script's own LAUNCH assignment comes along, with DITANA_LAUNCH_BIN
+    unset, so that the stub answers only to the default path of launch.
+    """
     with open(repo_path(WAYBAR_DISPLAY_SCALE)) as f:
-        match = re.search(r"^restart_waybar\(\) \{$.*?^\}$", f.read(), re.M | re.S)
-    if match is None:
+        script = f.read()
+    match = re.search(r"^restart_waybar\(\) \{$.*?^\}$", script, re.M | re.S)
+    launch = re.search(r"^LAUNCH=.*$", script, re.M)
+    if match is None or launch is None:
         return None
     stubs = """
 calls=()
@@ -713,8 +775,10 @@ setsid() { record setsid "$@"; }
 uwsm() { if [[ $1 == check ]]; then return UWSM_CHECK; fi; record uwsm "$@"; }
 /usr/lib/ditana/launch() { record launch "$@"; }
 """.replace("UWSM_CHECK", "0" if uwsm_session else "1")
-    res = subprocess.run(["bash", "-c", stubs + match.group(0) + '\nrestart_waybar\nprintf "%s\\n" "${calls[@]}"'],
-                         capture_output=True, text=True)
+    env = {k: v for k, v in os.environ.items() if k != "DITANA_LAUNCH_BIN"}
+    res = subprocess.run(["bash", "-c", stubs + launch.group(0) + "\n" + match.group(0)
+                          + '\nrestart_waybar\nprintf "%s\\n" "${calls[@]}"'],
+                         env=env, capture_output=True, text=True)
     return res.stdout.splitlines()
 
 
@@ -735,7 +799,7 @@ def check_display_scale_respawn(out_errors):
     for uwsm_session, expected in expectations.items():
         calls = restart_waybar_calls(uwsm_session)
         if calls is None:
-            out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE} has no restart_waybar() to check.")
+            out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE} has no restart_waybar() or no LAUNCH= to check.")
             return
         if calls != expected:
             out_errors.append(f"❌ {WAYBAR_DISPLAY_SCALE} restarts waybar ({'with' if uwsm_session else 'without'} "
@@ -768,7 +832,9 @@ with tempfile.TemporaryDirectory() as workdir:
             waybar_errors.append(f"❌ {WAYBAR_CONFIG} as installed cannot be read: {e}")
         else:
             check_waybar_launchers(bar_config, set(waybar_setting['files']), waybar_errors)
+            check_waybar_module_programs(bar_config, set(waybar_setting['files']), waybar_errors)
             check_disk_opens_what_it_shows(bar_config, waybar_errors)
+            check_io_pressure_label_width(bar_config, waybar_errors)
 
     no_user_manager = os.path.join(workdir, "no-user-manager")
     os.mkdir(no_user_manager)
@@ -791,6 +857,821 @@ check_display_scale_restarts(waybar_errors)
 for line in waybar_errors:
     print(line)
 if waybar_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# The waybar helper responsible for I/O pressure ensures compliance with the
+# output contract required by waybar.
+#
+# waybar 0.15 handles only the first line output by a custom module, retains the
+# module's previous visual state if that line is not valid JSON, and hides the
+# module when no output appears or when the exit status is not 0. The helper
+# produces one line formatted as {"text", "tooltip", "class"}, where class is
+# given as a list: nothing beneath WARM, ["warm", "warm-N"] for N ranging from 1
+# to 5 up to HOT, and ["hot"] from HOT onward.
+# ---------------------------------------------------------------------------
+
+IO_PRESSURE = '/usr/lib/ditana/waybar-io-pressure'
+
+# The duration a helper is allowed to take before a check considers it
+# stalled. Checks put a FIFO in place of a file that a helper may open
+# just once; attempting to open it a second time results in a block, and
+# this timeout converts that block into a failure.
+HELPER_TIMEOUT = 5
+
+
+def write_file(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(content)
+
+
+def make_fifo(path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    os.mkfifo(path)
+
+
+def serve_once(fifo, content):
+    """Hands CONTENT to the first reader of FIFO and then stops.
+
+    A second open of the FIFO finds no writer and blocks until the helper's
+    timeout, which is how the checks notice a file that was read twice.
+    """
+    def serve():
+        try:
+            with open(fifo, "w") as f:
+                f.write(content)
+        except OSError:
+            pass
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return thread
+
+
+def release_fifo(fifo):
+    """Lets a writer that is still waiting for a reader of FIFO finish."""
+    try:
+        os.close(os.open(fifo, os.O_RDONLY | os.O_NONBLOCK))
+    except OSError:
+        pass
+
+
+def run_helper(path, args, env):
+    """Runs a helper; returns its CompletedProcess, or None when it got stuck.
+
+    A helper that cannot be started at all, because it is missing or lacks its
+    executable bit, ends as it would under a shell: exit status 127 or 126,
+    with the reason on stderr. Every check then reports it as a failure of its
+    own, and the checks after it still run.
+    """
+    command = [repo_path(path)] + args
+    try:
+        return subprocess.run(command, env=dict(os.environ, **env),
+                              capture_output=True, timeout=HELPER_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError as e:
+        status = 127 if isinstance(e, FileNotFoundError) else 126
+        return subprocess.CompletedProcess(command, status, b"", f"cannot be run: {e}".encode())
+
+
+HIDDEN = "hidden"
+
+
+def module_output(label, res, out_errors):
+    """What waybar makes of a helper's run.
+
+    Returns the parsed JSON object, HIDDEN when waybar would hide the module
+    (no output and exit status 0), or None after reporting a broken contract.
+    """
+    if res is None:
+        out_errors.append(f"❌ {label}: did not finish within {HELPER_TIMEOUT} s.")
+        return None
+    if res.returncode != 0:
+        out_errors.append(f"❌ {label}: exit status {res.returncode}, which hides the module "
+                          f"(stderr {res.stderr!r}).")
+        return None
+    if res.stdout == b"":
+        return HIDDEN
+    try:
+        stdout = res.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        out_errors.append(f"❌ {label}: output is not UTF-8: {res.stdout!r}.")
+        return None
+    if not stdout.endswith("\n") or "\n" in stdout[:-1]:
+        out_errors.append(f"❌ {label}: output is not exactly one line: {stdout!r}.")
+        return None
+    try:
+        out = json.loads(stdout)
+    except ValueError as e:
+        out_errors.append(f"❌ {label}: output is not valid JSON ({e}): {stdout!r}.")
+        return None
+    if (not isinstance(out, dict) or set(out) != {"text", "tooltip", "class"}
+            or not isinstance(out["text"], str) or not isinstance(out["tooltip"], str)
+            or not isinstance(out["class"], list) or not all(isinstance(c, str) for c in out["class"])):
+        out_errors.append(f"❌ {label}: output is not {{text, tooltip, class: [...]}}: {stdout!r}.")
+        return None
+    return out
+
+
+def expect_module(label, res, text, classes, out_errors):
+    """The module shows TEXT with CLASSES; returns the output for further checks, or None."""
+    out = module_output(label, res, out_errors)
+    if out is None:
+        return None
+    if out == HIDDEN:
+        out_errors.append(f"❌ {label}: printed nothing, which hides the module; expected {text!r}.")
+        return None
+    if out["text"] != text or out["class"] != classes:
+        out_errors.append(f"❌ {label}: shows {out['text']!r} with class {out['class']!r}, "
+                          f"expected {text!r} with {classes!r}.")
+    return out
+
+
+def expect_hidden(label, res, out_errors):
+    out = module_output(label, res, out_errors)
+    if out is not None and out != HIDDEN:
+        out_errors.append(f"❌ {label}: shows {out!r}, expected nothing (module hidden).")
+
+
+# -- waybar-io-pressure -----------------------------------------------------
+
+def psi_content(some_avg10="0.00", full_avg10="0.00"):
+    """The two lines of /proc/pressure/io in the kernel's format."""
+    return (f"some avg10={some_avg10} avg60=0.72 avg300=0.36 total=12186311315\n"
+            f"full avg10={full_avg10} avg60=0.50 avg300=0.20 total=11073845828\n")
+
+
+def io_root(workdir, content):
+    root = tempfile.mkdtemp(dir=workdir)
+    if content is not None:
+        write_file(os.path.join(root, "proc/pressure/io"), content)
+    return root
+
+
+def io_run(root, args=("--warm", "20", "--hot", "50"), env=None):
+    return run_helper(IO_PRESSURE, list(args), dict(env or {}, DITANA_PROC_ROOT=root))
+
+
+def check_io_thresholds(workdir, out_errors):
+    """The tint starts at WARM, climbs to warm-5 just below HOT, and turns red at HOT.
+
+    The thresholds apply to the rounded percentage that is shown, so 19.50 is
+    already WARM and 49.50 already HOT.
+    """
+    cases = [
+        ("19.49", "19%", []),
+        ("19.50", "20%", ["warm", "warm-1"]),
+        ("35.00", "35%", ["warm", "warm-3"]),     # 1 + 15 * 5 / 30
+        ("49.49", "49%", ["warm", "warm-5"]),
+        ("49.50", "50%", ["hot"]),
+        ("100.00", "100%", ["hot"]),
+    ]
+    for avg10, text, classes in cases:
+        expect_module(f"waybar-io-pressure at some avg10={avg10}",
+                      io_run(io_root(workdir, psi_content(avg10))), text, classes, out_errors)
+
+
+def check_io_rounding(workdir, out_errors):
+    """some avg10 is rounded half up to a whole percent, from its two decimals."""
+    cases = [("19.49", "19%"), ("19.50", "20%"), ("0.00", "0%"), ("0.49", "0%"), ("0.50", "1%"),
+             ("7.05", "7%"), ("99.50", "100%")]
+    for avg10, text in cases:
+        out = module_output(f"waybar-io-pressure rounding {avg10}",
+                            io_run(io_root(workdir, psi_content(avg10)), ("--warm", "200", "--hot", "300")),
+                            out_errors)
+        if out not in (None, HIDDEN) and out["text"] != text:
+            out_errors.append(f"❌ waybar-io-pressure shows some avg10={avg10} as {out['text']!r}, expected {text!r}.")
+
+
+def check_io_tooltip(workdir, out_errors):
+    """The tooltip shows all six averages as the kernel gives them, what the value means, its source, and the thresholds.
+
+    The label in the bar says "IO wait", which a reader may take for the iowait
+    share that top shows as "wa", a different measure; the tooltip names the
+    kernel interface the value comes from, whose documentation explains the
+    "some" and "full" rows.
+    """
+    out = expect_module("waybar-io-pressure tooltip", io_run(io_root(workdir, psi_content("0.01", "0.00"))),
+                        "0%", [], out_errors)
+    if out is None:
+        return
+    lines = out["tooltip"].split("\n")
+    expected = [(0, "some  0.01 %  0.72 %  0.36 %   (10 s / 60 s / 5 min)"),
+                (1, "full  0.00 %  0.50 %  0.20 %"),
+                (len(lines) - 1, "tint from 20 %, red from 50 %")]
+    for index, line in expected:
+        if len(lines) < 3 or lines[index] != line:
+            out_errors.append(f"❌ waybar-io-pressure tooltip {lines!r} lacks line {index} {line!r}.")
+            break
+    if "at least one task waited for I/O" not in out["tooltip"]:
+        out_errors.append(f"❌ waybar-io-pressure tooltip does not say what the value means: {out['tooltip']!r}.")
+    if "Source: pressure stall information (PSI) in /proc/pressure/io" not in lines:
+        out_errors.append(f"❌ waybar-io-pressure tooltip does not name its source: {out['tooltip']!r}.")
+
+
+def check_io_hidden(workdir, out_errors):
+    """Without usable pressure stall information, the helper prints nothing and the module is hidden.
+
+    A kernel built without PSI, or booted with psi=0, has no /proc/pressure. The
+    directory in place of the file makes read() fail, which is what a file that
+    cannot be read does.
+    """
+    unreadable = io_root(workdir, None)
+    os.makedirs(os.path.join(unreadable, "proc/pressure/io"))
+    cases = [
+        ("no PSI", io_root(workdir, None)),
+        ("unreadable", unreadable),
+        ("empty", io_root(workdir, "")),
+        ("garbage", io_root(workdir, "garbage\n")),
+        ("no full line", io_root(workdir, psi_content().split("\n")[0] + "\n")),
+        ("decimal comma", io_root(workdir, psi_content("19,24"))),
+        ("one decimal", io_root(workdir, psi_content("19.2"))),
+    ]
+    for label, root in cases:
+        expect_hidden(f"waybar-io-pressure, {label}", io_run(root), out_errors)
+
+
+def check_io_reads_once(workdir, out_errors):
+    """/proc/pressure/io is opened once per call.
+
+    Every read makes the kernel collect the stall times of all CPUs. The file is
+    a FIFO here that serves one reader: a second open blocks until the timeout.
+    """
+    root = io_root(workdir, None)
+    fifo = os.path.join(root, "proc/pressure/io")
+    make_fifo(fifo)
+    serve_once(fifo, psi_content("21.00"))
+    try:
+        expect_module("waybar-io-pressure reading the file once", io_run(root), "21%", ["warm", "warm-1"], out_errors)
+    finally:
+        release_fifo(fifo)
+
+
+def check_io_arguments(workdir, out_errors):
+    """A wrong argument ends with the usage and exit status 2.
+
+    The thresholds must be whole numbers with WARM below HOT. The checks run on
+    a machine that has something to show, so that the exit status is not
+    mistaken for a hidden module.
+    """
+    root = io_root(workdir, psi_content())
+    bad = [
+        ["--warm"],
+        ["--hot"],
+        ["--warm", ""],
+        ["--warm", "x", "--hot", "70"],
+        ["--warm", "6.5", "--hot", "70"],
+        ["--warm", "6,5", "--hot", "70"],
+        ["--warm", "-5", "--hot", "70"],
+        ["--warm", "70", "--hot", "65"],
+        ["--warm", "70", "--hot", "70"],
+        ["--warm", "90"],                      # beyond the default HOT
+        ["--cold", "5"],
+        ["65", "70"],
+        ["--warm", "65", "--hot", "70", "extra"],
+    ]
+    for args in bad:
+        res = io_run(root, args)
+        if res is None or res.returncode != 2 or res.stdout or b"usage:" not in res.stderr:
+            out_errors.append(f"❌ waybar-io-pressure {args!r}: expected the usage and exit status 2, got "
+                              f"{None if res is None else (res.returncode, res.stdout, res.stderr)!r}.")
+    if module_output("waybar-io-pressure without arguments", io_run(root, []), out_errors) in (None, HIDDEN):
+        out_errors.append("❌ waybar-io-pressure without arguments does not show the module with its default thresholds.")
+
+
+def german_locales():
+    """The German locales installed here, as {character set: locale name}.
+
+    `locale charmap` names the character set a locale really uses; for a locale
+    that is not installed it complains on stderr and falls back to ASCII.
+    """
+    found = {}
+    for name in ("de_DE.UTF-8", "de_DE.ISO-8859-1", "de_DE", "de_DE@euro"):
+        try:
+            res = subprocess.run(["locale", "charmap"], env=dict(os.environ, LC_ALL=name),
+                                 capture_output=True, text=True)
+        except FileNotFoundError:
+            return {}
+        charmap = res.stdout.strip()
+        if res.returncode == 0 and not res.stderr and charmap in ("UTF-8", "ISO-8859-1", "ISO-8859-15"):
+            found.setdefault(charmap, name)
+    return found
+
+
+def check_io_locale(workdir, out_errors):
+    """A German locale does not change the output.
+
+    In a German locale the decimal separator is a comma: bash's printf %.1f then
+    rejects "19.24", prints 19,0 and exits with 1, which hides the module. The
+    helper uses integer arithmetic only; this pins that down in every German
+    locale installed here.
+    """
+    wanted = german_locales()
+    if not wanted:
+        print("ℹ️  No German locale here: skipping the locale checks of waybar-io-pressure.")
+        return
+    root = io_root(workdir, psi_content("29.72"))
+    reference = io_run(root, env={"LC_ALL": "C"})
+    if module_output("waybar-io-pressure in the C locale", reference, out_errors) in (None, HIDDEN):
+        return
+    for locale_name in wanted.values():
+        res = io_run(root, env={"LC_ALL": locale_name})
+        if res is None or res.returncode != 0 or res.stdout != reference.stdout:
+            out_errors.append(f"❌ waybar-io-pressure with LC_ALL={locale_name} printed "
+                              f"{None if res is None else (res.returncode, res.stdout)!r}, "
+                              f"in the C locale {reference.stdout!r}.")
+
+
+def check_io_locale_arguments(workdir, out_errors):
+    """A German locale does not let a character that is no ASCII digit through as a threshold.
+
+    In a German locale the range [0-9] of a bash regular expression also matches
+    characters such as ², while the arithmetic that follows accepts only ASCII
+    digits. Its error does not stop the script: the threshold kept its default
+    and the module was shown, where a wrong argument must end in the usage.
+    Each argument is passed in the character set of the locale under test, as a
+    shell running in it would pass it.
+    """
+    wanted = german_locales()
+    if not wanted:
+        print("ℹ️  No German locale here: skipping the locale checks of the arguments of waybar-io-pressure.")
+        return
+    root = io_root(workdir, psi_content())
+    for charmap, locale_name in wanted.items():
+        for args in (["--warm", "²"], ["--hot", "7²"]):
+            res = io_run(root, [a.encode(charmap) for a in args], {"LC_ALL": locale_name})
+            if res is None or res.returncode != 2 or res.stdout or b"usage:" not in res.stderr:
+                out_errors.append(f"❌ waybar-io-pressure {args!r} with LC_ALL={locale_name}: expected the usage "
+                                  f"and exit status 2, got "
+                                  f"{None if res is None else (res.returncode, res.stdout, res.stderr)!r}.")
+
+
+def check_waybar_helpers(out_errors):
+    with tempfile.TemporaryDirectory() as workdir:
+        check_io_thresholds(workdir, out_errors)
+        check_io_rounding(workdir, out_errors)
+        check_io_tooltip(workdir, out_errors)
+        check_io_hidden(workdir, out_errors)
+        check_io_reads_once(workdir, out_errors)
+        check_io_arguments(workdir, out_errors)
+        check_io_locale(workdir, out_errors)
+        check_io_locale_arguments(workdir, out_errors)
+
+
+print("🔍 Checking the waybar helper for I/O pressure...")
+helper_errors = []
+check_waybar_helpers(helper_errors)
+for line in helper_errors:
+    print(line)
+if helper_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# waybar-display-scale adjusts the bar's dimensions according to the largest
+# display's DPI and pixel width.
+#
+# Every check runs the script on copies of the skel waybar files, with its
+# own display-info and only stubs and the utilities the script requires on
+# its PATH, ensuring that no check has the ability to restart the waybar on
+# the machine where it is being run.
+# ---------------------------------------------------------------------------
+
+WAYBAR_STYLE = '/etc/skel/.config/waybar/style.css'
+
+DISPLAY_SCALE_STUBS = {
+    "systemctl": '#!/bin/sh\nprintf "systemctl %s\\n" "$*" >> "$STUB_LOG"\n'
+                 'case "$*" in *is-active*) exit 3 ;; esac\n',
+    "pgrep": '#!/bin/sh\nprintf "pgrep %s\\n" "$*" >> "$STUB_LOG"\n'
+             '[ -n "$STUB_WAYBAR_RUNNING" ] && [ ! -e "$STUB_LOG.killed" ] && exit 0\nexit 1\n',
+    "pkill": '#!/bin/sh\nprintf "pkill %s\\n" "$*" >> "$STUB_LOG"\n'
+             '[ -n "$STUB_WAYBAR_RUNNING" ] || exit 1\n: > "$STUB_LOG.killed"\n',
+    "uwsm": '#!/bin/sh\nprintf "uwsm %s\\n" "$*" >> "$STUB_LOG"\nexit 1\n',
+    "inotifywait": '#!/bin/sh\nprintf "inotifywait %s\\n" "$*" >> "$STUB_LOG"\n',
+}
+DISPLAY_SCALE_LAUNCH_STUB = '#!/bin/sh\nprintf "launch %s\\n" "$*" >> "$STUB_LOG"\n'
+DISPLAY_SCALE_TOOLS = ("awk", "sed", "mktemp", "cmp", "cat", "rm", "dirname", "basename", "sleep", "grep", "head")
+DISPLAY_SCALE_TIMEOUT = 10
+DISPLAY_INFO_DIRECTORY = object()
+
+
+def display_scale_home(workdir, display_info, style=None):
+    """Prepares one run of waybar-display-scale below WORKDIR and returns its directory.
+
+    The directory holds config/waybar with a copy of the skel config.jsonc and
+    of the skel style.css (or STYLE in its place), a display-info file holding
+    DISPLAY_INFO (no file if it is None, a directory if it is
+    DISPLAY_INFO_DIRECTORY), bin with the stubs and links to the tools the
+    script needs, and the stub of launch, which is not in bin.
+    """
+    root = tempfile.mkdtemp(dir=workdir)
+    waybar = os.path.join(root, "config", "waybar")
+    os.makedirs(waybar)
+    shutil.copy(repo_path(WAYBAR_CONFIG), waybar)
+    if style is None:
+        shutil.copy(repo_path(WAYBAR_STYLE), waybar)
+    else:
+        write_file(os.path.join(waybar, "style.css"), style)
+    if display_info is DISPLAY_INFO_DIRECTORY:
+        os.mkdir(os.path.join(root, "display-info"))
+    elif display_info is not None:
+        write_file(os.path.join(root, "display-info"), display_info)
+    for name in ("home", "tmp", "bin"):
+        os.mkdir(os.path.join(root, name))
+    for name, body in DISPLAY_SCALE_STUBS.items():
+        write_file(os.path.join(root, "bin", name), body)
+        os.chmod(os.path.join(root, "bin", name), 0o755)
+    write_file(os.path.join(root, "launch"), DISPLAY_SCALE_LAUNCH_STUB)
+    os.chmod(os.path.join(root, "launch"), 0o755)
+    for tool in DISPLAY_SCALE_TOOLS:
+        os.symlink(shutil.which(tool), os.path.join(root, "bin", tool))
+    return root
+
+
+def display_scale_run(root, args=("--once",), waybar_running=False):
+    """Runs waybar-display-scale on the files below ROOT.
+
+    The environment is built from scratch: PATH holds the stubs and the tools
+    only; HOME, XDG_CONFIG_HOME and TMPDIR lie below ROOT, and so do
+    DITANA_DISPLAY_INFO and DITANA_LAUNCH_BIN, whose stub is not on PATH;
+    neither XDG_RUNTIME_DIR nor a D-Bus address is passed on. systemctl finds
+    no active unit and pgrep no waybar, so a restart attempt ends after these
+    questions and never reaches pkill, uwsm or launch. WAYBAR_RUNNING stands
+    for a waybar started by hand: pgrep then finds it until the pkill stub has
+    been called, uwsm reports no session, and the restart goes on to launch.
+    Even the real launch could start nothing here: it is a
+    "#!/usr/bin/env bash" script, and bash is not on this PATH. The
+    inotifywait stub watches nothing and ends at once, which ends the loop
+    of a run without --once.
+
+    Returns the exit status, stdout, stderr and the calls the stubs recorded
+    during this run, one "name arguments" line each, or None if the run did
+    not finish within DISPLAY_SCALE_TIMEOUT seconds.
+    """
+    calls = os.path.join(root, "calls")
+    for path in (calls, calls + ".killed"):
+        if os.path.exists(path):
+            os.remove(path)
+    env = {
+        "PATH": os.path.join(root, "bin"),
+        "HOME": os.path.join(root, "home"),
+        "XDG_CONFIG_HOME": os.path.join(root, "config"),
+        "TMPDIR": os.path.join(root, "tmp"),
+        "DITANA_DISPLAY_INFO": os.path.join(root, "display-info"),
+        "DITANA_LAUNCH_BIN": os.path.join(root, "launch"),
+        "STUB_LOG": calls,
+    }
+    if waybar_running:
+        env["STUB_WAYBAR_RUNNING"] = "1"
+    try:
+        res = subprocess.run([repo_path(WAYBAR_DISPLAY_SCALE)] + list(args), env=env,
+                             capture_output=True, text=True, timeout=DISPLAY_SCALE_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None
+    return {"status": res.returncode, "stdout": res.stdout, "stderr": res.stderr, "calls": read_lines(calls)}
+
+
+def display_scale_files(root):
+    """The content of config.jsonc and style.css below ROOT."""
+    contents = []
+    for name in ("config.jsonc", "style.css"):
+        with open(os.path.join(root, "config", "waybar", name)) as f:
+            contents.append(f.read())
+    return tuple(contents)
+
+
+def display_scale_sizes(root):
+    """The sizes the waybar files below ROOT carry, as far as waybar-display-scale may change them.
+
+    The font size is the one of the first "* {" rule, comments left out.
+    """
+    config, style = display_scale_files(root)
+    bar = jsonc_loads(config)
+    font = re.search(r"^\*\s*\{[^}]*?font-size:\s*(\d+)px", re.sub(r"/\*.*?\*/", "", style, flags=re.S), re.M)
+    return {
+        "height": bar.get("height"),
+        "taskbar icon-size": bar.get("wlr/taskbar", {}).get("icon-size"),
+        "background-size": set(re.findall(r"background-size: (\d+px \d+px)", style)),
+        "min-width": set(re.findall(r"min-width: (\d+px)", style)),
+        "font-size of * {": int(font.group(1)) if font else None,
+    }
+
+
+def expected_display_scale_sizes(height, icon_size, bg_size, min_width, font_size):
+    return {
+        "height": height,
+        "taskbar icon-size": icon_size,
+        "background-size": {f"{bg_size}px {bg_size}px"},
+        "min-width": {f"{min_width}px"},
+        "font-size of * {": font_size,
+    }
+
+
+def display_scale_ran(label, run, out_errors):
+    """Reports a run that hung or failed; returns whether it ended with status 0."""
+    if run is None:
+        out_errors.append(f"❌ waybar-display-scale, {label}: did not finish within {DISPLAY_SCALE_TIMEOUT} s.")
+        return False
+    if run["status"] != 0:
+        out_errors.append(f"❌ waybar-display-scale, {label}: exit status {run['status']} "
+                          f"(stdout {run['stdout']!r}, stderr {run['stderr']!r}).")
+        return False
+    return True
+
+
+def check_display_scale_sizes(workdir, out_errors):
+    """The bar is sized for the first display in display-info, by its DPI and by its width.
+
+    The DPI alone used to decide. On a laptop with a 1920x1080 panel at 128 DPI
+    that gave a bar 59 px high with an 18 px font, and the launchers and the
+    modules on the right filled the whole width: not a single taskbar icon had
+    room. A display narrower than 40 bar heights now shrinks height, icons and
+    font by the factor it lacks, but not below three quarters. akino, a 5120 px
+    wide monitor at 141 DPI, keeps the sizes of the skel files, which were made
+    for it; its display-info is taken as it is, with a smaller second display
+    that must not count. A 24-inch 1080p monitor is wide enough for its smaller
+    bar, and a 1366x768 panel at 100 DPI would need less than three quarters
+    and gets the floor. Every size is rounded half up.
+    """
+    cases = [
+        ("akino", "DP-1 140.68 5120 2160\nHDMI-A-1 105.51 1920 1080\n", (64, 64, 56, 64, 18)),
+        ("the Dell laptop", "eDP-1 128.34 1920 1080\n", (48, 48, 42, 48, 15)),
+        ("a 24-inch 1080p monitor", "HDMI-A-1 92 1920 1080\n", (44, 44, 39, 44, 18)),
+        ("a 1366x768 panel", "eDP-1 100 1366 768\n", (36, 36, 31, 36, 14)),
+    ]
+    for label, display_info, sizes in cases:
+        root = display_scale_home(workdir, display_info)
+        if not display_scale_ran(f"on {label}", display_scale_run(root), out_errors):
+            continue
+        got = display_scale_sizes(root)
+        for key, want in expected_display_scale_sizes(*sizes).items():
+            if got[key] != want:
+                out_errors.append(f"❌ waybar-display-scale on {label} ({display_info.splitlines()[0]}) "
+                                  f"set {key} to {got[key]!r}, expected {want!r}.")
+
+
+def check_display_scale_leaves_other_sizes(workdir, out_errors):
+    """Only the sizes that follow the display change; every other size stays as it is.
+
+    The tray has an icon-size of its own in config.jsonc, and the launcher
+    rules hide their labels with "font-size: 0;". A font size in px that the
+    user gave to another rule is theirs. The font size of "* {" is found by
+    the braces of the rule, outside of comments, and not by lines. Each case
+    after the first is a form that a line-based sed range got wrong: "* {" on
+    a single line, where a range would have run on into the next rule; a rule
+    of the user on the line of a one-line "* {" without a font size, or on the
+    line that closes "* {", where the substitution took the user's font size;
+    a block comment in the style of the skel's, whose lines begin with " * ",
+    one of them with "{", which opened a range through the user's next rule;
+    and a "}" in a comment inside "* {", which ended the range before the font
+    size, so that the font kept its size on a narrow display. The last two
+    cases put something before "* {": a rule of the user, since "* {" is found
+    by its selector and not by being the first rule, and an @import, which
+    ends with ";" rather than with a brace, as many waybar themes begin.
+    """
+    user_rule = "#clock {\n  font-size: 20px;\n}\n"
+    one_line_rule = "#clock { font-size: 20px; }"
+    with open(repo_path(WAYBAR_STYLE)) as f:
+        skel_style = f.read()
+    cases = [
+        ("the skel style.css with a rule of the user", skel_style + "\n" + user_rule, 15, user_rule),
+        ('a one-line "* {" followed by a rule of the user',
+         "* { font-family: sans-serif; font-size: 18px; }\n" + user_rule, 15, user_rule),
+        ('a rule of the user on the line of a one-line "* {" without a font size',
+         "* { font-family: sans-serif; } " + one_line_rule + "\n", None, one_line_rule),
+        ('a rule of the user on the line that closes "* {"',
+         "* {\n  font-size: 18px;\n} " + one_line_rule + "\n", 15, one_line_rule),
+        ('a block comment with a line that begins with "{", before a rule of the user',
+         skel_style + "\n/*\n * Own additions. The sizes below are mine, from the opening\n"
+         " * { to the closing brace of each rule.\n */\n" + user_rule, 15, user_rule),
+        ('a "}" in a comment inside "* {"',
+         "* {\n  /* the size below ends at the } of this rule */\n  font-size: 18px;\n}\n" + user_rule,
+         15, user_rule),
+        ('a rule of the user before "* {"', user_rule + "\n" + skel_style, 15, user_rule),
+        ('an @import before "* {"', '@import "colors.css";\n\n' + skel_style, 15, '@import "colors.css";'),
+    ]
+    for label, style, want_font, user_text in cases:
+        root = display_scale_home(workdir, "eDP-1 128.34 1920 1080\n", style)
+        if not display_scale_ran(label, display_scale_run(root), out_errors):
+            continue
+        config, patched = display_scale_files(root)
+        font = display_scale_sizes(root)["font-size of * {"]
+        if font != want_font:
+            out_errors.append(f"❌ waybar-display-scale, {label}: font-size of * {{ is {font!r}, expected {want_font!r}.")
+        if user_text not in patched:
+            out_errors.append(f"❌ waybar-display-scale, {label}: changed the user's rule {user_text!r}.")
+        if patched.count("font-size: 0;") != style.count("font-size: 0;"):
+            out_errors.append(f"❌ waybar-display-scale, {label}: changed a \"font-size: 0;\" of the launchers.")
+        tray = jsonc_loads(config).get("tray", {}).get("icon-size")
+        if tray != 32:
+            out_errors.append(f"❌ waybar-display-scale, {label}: set the tray's icon-size to {tray!r}, expected 32.")
+
+
+def check_display_scale_own_font_rule(workdir, out_errors):
+    """A later "* {" rule of the user's own keeps its font size; only the first one, the skel's, follows the display.
+
+    The skel opens style.css with "* {", and that font size is the one the
+    script owns. A user who wants a font size of their own adds a "* {" rule
+    further down, which CSS lets win. If the script rewrote that one as well,
+    a user would have no way to keep a font size of their own; the price of
+    keeping one is that the bar does not shrink its font on a narrow display.
+    """
+    own_rule = "* {\n  font-size: 22px;\n}\n"
+    with open(repo_path(WAYBAR_STYLE)) as f:
+        style = f.read() + "\n" + own_rule
+    root = display_scale_home(workdir, "eDP-1 128.34 1920 1080\n", style)
+    if not display_scale_ran('with a "* {" rule of the user', display_scale_run(root), out_errors):
+        return
+    font = display_scale_sizes(root)["font-size of * {"]
+    if font != 15:
+        out_errors.append(f"❌ waybar-display-scale with a \"* {{\" rule of the user: font-size of the skel's "
+                          f"* {{ is {font!r}, expected 15.")
+    if own_rule not in display_scale_files(root)[1]:
+        out_errors.append(f"❌ waybar-display-scale changed the user's own rule {own_rule!r}.")
+
+
+def check_display_scale_restarts_on_change(workdir, out_errors):
+    """waybar is restarted when the files change, and only then.
+
+    waybar reads its config at start only, so a change needs a restart. A
+    restart without one would close whatever menu or tooltip is open, on every
+    hotplug of a display. The skel files carry akino's sizes, so akino's
+    display-info leaves them as they are; the Dell's changes them. With the
+    stubs, a restart attempt shows as systemctl being asked for waybar.service.
+    """
+    attempt = "systemctl --user is-active --quiet waybar.service"
+    for label, display_info, restarts in [("akino", "DP-1 140.68 5120 2160\n", False),
+                                          ("the Dell laptop", "eDP-1 128.34 1920 1080\n", True)]:
+        root = display_scale_home(workdir, display_info)
+        before = display_scale_files(root)
+        run = display_scale_run(root)
+        if not display_scale_ran(f"on {label}", run, out_errors):
+            continue
+        changed = display_scale_files(root) != before
+        if changed != restarts or (attempt in run["calls"]) != restarts:
+            out_errors.append(f"❌ waybar-display-scale on {label}: files {'changed' if changed else 'unchanged'}, "
+                              f"stub calls {run['calls']!r}; expected the files "
+                              f"{'changed and a restart attempt' if restarts else 'unchanged and no restart attempt'}.")
+
+
+def check_display_scale_respawns_by_launch(workdir, out_errors):
+    """A waybar started by hand is killed and started again by the launch that DITANA_LAUNCH_BIN names.
+
+    Without a systemd unit for waybar and without a uwsm session,
+    restart_waybar kills waybar and starts it again through launch.
+    check_display_scale_respawn looks at restart_waybar on its own; here the
+    whole script runs, so that the launch it calls is the one its LAUNCH takes
+    from DITANA_LAUNCH_BIN. The stub of launch is not on PATH: a script that
+    called launch by name or by its installed path would miss it.
+    """
+    root = display_scale_home(workdir, "eDP-1 128.34 1920 1080\n")
+    run = display_scale_run(root, waybar_running=True)
+    if not display_scale_ran("with a waybar started by hand", run, out_errors):
+        return
+    if "pkill -x waybar" not in run["calls"] or run["calls"][-1:] != ["launch waybar"]:
+        out_errors.append(f"❌ waybar-display-scale with a waybar started by hand: stub calls {run['calls']!r}; "
+                          f"expected pkill -x waybar and, last, launch waybar through DITANA_LAUNCH_BIN.")
+
+
+def check_display_scale_second_run(workdir, out_errors):
+    """A second run on the same display changes nothing and restarts nothing.
+
+    The service runs the script again on every change of display-info, and
+    wayland-display-info rewrites the file when any parameter of any display
+    changes. Each run has to arrive at the same files, or waybar would be
+    restarted every time.
+    """
+    root = display_scale_home(workdir, "eDP-1 128.34 1920 1080\n")
+    if not display_scale_ran("first run", display_scale_run(root), out_errors):
+        return
+    first = display_scale_files(root)
+    run = display_scale_run(root)
+    if not display_scale_ran("second run", run, out_errors):
+        return
+    if display_scale_files(root) != first or run["calls"]:
+        out_errors.append(f"❌ waybar-display-scale changed the files again in a second run on the same display, "
+                          f"or tried to restart waybar (stub calls {run['calls']!r}).")
+
+
+def check_display_scale_unusable_display_info(workdir, out_errors):
+    """A display-info the script cannot use leaves the files alone, and the run still succeeds.
+
+    wayland-display-info writes an empty file when no display reports a
+    physical size, and there is no file before it has run once. A file without
+    a DPI in its first line can only come from elsewhere, for example one
+    written by hand for DITANA_DISPLAY_INFO to try a size; a size computed from
+    it would end up in the user's config. DITANA_DISPLAY_INFO naming a
+    directory, say the cache directory instead of the file in it, makes the
+    read itself fail, just as a file would that disappears between the check
+    for it and the read. The variables the read should have filled were then
+    unset, and under set -u the script stopped: --once with status 1, the
+    service every three seconds, restarted by Restart=always. A first line
+    without a usable width is sized by the DPI alone, as before the width
+    counted: for the Dell's DPI that is 59/59/52/59 with the font at 18 px.
+    """
+    untouched = [
+        ("no display-info", None),
+        ("a directory in place of display-info", DISPLAY_INFO_DIRECTORY),
+        ("an empty display-info", ""),
+        ("a first line without a DPI", "eDP-1\n"),
+        ("a DPI that is no number", "eDP-1 high 1920 1080\n"),
+        ("a line of garbage", "garbage\n"),
+    ]
+    for label, display_info in untouched:
+        root = display_scale_home(workdir, display_info)
+        before = display_scale_files(root)
+        run = display_scale_run(root)
+        if not display_scale_ran(f"with {label}", run, out_errors):
+            continue
+        if display_scale_files(root) != before or run["calls"]:
+            out_errors.append(f"❌ waybar-display-scale with {label}: changed the files or tried to restart "
+                              f"waybar (stub calls {run['calls']!r}).")
+
+    for label, display_info in [("no width", "eDP-1 128.34\n"),
+                                ("a width that is no number", "eDP-1 128.34 wide 1080\n"),
+                                ("a width of 0", "eDP-1 128.34 0 1080\n")]:
+        root = display_scale_home(workdir, display_info)
+        if not display_scale_ran(f"with {label}", display_scale_run(root), out_errors):
+            continue
+        got = display_scale_sizes(root)
+        want = expected_display_scale_sizes(59, 59, 52, 59, 18)
+        if got != want:
+            out_errors.append(f"❌ waybar-display-scale with {label} ({display_info.strip()}) set {got!r}, "
+                              f"expected the sizes by DPI alone {want!r}.")
+
+
+def check_display_scale_arguments(workdir, out_errors):
+    """--once applies the sizes and exits; without arguments the script watches display-info; anything else is refused.
+
+    --once is what a user runs by hand, and what these checks run: it must not
+    start inotifywait. Without arguments the script is the service, and it
+    watches the directory of display-info, which DITANA_DISPLAY_INFO has to
+    move as well. A wrong argument ends with the usage and exit status 2
+    before the files are touched.
+    """
+    display_info = "eDP-1 128.34 1920 1080\n"
+    root = display_scale_home(workdir, display_info)
+    run = display_scale_run(root)
+    if display_scale_ran("--once", run, out_errors) and any(c.startswith("inotifywait ") for c in run["calls"]):
+        out_errors.append(f"❌ waybar-display-scale --once started inotifywait: {run['calls']!r}.")
+
+    root = display_scale_home(workdir, display_info)
+    run = display_scale_run(root, ())
+    if display_scale_ran("without arguments", run, out_errors):
+        watches = [c for c in run["calls"] if c.startswith("inotifywait ")]
+        if len(watches) != 1 or not watches[0].endswith(" " + root):
+            out_errors.append(f"❌ waybar-display-scale without arguments ran {watches!r}; expected one "
+                              f"inotifywait on {root}, the directory of DITANA_DISPLAY_INFO.")
+        if display_scale_sizes(root) != expected_display_scale_sizes(48, 48, 42, 48, 15):
+            out_errors.append(f"❌ waybar-display-scale without arguments did not size the bar for the Dell laptop: "
+                              f"{display_scale_sizes(root)!r}.")
+
+    for args in (["--twice"], ["once"], ["--once", "--once"], ["--once", "extra"], [""]):
+        root = display_scale_home(workdir, display_info)
+        before = display_scale_files(root)
+        run = display_scale_run(root, args)
+        if (run is None or run["status"] != 2 or run["stdout"] or "usage:" not in run["stderr"]
+                or run["calls"] or display_scale_files(root) != before):
+            out_errors.append(f"❌ waybar-display-scale {args!r}: expected the usage, exit status 2 and the files "
+                              f"untouched, got {run!r}.")
+
+
+def check_display_scale_once_reports_failure(workdir, out_errors):
+    """--once ends with status 1 when it cannot write the sizes, and leaves the files and waybar alone.
+
+    Whoever runs --once, by hand or from a script, learns only from the status
+    that nothing was applied. The script writes through mktemp, which fails
+    when the temporary directory is full, read-only or gone; a TMPDIR that does
+    not exist is the way to get there here.
+    """
+    root = display_scale_home(workdir, "eDP-1 128.34 1920 1080\n")
+    os.rmdir(os.path.join(root, "tmp"))
+    before = display_scale_files(root)
+    run = display_scale_run(root)
+    if run is None or run["status"] != 1 or run["calls"] or display_scale_files(root) != before:
+        out_errors.append(f"❌ waybar-display-scale --once without a usable TMPDIR: expected exit status 1, "
+                          f"the files untouched and no restart attempt, got {run!r}.")
+
+
+print("🔍 Checking how waybar-display-scale sizes the bar...")
+display_scale_errors = []
+missing_tools = [tool for tool in DISPLAY_SCALE_TOOLS if shutil.which(tool) is None]
+if missing_tools:
+    display_scale_errors.append(f"❌ waybar-display-scale needs {', '.join(missing_tools)}, missing here.")
+else:
+    with tempfile.TemporaryDirectory() as workdir:
+        check_display_scale_sizes(workdir, display_scale_errors)
+        check_display_scale_leaves_other_sizes(workdir, display_scale_errors)
+        check_display_scale_own_font_rule(workdir, display_scale_errors)
+        check_display_scale_restarts_on_change(workdir, display_scale_errors)
+        check_display_scale_respawns_by_launch(workdir, display_scale_errors)
+        check_display_scale_second_run(workdir, display_scale_errors)
+        check_display_scale_unusable_display_info(workdir, display_scale_errors)
+        check_display_scale_arguments(workdir, display_scale_errors)
+        check_display_scale_once_reports_failure(workdir, display_scale_errors)
+for line in display_scale_errors:
+    print(line)
+if display_scale_errors:
     errors = True
 
 print("🔍 Checking Thunar custom actions...")

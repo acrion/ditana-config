@@ -10,6 +10,18 @@
     }
   }
 
+- name="kernel-option-hungt" \
+  dialog-name="General Kernel Configuration" \
+  short-description="Report every hung task, not only the first ten (kernel.hung_task_warnings 10 → -1)" \
+  long-description="Report every hung task: The kernel logs a task that has been stuck in uninterruptible sleep for more than two minutes – typically waiting for storage – together with the stack traces that show where it waits. By default it stops after ten such reports per boot, so on a machine that runs for days, later stalls leave no trace in the journal. With this option every stall is reported. A long stall of many tasks then produces many reports." \
+  spdx-identifiers="GPL-2.0-only" \
+  default-value="`profile-developer`" {
+    \ // https://docs.kernel.org/admin-guide/sysctl/kernel.html#hung-task-warnings
+    sysctl {
+        - "kernel.hung_task_warnings" "-1"
+    }
+  }
+
 - name="kernel-option-vfsca" \
   dialog-name="General Kernel Configuration" \
   short-description="Reduce background reclaiming of file system cache (vm.vfs_cache_pressure 100 -> 50)" \

@@ -28,6 +28,7 @@
     "cpu",
     "memory",
     "disk",
+    "custom/io-pressure",
     "backlight",
     "battery",
     "battery#bat2",
@@ -179,6 +180,18 @@
     "path": "/",
     "format": "{free}\ndisk space",
     "on-click": "/usr/lib/ditana/launch /usr/lib/ditana/open-disks /",
+    "justify": "center",
+  },
+  // Pressure stall information for I/O: the share of the past ~10 seconds
+  // during which at least one task was delayed waiting for I/O. Concealed
+  // when the kernel does not supply PSI.
+  "custom/io-pressure": {
+    "exec-if": "test -x /usr/lib/ditana/waybar-io-pressure",
+    "exec": "/usr/lib/ditana/waybar-io-pressure --warm 20 --hot 50",
+    "return-type": "json",
+    "interval": 2,
+    "format": "{}\nIO wait",
+    "escape": true,
     "justify": "center",
   },
   "temperature": {

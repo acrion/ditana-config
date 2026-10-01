@@ -18,7 +18,8 @@
           "/etc/skel/.config/nwg-launchers/nwggrid/terminal" \
           "/etc/skel/.config/nwg-launchers/nwgbar/bar.json" \
           "/usr/lib/ditana/launch" \
-          "/usr/lib/ditana/open-disks"
+          "/usr/lib/ditana/open-disks" \
+          "/usr/lib/ditana/waybar-io-pressure"
     arch-packages "waybar" \
                   "nwg-launchers" \
                   "swaylock"

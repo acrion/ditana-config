@@ -72,7 +72,8 @@ button:hover {
 #idle_inhibitor,
 #scratchpad,
 #power-profiles-daemon,
-#mpd {
+#mpd,
+#custom-io-pressure {
   padding: 0 12px;
   color: #eff0f1;
   background: linear-gradient(to bottom, #4f4f4f, #3a3a3a);
@@ -402,4 +403,37 @@ button:hover {
 
 #privacy-item.audio-out {
   background-color: #0069d4;
+}
+
+/*
+ * States of the I/O pressure module. They are placed after each :hover
+ * rule deliberately: same specificity, hence the order in the source code
+ * determines precedence, and a warning must not revert to neutral upon
+ * pointer hover. warm-1 to warm-5 advance progressively from the neutral
+ * gradient towards red, hot represents full red. The helper emits the
+ * classes; the thresholds are supplied as parameters in config.jsonc.
+ */
+#custom-io-pressure.warm-1 {
+  background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.15), mix(#3a3a3a, #eb4d4b, 0.15));
+}
+
+#custom-io-pressure.warm-2 {
+  background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.3), mix(#3a3a3a, #eb4d4b, 0.3));
+}
+
+#custom-io-pressure.warm-3 {
+  background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.45), mix(#3a3a3a, #eb4d4b, 0.45));
+}
+
+#custom-io-pressure.warm-4 {
+  background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.6), mix(#3a3a3a, #eb4d4b, 0.6));
+}
+
+#custom-io-pressure.warm-5 {
+  background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.75), mix(#3a3a3a, #eb4d4b, 0.75));
+}
+
+#custom-io-pressure.hot {
+  background: linear-gradient(to bottom, #ff4040, #e01b1b);
+  color: #ffffff;
 }

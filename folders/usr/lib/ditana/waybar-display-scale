@@ -19,35 +19,87 @@
 # You should have received a copy of the GNU General Public License
 # along with Ditana Installer. If not, see <https://www.gnu.org/licenses/>.
 
-# waybar-display-scale — adjusts waybar config to the largest connected
-# display's physical size, and restarts waybar on display-info changes.
+# waybar-display-scale – sizes the bar of waybar based on the pixel density
+# and width in pixels of the largest connected display, and restarts waybar
+# when this changes either of its two configuration files.
 #
 # Reads /var/cache/wayland-display-info/display-info (maintained by the
-# wayland-display-info service). First line = largest display (sorted by
-# physical size upstream). Only acts if the user has both waybar config
-# files in place. Safe to run even when waybar is not running.
+# wayland-display-info service), which holds one line per display, formatted
+# as "OUTPUT_NAME DPI WIDTH_PX HEIGHT_PX", with the display having the
+# greatest physical diagonal appearing first. Acts only when the user has
+# both waybar configuration files present. Can be executed safely even if
+# waybar is not currently running.
+#
+# When invoked without arguments, the script applies the sizes and
+# subsequently monitors the file for modifications. Using the --once option
+# causes the script to apply the sizes just once and then terminate, which is
+# useful when the waybar config has been manually updated.
+#
+# DITANA_DISPLAY_INFO replaces the path of display-info, while
+# DITANA_LAUNCH_BIN replaces the path of /usr/lib/ditana/launch. Neither of
+# these keeps a run away from the real waybar: the script finds the programs
+# that trigger waybar's restart by name on PATH, which is why the tests in
+# validate-logic.py execute it using a PATH set to stubs.
 
 set -u
 shopt -s nullglob
 
-DISPLAY_INFO=/var/cache/wayland-display-info/display-info
+DISPLAY_INFO=${DITANA_DISPLAY_INFO:-/var/cache/wayland-display-info/display-info}
+LAUNCH=${DITANA_LAUNCH_BIN:-/usr/lib/ditana/launch}
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 WAYBAR_STYLE="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/style.css"
 
-REF_DIAGONAL=141
+# The bar's height adapts to pixel density: REF_HEIGHT pixels at REF_DPI,
+# with SLOPE pixels added or subtracted per DPI. Launcher icons fill BG_RATIO
+# of the total height. REF_FONT is the font size specified in "* {" within
+# style.css by the skel template.
+REF_DPI=141
 REF_HEIGHT=64
 SLOPE=0.4
 BG_RATIO=0.875
+REF_FONT=18
+
+# A full Ditana bar -- comprising the launchers, the modules positioned to the
+# right, and roughly six taskbar icons -- requires approximately
+# REF_WIDTH_UNITS bar heights in width. On a narrower display, height, icons
+# and font shrink by the factor by which its width falls short. Measured on
+# 2026-10-01 by rendering the bar of the Dell laptop headless at 1920x1080
+# resolution, using the dimensions corresponding to 128 DPI (bar height 59,
+# font 18 px): the launchers and the right-side modules occupied the entire
+# width, leaving no room for even one taskbar icon; at 0.9 of those
+# dimensions, two to three icons could fit, at 0.85 around four, at 0.8
+# roughly six. The final scenario determines the number of units: 1920 px
+# divided by (0.8 times 59 px) yields approximately 40. MIN_FIT prevents
+# further reduction beyond three quarters, ensuring icons and text stay
+# legible even on narrower displays; the taskbar then receives reduced space
+# in such cases.
+#
+# Constraints, not objectives: just like the DPI calculation shown earlier,
+# this approach relies on a compositor scale of 1, since display-info reports
+# the pixels of the mode, not the logical ones (and disregards any rotation).
+# The largest display sets the standard for each bar, meaning a laptop docked
+# to a large monitor keeps the full size on its own screen too.
+REF_WIDTH_UNITS=40
+MIN_FIT=0.75
 
 compute_sizes() {
-    # Outputs: height icon_size bg_size min_width
-    awk -v d="$1" -v rd="$REF_DIAGONAL" -v rh="$REF_HEIGHT" \
-        -v slope="$SLOPE" -v bgr="$BG_RATIO" '
+    # $1: DPI, $2: width in pixels, or the value is empty when
+    # it is not known.
+    # Outputs: height icon_size bg_size min_width font_size
+    awk -v d="$1" -v w="$2" -v rd="$REF_DPI" -v rh="$REF_HEIGHT" \
+        -v slope="$SLOPE" -v bgr="$BG_RATIO" -v rf="$REF_FONT" \
+        -v units="$REF_WIDTH_UNITS" -v minfit="$MIN_FIT" '
         BEGIN {
-            h = rh + slope * (d - rd)
+            h0 = rh + slope * (d - rd)
+            fit = 1
+            if (w != "") fit = w / (h0 * units)
+            if (fit > 1) fit = 1
+            if (fit < minfit) fit = minfit
+            h = h0 * fit
             b = bgr * h
-            printf "%d %d %d %d\n",
-                int(h + 0.5), int(h + 0.5), int(b + 0.5), int(h + 0.5)
+            f = rf * fit
+            printf "%d %d %d %d %d\n",
+                int(h + 0.5), int(h + 0.5), int(b + 0.5), int(h + 0.5), int(f + 0.5)
         }'
 }
 
@@ -101,16 +153,18 @@ restart_waybar() {
         # meaning that halting the service would terminate them all. The `launch`
         # command grants waybar its own distinct scope.
         log "respawning waybar via launch (no uwsm session detected)"
-        /usr/lib/ditana/launch waybar </dev/null >/dev/null 2>&1
+        "$LAUNCH" waybar </dev/null >/dev/null 2>&1
     fi
 }
 
 patch_file() {
-    # $1: target file, rest: sed expressions
+    # $1: the file to be modified, the remaining arguments: a command that
+    # prints the modified version of the file whose name appears as its last
+    # argument
     local target="$1"; shift
     local tmp
     tmp=$(mktemp) || return 1
-    if ! sed "$@" "$target" >"$tmp"; then
+    if ! "$@" "$target" >"$tmp"; then
         rm -f "$tmp"
         return 1
     fi
@@ -123,6 +177,52 @@ patch_file() {
     return 0
 }
 
+scale_font() {
+    # $1: font size in px, $2: style.css
+    #
+    # Sets the pixel font size of the first "* {" rule, the one the skel opens
+    # style.css with, and of no other rule: launcher rules hide their labels
+    # using "font-size: 0;", while a font size assigned by the user to another
+    # rule remains unchanged. This also applies to a later "* {" rule, which
+    # is how a user keeps a font size of their own. The rules are found by
+    # their braces located outside of comments, not by lines: the skel's block
+    # comments begin their lines with " * ", and a rule might occupy the same
+    # line as the following one.
+    awk -v px="$1" '
+        {
+            out = ""
+            i = 1
+            while (i <= length($0)) {
+                two = substr($0, i, 2)
+                if (in_comment) {
+                    if (two == "*/") { in_comment = 0; out = out two; i += 2 }
+                    else { out = out substr($0, i, 1); i++ }
+                    continue
+                }
+                if (two == "/*") { in_comment = 1; out = out two; i += 2; continue }
+                if (rule == 1 && match(substr($0, i), /^font-size: [0-9]+px/)) {
+                    out = out "font-size: " px "px"; i += RLENGTH; continue
+                }
+                c = substr($0, i, 1)
+                if (c == "{") {
+                    if (depth == 0 && rule == 0 && selector ~ /^[ \t]*[*][ \t]*$/) rule = 1
+                    depth++; selector = ""
+                } else if (c == "}") {
+                    if (depth > 0) depth--
+                    if (depth == 0 && rule == 1) rule = 2
+                    selector = ""
+                } else if (c == ";") {
+                    selector = ""
+                } else if (depth == 0) {
+                    selector = selector c
+                }
+                out = out c; i++
+            }
+            if (depth == 0) selector = selector " "
+            print out
+        }' "$2"
+}
+
 apply_scale() {
     [[ -r "$DISPLAY_INFO" ]] || { log "no display-info file yet"; return 0; }
     [[ -f "$WAYBAR_CONFIG" && -f "$WAYBAR_STYLE" ]] || {
@@ -130,18 +230,28 @@ apply_scale() {
         return 0
     }
 
-    local diagonal
-    diagonal=$(awk 'NR==1 {print $2; exit}' "$DISPLAY_INFO")
-    [[ -n "$diagonal" ]] || { log "display-info empty"; return 0; }
+    # Left blank if the read operation fails: a display-info that fails to
+    # be read is subsequently handled as if it lacks a DPI value, rather
+    # than causing the script to halt under set -u.
+    local dpi='' width=''
+    read -r _ dpi width _ <"$DISPLAY_INFO"
+    if [[ ! $dpi =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+        log "no DPI in the first line of $DISPLAY_INFO — nothing to do"
+        return 0
+    fi
+    if [[ ! $width =~ ^[1-9][0-9]*$ ]]; then
+        log "no width in the first line of $DISPLAY_INFO — sizing by DPI alone"
+        width=
+    fi
 
-    local height icon_size bg_size min_width
-    read -r height icon_size bg_size min_width < <(compute_sizes "$diagonal")
-    log "diagonal=$diagonal → height=$height, icon=$icon_size, bg=$bg_size, min-width=$min_width"
+    local height icon_size bg_size min_width font_size
+    read -r height icon_size bg_size min_width font_size < <(compute_sizes "$dpi" "$width")
+    log "dpi=$dpi width=${width:-unknown} → height=$height, icon=$icon_size, bg=$bg_size, min-width=$min_width, font=$font_size"
     local changed=0 rc
 
     # config.jsonc: patch top-level "height" and "icon-size" scoped to
     # wlr/taskbar (to avoid touching tray's icon-size).
-    patch_file "$WAYBAR_CONFIG" \
+    patch_file "$WAYBAR_CONFIG" sed \
         -e "s/\"height\": [0-9]\+,/\"height\": ${height},/" \
         -e "/\"wlr\/taskbar\": {/,/^  }/ s/\"icon-size\": [0-9]\+,/\"icon-size\": ${icon_size},/"
     rc=$?
@@ -150,9 +260,14 @@ apply_scale() {
 
     # style.css: background-size and min-width only appear in start-bar
     # button rules, so global replacement is safe.
-    patch_file "$WAYBAR_STYLE" \
+    patch_file "$WAYBAR_STYLE" sed \
         -e "s/background-size: [0-9]\+px [0-9]\+px/background-size: ${bg_size}px ${bg_size}px/g" \
         -e "s/min-width: [0-9]\+px/min-width: ${min_width}px/g"
+    rc=$?
+    [[ $rc -eq 0 ]] && changed=1
+    [[ $rc -eq 1 ]] && { log "failed to patch $WAYBAR_STYLE"; return 1; }
+
+    patch_file "$WAYBAR_STYLE" scale_font "$font_size"
     rc=$?
     [[ $rc -eq 0 ]] && changed=1
     [[ $rc -eq 1 ]] && { log "failed to patch $WAYBAR_STYLE"; return 1; }
@@ -164,6 +279,18 @@ apply_scale() {
         log "config already at target values"
     fi
 }
+
+usage() {
+    printf 'usage: %s [--once]\n' "${0##*/}" >&2
+    exit 2
+}
+
+if (( $# == 1 )) && [[ $1 == --once ]]; then
+    apply_scale
+    exit
+elif (( $# > 0 )); then
+    usage
+fi
 
 # Initial apply at startup.
 apply_scale
