@@ -146,7 +146,7 @@ This standardized approach ensures uniform behavior across various C and C++ lib
   short-description="Java development kit" \
   long-description="Install $packages and configure dynamic path variables to the current version." \
   spdx-identifiers="" \
-  default-value=#true {
+  default-value="`NOT profile-quick`" {
     arch-packages "jdk-openjdk" \
                   "java-runtime-common"
     files "/etc/profile.d/ditana-java.sh"

@@ -21,6 +21,18 @@
                   "mesa-utils" \
                   "libva-utils" \
                   "intel-gpu-tools" \
+                  \ // === Vulkan drivers ===
+                  \ // cosmic-session and zed depend on the virtual package vulkan-driver, and
+                  \ // pacstrap, which does not prompt, would select its first provider:
+                  \ // nvidia-utils, across all systems. The Mesa drivers covering every GPU
+                  \ // family, along with the software renderer, add just a few MiB; the Vulkan
+                  \ // loader picks the appropriate one during execution. NVIDIA's native driver
+                  \ // is sourced from the settings in hardware-support.kdl.
+                  "vulkan-intel" \
+                  "vulkan-radeon" \
+                  "vulkan-nouveau" \
+                  "vulkan-virtio" \
+                  "vulkan-swrast" \
                   \ // === System resources monitor ===
                   "resources" \
                   \ // === Disk management ===

@@ -91,11 +91,11 @@ The dark base theme of Ditana remains the same for all options — only the colo
 """ help-note=""
 
         - name="Browser" type="radiolist" instruction="Choose a default web browser:" help-intro="Pick the browser that should be installed and registered as the default handler for http(s) and HTML MIME types. The radiolist is mutually exclusive; if you want more than one browser, install the others later via pacman or flatpak." help-note=""
-        - name="File Manager" type="radiolist" instruction="Choose your default file manager:" help-intro="Pick the file manager that will handle inode/directory by default. The radiolist is mutually exclusive; if you want both managers, you can install the second later via pacman. On a combined XFCE + Wayland install, Thunar is auto-pulled alongside COSMIC Files so XFCE sessions retain their native file manager." help-note=""
+        - name="File Manager" type="radiolist" instruction="Choose your default file manager:" help-intro="Pick the file manager that will handle inode/directory by default. The radiolist is mutually exclusive; if you want both managers, you can install the second later via pacman. This default applies to every session, whichever desktop you log in to. So as soon as XFCE is part of the installation, Thunar is the default and COSMIC Files is not offered; with only Wayland desktops, COSMIC Files is the default." help-note=""
         - name="Office Suite" type="radiolist" instruction="Choose an office suite:" help-intro="Pick the office suite to install. The radiolist is mutually exclusive; you can install additional office software later via pacman or Flatpak." help-note=""
         - name="Desktop Applications" type="checklist" instruction="Choose desktop options:" help-intro="" help-note=""
         - name="Multimedia Applications" type="checklist" instruction="Choose multimedia options:" help-intro="" help-note=""
-        - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant is enabled by default, it means that your hardware supports running a local AI (CPU with AVX2 & sufficient RAM). Ditana Assistant relies on KoboldCpp to handle AI interactions locally, ensuring your privacy and data security. If your hardware does not support running KoboldCpp, it will not be available in this list. You can still activate Ditana Assistant, but you will need to configure it in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
+        - name="AI Tools and Libraries" type="checklist" instruction="If Ditana Assistant, Ollama and Logseq are enabled by default, your hardware can run a local AI (CPU with AVX2 and at least 12 GiB RAM). They then use the phi4-mini language model, which Ollama runs on your computer, ensuring your privacy and data security; the model is a download of about 2.5 GB. Uncheck whatever you do not want. Without Ollama, Ditana Assistant can be configured in the installed system to use an external LLM API (see documentation)." help-intro="" help-note=""
         - name="Advanced Settings" type="categories" {
               categories {
 - name="host-name" type="ask-for-setting" validation="name" instruction="""
@@ -245,7 +245,7 @@ For further information, please consult the following URLs:
         - name="review-summary-and-start-installation" type="procedure"
       }
     }
-- name="host-dpi" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 102..185" instruction="""
+- name="host-dpi" type="ask-for-setting" validation="integer" extra-validation="$_ ∈ 92..185" instruction="""
 Virtual Environment Detected: Please enter the DPI of your display.
 
 Ditana automatically scales your XFCE desktop based on your main display’s DPI, ensuring optimal visuals when changing resolutions or display connections. This setting allows Ditana to provide the same seamless experience in your virtual setup as it would on physical hardware.

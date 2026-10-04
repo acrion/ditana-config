@@ -23,7 +23,7 @@
 - name="user-name" required-by-chroot=#true default-value=""
 - name="user-id" required-by-chroot=#true default-value=1000
 - name="user-group" required-by-chroot=#true default-value=1000
-- name="host-dpi" default-value=""
+- name="host-dpi" default-value=144
 - name="kernel-options" required-by-chroot=#true default-value=""
 - name="bootloader-parent-disk" required-by-chroot=#true default-value=""
 - name="bootloader-partition-index" required-by-chroot=#true default-value=""

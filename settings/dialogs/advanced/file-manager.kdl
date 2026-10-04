@@ -1,16 +1,15 @@
 // Settings that correspond to the dialog "Configuration Categories" → "File Manager"
 //
-// File-manager radiolist. COSMIC Files is the modern Wayland-native
-// default for any Wayland compositor (Niri, Wayfire, COSMIC). Thunar
-// is the XFCE-traditional default and is auto-pulled as XFCE fallback
-// whenever COSMIC Files is the primary selection but XFCE is also
-// installed (see fallback-thunar-for-xfce further below; this is NOT
-// a radiolist entry).
+// File-manager radiolist. Selecting an option configures the system-wide handler
+// for inode/directory, affecting all sessions regardless of the desktop
+// environment the user accesses. Consequently, once XFCE is installed, Thunar
+// becomes the default, and COSMIC Files is not presented; on systems using only
+// Wayland desktops, COSMIC Files is the default.
 
 - name="install-cosmic-files" \
   dialog-name="File Manager" \
   short-description="COSMIC Files - Modern Wayland-native file manager" \
-  long-description="COSMIC Files: A modern Wayland-native file manager from System76. Lightweight, GTK-free, written in Rust on the iced toolkit. Works on any Wayland compositor (Niri, Wayfire, COSMIC). Default for all Wayland-based desktop choices in Ditana." \
+  long-description="COSMIC Files: A modern Wayland-native file manager from System76. Lightweight, GTK-free, written in Rust on the iced toolkit. Works on any Wayland compositor (Niri, Wayfire, COSMIC). Default when only Wayland-based desktops are installed." \
   spdx-identifiers="GPL-3.0-only" \
   available="`install-desktop-environment AND NOT install-xfce`" \
   default-value="`install-desktop-environment AND NOT install-xfce`" {
@@ -23,7 +22,7 @@
 - name="install-thunar" \
   dialog-name="File Manager" \
   short-description="Thunar - XFCE's traditional file manager" \
-  long-description="Thunar: The traditional file manager for the XFCE desktop. Mature, fast, and feature-rich with archive integration, media tag support, and removable-volume management via thunar-volman. Default for XFCE-only installs; on combined XFCE + Wayland setups, Thunar is auto-installed alongside COSMIC Files so XFCE sessions retain their native file manager." \
+  long-description="Thunar: The traditional file manager for the XFCE desktop. Mature, fast, and feature-rich with archive integration, media tag support, and removable-volume management via thunar-volman. Default whenever XFCE is installed, including combined XFCE + Wayland setups, because the file manager applies to every session and Thunar is the one native to XFCE." \
   spdx-identifiers="GPL-2.0-or-later" \
   available="`install-desktop-environment`" \
   default-value="`install-xfce`" {
