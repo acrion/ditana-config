@@ -1,6 +1,16 @@
 {
   "theme": "dark",
+  "orchestrator_mode": false,
   "editor": {
-    "use_terminal_bg": true
+    "use_terminal_bg": true,
+    "hot_exit": false
+  },
+  "plugins": {
+    "orchestrator": {
+      "enabled": false
+    },
+    "live_sessions": {
+      "enabled": false
+    }
   }
 }
