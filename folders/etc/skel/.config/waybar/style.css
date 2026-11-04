@@ -287,8 +287,8 @@ button:hover {
 }
 
 #custom-resources {
-  background-image: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
-  -gtk-icon-source: url("/usr/share/icons/hicolor/scalable/apps/net.nokyan.Resources.svg");
+  background-image: url("/usr/share/icons/@@ICON_THEME@@/utilities-system-monitor.svg");
+  -gtk-icon-source: url("/usr/share/icons/@@ICON_THEME@@/utilities-system-monitor.svg");
 }
 
 #custom-start {
