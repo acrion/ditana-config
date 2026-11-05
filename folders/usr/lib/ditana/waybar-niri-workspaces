@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2026 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of ditana-config, see https://github.com/acrion/ditana-config
+#
+# ditana-config is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ditana-config is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
+
+# Shows niri's workspaces via a custom waybar module. The text identifies the
+# active workspace on the output where the bar is positioned as "3/7": its
+# index, the number that `niri msg action focus-workspace 3` addresses, and the
+# index of the last workspace in use on that output. A workspace is considered
+# in use if it holds a window or carries a name, and the active workspace is
+# always included; thus, the empty workspace that niri keeps at the bottom of
+# every output is counted only when it is active. A name follows after " · ".
+# The tooltip lists, for each output, the workspaces that hold windows or carry
+# a name, along with the active one, listing each workspace's windows,
+# beginning with the output that hosts the bar. The class is "focused" if the
+# bar's output holds the focus, and "urgent" if one of its workspaces is marked
+# as urgent.
+#
+# waybar's built-in niri/workspaces module is unaware of any total, and in
+# waybar 0.15 it fails to reestablish the connection once its link to niri is
+# severed, potentially freezing the bar. A module that parses the event stream
+# via niri-ipc stops at the first event its version cannot recognize, such as
+# TouchpadToggled, which niri-git has been sending since October 2026 and which
+# no released niri-ipc contains. This helper reads the stream as plain JSON,
+# keeps the state the way niri-ipc's EventStreamState does, and skips every
+# event it does not know.
+#
+# It prints a line once it has gained awareness of both the workspaces and the
+# windows, since the value following the slash relies on the windows, and
+# thereafter solely when the line experiences a modification. Upon failure or
+# termination of the connection, it shows "?" with the reason in the tooltip
+# and the class "error", then attempts reconnection after 1, 2, 4, and
+# subsequently every 8 seconds; a successful response from niri resets the
+# sequence to start anew at 1 second.
+#
+# ditana-config sets up waybar identically for both niri and Wayfire. Outside
+# niri, NIRI_SOCKET remains unset: the helper then prints an empty text exactly
+# once, thus hiding the module, since waybar 0.15 does not check exec-if for a
+# custom module without an interval. It then remains active until waybar
+# terminates it, and must not shut down on its own, or waybar would start it
+# every few seconds after restart-interval. When waybar closes the pipe, the
+# helper ends quietly with exit status 0.
+
+import html
+import json
+import os
+import re
+import select
+import signal
+import socket
+import sys
+
+NAME_WIDTH = 24
+APP_ID_WIDTH = 16
+TITLE_WIDTH = 60
+RETRY_DELAYS = (1, 2, 4, 8)
+SEPARATOR = " · "
+ELLIPSIS = "…"
+ACTIVE_MARK = "▸ "
+STDOUT = 1
+
+# An app ID expressed in reverse DNS format, for example org.gnome.Nautilus: a
+# top-level domain consisting of lowercase letters followed by a minimum of
+# two additional segments. The app ID of a Chrome web app, such as
+# chrome-web.whatsapp.com__-Default, includes dots too, yet it is not
+# considered one and stays whole.
+REVERSE_DNS = re.compile(r"[a-z]+(?:\.[^.]+){2,}")
+
+
+class PipeClosed(Exception):
+    """waybar has closed the pipe the helper prints to."""
+
+
+def pause(seconds):
+    """Waits SECONDS, or for good if it is None; raises PipeClosed as soon as waybar closes the pipe.
+
+    The pipe signals POLLERR once its reader is gone, so the helper also ends
+    when waybar went away without stopping it.
+    """
+    poller = select.poll()
+    poller.register(STDOUT, 0)
+    if poller.poll(None if seconds is None else seconds * 1000):
+        raise PipeClosed
+
+
+class Printer:
+    """Prints a line of JSON for waybar whenever the line differs from the last one printed."""
+
+    def __init__(self):
+        self.last = None
+
+    def show(self, text, tooltip="", classes=()):
+        # waybar 0.15 converts each \x found in a line into \u00 before parsing
+        # the JSON (via replaceHexadecimalEscape in include/util/json.hpp),
+        # causing a window title like C:\xampp to appear as C:\u00ampp. A
+        # backslash written as \u005c is never followed by an x.
+        line = json.dumps({"text": text, "tooltip": tooltip, "class": list(classes)}, ensure_ascii=False)
+        line = line.replace("\\\\", "\\u005c") + "\n"
+        if line == self.last:
+            return
+        self.last = line
+        data = memoryview(line.encode("utf-8", "replace"))
+        while data:
+            try:
+                written = os.write(STDOUT, data)
+            except BrokenPipeError:
+                raise PipeClosed from None
+            data = data[written:]
+
+
+def shorten(text, width):
+    return text if len(text) <= width else text[:width - 1] + ELLIPSIS
+
+
+def markup(text):
+    return html.escape(text, quote=False)
+
+
+def app_label(app_id):
+    if REVERSE_DNS.fullmatch(app_id):
+        app_id = app_id.rsplit(".", 1)[1]
+    return shorten(app_id, APP_ID_WIDTH)
+
+
+def workspace_label(workspace):
+    label = str(workspace.get("idx"))
+    if workspace.get("name"):
+        label += SEPARATOR + markup(shorten(workspace["name"], NAME_WIDTH))
+    return label
+
+
+def window_order(window):
+    """Tiled windows by column and then by their place in it, floating windows last."""
+    position = (window.get("layout") or {}).get("pos_in_scrolling_layout")
+    if window.get("is_floating") or not position:
+        return (1, [], window.get("id", 0))
+    return (0, list(position), window.get("id", 0))
+
+
+class State:
+    """The workspaces and windows, kept up to date from the event stream as niri-ipc's EventStreamState keeps them.
+
+    WorkspaceActivated, WorkspaceActiveWindowChanged and
+    WorkspaceUrgencyChanged naming a workspace that is not known change
+    nothing, and neither do WindowClosed, WindowFocusChanged,
+    WindowUrgencyChanged and WindowLayoutsChanged naming a window that is
+    not known, where EventStreamState panics on some of them and takes the
+    focus from every window on such a WindowFocusChanged.
+    WorkspaceActiveWindowChanged keeps an active_window_id that is not
+    known, as EventStreamState does: niri may send it before the first
+    WindowOpenedOrChanged of a window that has just opened. An event of a
+    known kind that does not have the expected shape is skipped like an
+    unknown one.
+    """
+
+    def __init__(self):
+        self.workspaces = None
+        self.windows = None
+
+    @property
+    def complete(self):
+        return self.workspaces is not None and self.windows is not None
+
+    def apply(self, event):
+        """Applies EVENT; returns whether it is one that can change the state."""
+        if not isinstance(event, dict) or len(event) != 1:
+            return False
+        ((kind, body),) = event.items()
+        handler = getattr(self, "on_" + kind, None)
+        if handler is None or not isinstance(body, dict):
+            return False
+        try:
+            handler(body)
+        except (KeyError, TypeError, ValueError, AttributeError):
+            return False
+        return True
+
+    def workspace(self, workspace_id):
+        return (self.workspaces or {}).get(workspace_id)
+
+    def window(self, window_id):
+        return (self.windows or {}).get(window_id)
+
+    def on_WorkspacesChanged(self, body):
+        self.workspaces = {workspace["id"]: workspace for workspace in body["workspaces"]}
+
+    def on_WindowsChanged(self, body):
+        self.windows = {window["id"]: window for window in body["windows"]}
+
+    def on_WorkspaceActivated(self, body):
+        activated = self.workspace(body["id"])
+        if activated is None:
+            return
+        for workspace in self.workspaces.values():
+            if workspace.get("output") == activated.get("output"):
+                workspace["is_active"] = workspace is activated
+            if body.get("focused"):
+                workspace["is_focused"] = workspace is activated
+
+    def on_WorkspaceActiveWindowChanged(self, body):
+        workspace = self.workspace(body["workspace_id"])
+        if workspace is not None:
+            workspace["active_window_id"] = body.get("active_window_id")
+
+    def on_WorkspaceUrgencyChanged(self, body):
+        workspace = self.workspace(body["id"])
+        if workspace is not None:
+            workspace["is_urgent"] = body["urgent"]
+
+    def on_WindowOpenedOrChanged(self, body):
+        window = body["window"]
+        if self.windows is None:
+            return
+        self.windows[window["id"]] = window
+        if window.get("is_focused"):
+            for other in self.windows.values():
+                if other is not window:
+                    other["is_focused"] = False
+
+    def on_WindowClosed(self, body):
+        if self.windows is not None:
+            self.windows.pop(body["id"], None)
+
+    # niri sends no id when no window holds the focus, thereby removing it
+    # from all windows; an id that is unrecognized has no effect, in
+    # contrast to EventStreamState.
+    def on_WindowFocusChanged(self, body):
+        focused_id = body["id"]
+        if focused_id is not None and self.window(focused_id) is None:
+            return
+        for window in (self.windows or {}).values():
+            window["is_focused"] = window.get("id") == focused_id
+
+    def on_WindowUrgencyChanged(self, body):
+        window = self.window(body["id"])
+        if window is not None:
+            window["is_urgent"] = body["urgent"]
+
+    # The text is independent of the layout, yet a column that shifts
+    # triggers this event alone, and the tooltip lists the windows
+    # according to column order.
+    def on_WindowLayoutsChanged(self, body):
+        for window_id, layout in body["changes"]:
+            window = self.window(window_id)
+            if window is not None:
+                window["layout"] = layout
+
+
+def render(state, wanted_output):
+    """The text, tooltip and classes of the module for the bar on WANTED_OUTPUT."""
+    workspaces = list(state.workspaces.values())
+    windows = list(state.windows.values())
+    outputs = {workspace.get("output") for workspace in workspaces}
+    if wanted_output and wanted_output in outputs:
+        own = wanted_output
+    else:
+        own = next((workspace.get("output") for workspace in workspaces if workspace.get("is_focused")), None)
+    mine = [workspace for workspace in workspaces if workspace.get("output") == own]
+    active = next((workspace for workspace in mine if workspace.get("is_active")), None)
+    if own is None or active is None:
+        return "", "", []
+
+    windows_on = {}
+    for window in windows:
+        windows_on.setdefault(window.get("workspace_id"), []).append(window)
+    in_use = [workspace.get("idx", 0) for workspace in mine
+              if workspace.get("id") in windows_on or workspace.get("name")]
+    total = max(in_use + [active.get("idx", 0)])
+    text = f"{active.get('idx')}/{total}"
+    if active.get("name"):
+        text += SEPARATOR + markup(shorten(active["name"], NAME_WIDTH))
+
+    classes = []
+    if active.get("is_focused"):
+        classes.append("focused")
+    if any(workspace.get("is_urgent") for workspace in mine):
+        classes.append("urgent")
+
+    by_output = {}
+    for workspace in workspaces:
+        by_output.setdefault(workspace.get("output"), []).append(workspace)
+    lines = []
+    for output in [own] + sorted((output for output in by_output if output != own), key=lambda o: o or ""):
+        if lines:
+            lines.append("")
+        lines.append(markup(output or "?"))
+        for workspace in sorted(by_output[output], key=lambda w: w.get("idx", 0)):
+            listed = sorted(windows_on.get(workspace.get("id"), []), key=window_order)
+            if not listed and not workspace.get("name") and not workspace.get("is_active"):
+                continue
+            lines.append((ACTIVE_MARK if workspace.get("is_active") else "  ") + workspace_label(workspace))
+            for window in listed:
+                app_id = app_label(window.get("app_id") or "").ljust(APP_ID_WIDTH)
+                title = shorten(window.get("title") or "", TITLE_WIDTH)
+                lines.append(f"    {markup(app_id)}  {markup(title)}".rstrip())
+    return text, "<tt>" + "\n".join(lines) + "</tt>", classes
+
+
+def read_lines(sock):
+    """The lines that arrive on SOCK, until niri closes it; raises PipeClosed once waybar closes the pipe."""
+    poller = select.poll()
+    poller.register(sock, select.POLLIN)
+    poller.register(STDOUT, 0)
+    pending = b""
+    while True:
+        ready = dict(poller.poll())
+        if STDOUT in ready:
+            raise PipeClosed
+        chunk = sock.recv(1 << 16)
+        if not chunk:
+            return
+        *lines, pending = (pending + chunk).split(b"\n")
+        yield from (line for line in lines if line.strip())
+
+
+def parse(line):
+    try:
+        return json.loads(line)
+    except ValueError:
+        return None
+
+
+def follow(path, wanted_output, printer):
+    """Shows the workspaces as niri reports them over one connection.
+
+    Returns, once the connection has ended or failed, whether niri
+    acknowledged the request for the event stream with {"Ok":"Handled"}, and
+    the reason the connection ended.
+    """
+    answered = False
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(path)
+            sock.sendall(b'"EventStream"\n')
+            lines = read_lines(sock)
+            reply = next(lines, None)
+            if reply is None:
+                return False, "niri closed the connection without answering"
+            if parse(reply) != {"Ok": "Handled"}:
+                return False, "niri refused the event stream: " + reply.decode("utf-8", "replace")
+            answered = True
+            state = State()
+            for line in lines:
+                if state.apply(parse(line)) and state.complete:
+                    printer.show(*render(state, wanted_output))
+            return True, "niri closed the event stream"
+    except OSError as e:
+        if answered:
+            return True, f"The connection to niri broke: {e.strerror or e}"
+        return False, f"Cannot connect to niri at {path}: {e.strerror or e}"
+
+
+def main():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    printer = Printer()
+    try:
+        path = os.environ.get("NIRI_SOCKET")
+        if not path:
+            printer.show("")
+            pause(None)
+            return 0
+        wanted_output = os.environ.get("WAYBAR_OUTPUT_NAME", "")
+        failures = 0
+        while True:
+            answered, reason = follow(path, wanted_output, printer)
+            if answered:
+                failures = 0
+            printer.show("?", markup(reason), ["error"])
+            pause(RETRY_DELAYS[min(failures, len(RETRY_DELAYS) - 1)])
+            failures += 1
+    except PipeClosed:
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

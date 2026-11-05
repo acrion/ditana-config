@@ -73,7 +73,8 @@ button:hover {
 #scratchpad,
 #power-profiles-daemon,
 #mpd,
-#custom-io-pressure {
+#custom-io-pressure,
+#custom-workspaces {
   padding: 0 12px;
   color: #eff0f1;
   background: linear-gradient(to bottom, #4f4f4f, #3a3a3a);
@@ -102,7 +103,8 @@ button:hover {
 #disk:hover,
 #pulseaudio:hover,
 #tray:hover,
-#idle_inhibitor:hover {
+#idle_inhibitor:hover,
+#custom-workspaces:hover {
   background: linear-gradient(to bottom, #5a5a5a, #454545);
 }
 
@@ -433,7 +435,13 @@ button:hover {
   background: linear-gradient(to bottom, mix(#4f4f4f, #ff6b6b, 0.75), mix(#3a3a3a, #eb4d4b, 0.75));
 }
 
-#custom-io-pressure.hot {
+/*
+ * A workspace on the bar's output that demands attention turns the
+ * workspace module red, akin to hot I/O pressure, and for the identical
+ * reason this rule follows its :hover rule.
+ */
+#custom-io-pressure.hot,
+#custom-workspaces.urgent {
   background: linear-gradient(to bottom, #ff4040, #e01b1b);
   color: #ffffff;
 }

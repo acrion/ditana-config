@@ -3,8 +3,10 @@ import json
 import os
 import re
 import secrets
+import select
 import shlex
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -362,7 +364,9 @@ def check_waybar_launchers(bar_config, shipped_files, out_errors):
     of the package sends on reload), a SIGINT, or the bar's monitor going away
     kills the program; so does stopping the unit waybar runs in. Every absolute
     program path a command names must be shipped by the setting that installs
-    the config, so that it exists wherever the button does.
+    the config, so that it exists wherever the button does. That includes a
+    Ditana helper named further on in the command, such as one that a command
+    starts through "sh -c" after another program.
     """
     for module, key, command in waybar_user_commands(bar_config):
         argv = shlex.split(command)
@@ -371,8 +375,10 @@ def check_waybar_launchers(bar_config, shipped_files, out_errors):
                 f"❌ waybar '{module}' {key} runs {command!r} directly. Start it through "
                 f"'{LAUNCH} ...' so that it survives a reload or restart of waybar.")
             continue
-        for program in argv[:2]:
-            if program.startswith("/") and program not in shipped_files:
+        programs = [p for p in argv[:2] if p.startswith("/")]
+        programs += [p for p in DITANA_PROGRAM_RE.findall(command) if p not in programs]
+        for program in programs:
+            if program not in shipped_files:
                 out_errors.append(
                     f"❌ waybar '{module}' {key} runs {program}, which the setting installing "
                     f"{WAYBAR_CONFIG} does not ship.")
@@ -1228,6 +1234,1324 @@ if helper_errors:
     errors = True
 
 # ---------------------------------------------------------------------------
+# The waybar module responsible for niri's workspaces and its associated
+# rename dialog.
+#
+# waybar-niri-workspaces runs the way waybar runs a custom module and reads
+# the event stream from a stand-in representing niri's socket, which mimics
+# niri's behaviour. Every line it produces must comply with waybar's contract
+# for a custom module, which module_output above checks. rename-niri-workspace
+# runs with stand-ins for niri and rofi on a PATH containing only those,
+# python3, and sh, guaranteeing that no check can rename a workspace or open a
+# dialog on the machine where it runs.
+# ---------------------------------------------------------------------------
+
+NIRI_WORKSPACES = '/usr/lib/ditana/waybar-niri-workspaces'
+RENAME_WORKSPACE = '/usr/lib/ditana/rename-niri-workspace'
+WORKSPACES_MODULE = 'custom/workspaces'
+RENAME_HINT = "An empty name removes the name."
+RENAME_KEEP_HINT = "An empty field keeps the name."
+
+# The duration a check waits for a line that the helper must not print. A line
+# printed by mistake follows its event within milliseconds.
+QUIET_PERIOD = 0.3
+
+TIMED_OUT = "timed out"
+
+
+def niri_workspace(workspace_id, idx, output="DP-1", name=None, active=False, focused=False, urgent=False):
+    """A workspace as niri reports it."""
+    return {"id": workspace_id, "idx": idx, "name": name, "output": output, "is_urgent": urgent,
+            "is_active": active, "is_focused": focused, "active_window_id": None}
+
+
+def niri_window(window_id, workspace_id, app_id="kitty", title="", column=1, row=1, floating=False):
+    """A window as niri reports it; COLUMN and ROW are its place in the scrolling layout, which a floating window lacks."""
+    return {"id": window_id, "title": title, "app_id": app_id, "pid": 1000 + window_id,
+            "workspace_id": workspace_id, "is_focused": False, "is_floating": floating, "is_urgent": False,
+            "layout": {"pos_in_scrolling_layout": None if floating else [column, row],
+                       "tile_size": [960.0, 1080.0], "window_size": [960, 1080],
+                       "tile_pos_in_workspace_view": None, "window_offset_in_tile": [0.0, 0.0]},
+            "focus_timestamp": None}
+
+
+def two_outputs(active=3, focus="DP-1"):
+    """Two outputs as niri reports them with empty-workspace-above-first, which HDMI-A-1 turns off: (workspaces, windows).
+
+    DP-1 holds eight workspaces, empty at the top and at the bottom with a
+    window on each of 2 to 7, and ACTIVE is its active one. HDMI-A-1 holds
+    three, a window on 1 and on 2 and the empty one at the bottom, and 1 is
+    active. A window on the first workspace of HDMI-A-1 means that niri keeps
+    no empty workspace above it there, which is legitimate: since 25.11, niri
+    takes the option per output, and HDMI-A-1 turns it off with
+    output "HDMI-A-1" { layout { empty-workspace-above-first false; }; }.
+    FOCUS names the output whose active workspace has the focus. The
+    workspace with the index n has the id 10 + n on DP-1 and 20 + n on
+    HDMI-A-1, and its window the id 100 + n or 200 + n.
+    """
+    workspaces = [niri_workspace(10 + idx, idx, "DP-1", active=idx == active,
+                                 focused=focus == "DP-1" and idx == active) for idx in range(1, 9)]
+    workspaces += [niri_workspace(20 + idx, idx, "HDMI-A-1", active=idx == 1,
+                                  focused=focus == "HDMI-A-1" and idx == 1) for idx in range(1, 4)]
+    windows = [niri_window(100 + idx, 10 + idx, title=f"window {idx}") for idx in range(2, 8)]
+    windows += [niri_window(200 + idx, 20 + idx, title=f"window {idx}") for idx in range(1, 3)]
+    return workspaces, windows
+
+
+def by_id(entries, entry_id):
+    return next(entry for entry in entries if entry["id"] == entry_id)
+
+
+def initial_events(workspaces, windows):
+    """The two events with which niri's event stream begins, among others."""
+    return [{"WorkspacesChanged": {"workspaces": workspaces}}, {"WindowsChanged": {"windows": windows}}]
+
+
+class NiriStub:
+    """A stand-in for niri's socket, which answers the way niri does.
+
+    niri answers the request "EventStream" with {"Ok":"Handled"} and then
+    sends one event per line. A check takes the connections of the helper
+    one by one and decides what goes back on each.
+    """
+
+    def __init__(self, workdir):
+        self.path = os.path.join(tempfile.mkdtemp(prefix="n", dir=workdir), "s")
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server.bind(self.path)
+        self.server.listen(16)
+        self.server.settimeout(HELPER_TIMEOUT)
+
+    def accept(self):
+        """The next connection and the request read from it, or (None, None) if none came in time."""
+        try:
+            connection, _ = self.server.accept()
+        except OSError:
+            return None, None
+        connection.settimeout(HELPER_TIMEOUT)
+        request = b""
+        try:
+            while not request.endswith(b"\n"):
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                request += chunk
+        except OSError:
+            pass
+        return connection, request
+
+    def close(self):
+        self.server.close()
+
+
+def niri_send(connection, *messages):
+    """Sends each message as a line of JSON, as niri does; bytes go out as they are."""
+    connection.sendall(b"".join((m if isinstance(m, bytes) else json.dumps(m).encode()) + b"\n" for m in messages))
+
+
+class WorkspacesHelper:
+    """waybar-niri-workspaces, started as waybar starts a custom module, with a pipe for its output.
+
+    NIRI_SOCKET and WAYBAR_OUTPUT_NAME come from ENV alone, never from the
+    session that runs the checks. COMMAND replaces the command line of the
+    helper.
+    """
+
+    def __init__(self, env, command=None):
+        environment = {k: v for k, v in os.environ.items() if k not in ("NIRI_SOCKET", "WAYBAR_OUTPUT_NAME")}
+        environment.update(env)
+        self.process = subprocess.Popen(command or [repo_path(NIRI_WORKSPACES)], stdin=subprocess.DEVNULL,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
+        self.pending = b""
+
+    def line(self, timeout=HELPER_TIMEOUT):
+        """The next line the helper prints; None once its output has ended, TIMED_OUT if none comes in time."""
+        deadline = time.monotonic() + timeout
+        fd = self.process.stdout.fileno()
+        while b"\n" not in self.pending:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([fd], [], [], remaining)[0]:
+                return TIMED_OUT
+            chunk = os.read(fd, 1 << 16)
+            if not chunk:
+                return None
+            self.pending += chunk
+        line, self.pending = self.pending.split(b"\n", 1)
+        return line + b"\n"
+
+    def remaining_lines(self):
+        """The lines the helper printed and no check has read yet, once it has ended."""
+        return (self.pending + self.process.stdout.read()).splitlines(keepends=True)
+
+    def close_pipe(self):
+        """Closes the end of the pipe that waybar reads, as waybar does when it lets go of the module."""
+        self.process.stdout.close()
+
+    def ended(self):
+        """(exit status, stderr) once the helper has ended, or None if it still runs after HELPER_TIMEOUT."""
+        try:
+            self.process.wait(HELPER_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            return None
+        return self.process.returncode, self.process.stderr.read()
+
+    def stop(self):
+        if self.process.poll() is None:
+            self.process.kill()
+        self.process.wait()
+        self.process.stdout.close()
+        self.process.stderr.close()
+
+
+def workspaces_output(label, line, out_errors):
+    r"""What waybar makes of LINE, a line the helper printed; None after reporting a missing or broken line.
+
+    Like waybar 0.15, it turns every \x of the line into \u00 before it
+    parses the JSON (replaceHexadecimalEscape in include/util/json.hpp).
+    """
+    if line is TIMED_OUT:
+        out_errors.append(f"❌ {label}: printed no line within {HELPER_TIMEOUT} s.")
+        return None
+    if line is None:
+        out_errors.append(f"❌ {label}: ended without printing a line.")
+        return None
+    line = line.replace(b"\\x", b"\\u00")
+    return module_output(label, subprocess.CompletedProcess([], 0, line, b""), out_errors)
+
+
+def workspaces_show(workdir, label, events, out_errors, output=None):
+    """The first line the helper prints once the stand-in for niri has sent EVENTS, parsed; None after a failure.
+
+    OUTPUT goes into WAYBAR_OUTPUT_NAME; None leaves the variable unset.
+    """
+    stub = NiriStub(workdir)
+    env = {"NIRI_SOCKET": stub.path}
+    if output is not None:
+        env["WAYBAR_OUTPUT_NAME"] = output
+    helper = WorkspacesHelper(env)
+    try:
+        connection, request = stub.accept()
+        if connection is None:
+            out_errors.append(f"❌ {label}: the helper did not connect to niri within {HELPER_TIMEOUT} s.")
+            return None
+        with connection:
+            if request != b'"EventStream"\n':
+                out_errors.append(f"❌ {label}: the helper asked niri for {request!r} instead of the event stream.")
+                return None
+            niri_send(connection, {"Ok": "Handled"}, *events)
+            return workspaces_output(label, helper.line(), out_errors)
+    finally:
+        helper.stop()
+        stub.close()
+
+
+def expect_workspaces(label, out, text, classes, out_errors):
+    if out is not None and (out["text"] != text or out["class"] != classes):
+        out_errors.append(f"❌ {label}: shows {out['text']!r} with class {out['class']!r}, "
+                          f"expected {text!r} with {classes!r}.")
+
+
+def check_workspaces_numbers(workdir, out_errors):
+    """The text is the index of the active workspace of the bar's output and the index of the last workspace in use there.
+
+    The index is the one that `niri msg action focus-workspace 3` addresses.
+    A workspace is in use while it holds a window or carries a name, and the
+    active one always counts. niri keeps an empty workspace at the bottom of
+    each output, and with empty-workspace-above-first another one at the
+    top, which then has the index 1 and so lies within the number. The one
+    at the bottom counts only while it is active; otherwise every bar would
+    count a workspace that holds nothing. A name follows the numbers after a
+    middle dot.
+    """
+    _, windows = two_outputs()
+    named_empty, _ = two_outputs()
+    by_id(named_empty, 18)["name"] = "Notes"
+    named_empty.append(niri_workspace(19, 9, "DP-1"))
+    named_active, _ = two_outputs()
+    by_id(named_active, 13)["name"] = "Projekt"
+    cases = [
+        ("in the typical case", two_outputs(3)[0], "3/7"),
+        ("with the empty workspace at the top active", two_outputs(1)[0], "1/7"),
+        ("with the empty workspace at the bottom active", two_outputs(8)[0], "8/8"),
+        ("with an empty workspace that carries a name", named_empty, "3/8"),
+        ("with a name on the active workspace", named_active, "3/7 · Projekt"),
+    ]
+    for label, workspaces, text in cases:
+        label = f"waybar-niri-workspaces {label}"
+        out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output="DP-1")
+        expect_workspaces(label, out, text, ["focused"], out_errors)
+
+
+def check_workspaces_outputs(workdir, out_errors):
+    """Each bar shows the output it sits on; without a usable WAYBAR_OUTPUT_NAME, the output that has the focus.
+
+    waybar sets WAYBAR_OUTPUT_NAME for the exec of a custom module. A name
+    that matches no workspace, say an output that niri has not yet given
+    workspaces to, is treated like a missing one.
+    """
+    cases = [
+        ("on DP-1", "DP-1", "DP-1", "3/7", ["focused"]),
+        ("on HDMI-A-1", "HDMI-A-1", "DP-1", "1/2", []),
+        ("without WAYBAR_OUTPUT_NAME, DP-1 focused", None, "DP-1", "3/7", ["focused"]),
+        ("without WAYBAR_OUTPUT_NAME, HDMI-A-1 focused", None, "HDMI-A-1", "1/2", ["focused"]),
+        ("on an output that has no workspaces, HDMI-A-1 focused", "DP-9", "HDMI-A-1", "1/2", ["focused"]),
+    ]
+    for label, output, focus, text, classes in cases:
+        label = f"waybar-niri-workspaces {label}"
+        out = workspaces_show(workdir, label, initial_events(*two_outputs(focus=focus)), out_errors, output=output)
+        expect_workspaces(label, out, text, classes, out_errors)
+
+
+def check_workspaces_names(workdir, out_errors):
+    """A name is shortened to 24 characters, the last of them an ellipsis, and then escaped for Pango.
+
+    waybar renders the text as Pango markup, where a "<" or "&" from a name
+    would break the label or turn into markup. The name is shortened before
+    it is escaped, so that the cut neither splits an entity nor counts its
+    characters.
+    """
+    cases = [
+        ("Quartalsabschluss Q3 '26", "Quartalsabschluss Q3 '26"),
+        ("Quartalsabschluss Q3 '26!", "Quartalsabschluss Q3 '2…"),
+        ("Tom & Jerry <Planung> 2026", "Tom &amp; Jerry &lt;Planung&gt; 2…"),
+    ]
+    for name, shown in cases:
+        workspaces, windows = two_outputs()
+        by_id(workspaces, 13)["name"] = name
+        label = f"waybar-niri-workspaces with the name {name!r}"
+        out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output="DP-1")
+        expect_workspaces(label, out, f"3/7 · {shown}", ["focused"], out_errors)
+
+
+def check_workspaces_backslashes(workdir, out_errors):
+    r"""A backslash in a name or a window title reaches the bar as it is, also with an x after it.
+
+    waybar 0.15 turns every \x of a line into \u00 before it parses the JSON,
+    which made the title C:\xampp\htdocs show as C:\u00ampp\htdocs and the
+    name \x41 as \u0041. workspaces_output does the same as waybar, so the
+    check sees what the bar shows.
+    """
+    workspaces, windows = two_outputs()
+    by_id(workspaces, 13)["name"] = "\\x41 \\\\x"
+    by_id(windows, 103)["title"] = "C:\\xampp\\htdocs"
+    label = "waybar-niri-workspaces with backslashes in a name and a window title"
+    out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output="DP-1")
+    expect_workspaces(label, out, "3/7 · \\x41 \\\\x", ["focused"], out_errors)
+    if out is not None and "C:\\xampp\\htdocs" not in out["tooltip"]:
+        out_errors.append(f"❌ {label}: the tooltip does not show the title 'C:\\xampp\\htdocs': {out['tooltip']!r}.")
+
+
+def check_workspaces_tooltip(workdir, out_errors):
+    """The tooltip lists, for every output, the workspaces that hold windows or carry a name and the active one, with their windows.
+
+    The bar's own output comes first. Each workspace shows its index and
+    name, and the active one of each output is marked. Below a workspace
+    come its windows in niri's column order, within a column from top to
+    bottom, and floating windows last, whatever the order in which niri
+    lists them. Each window shows its app ID, of a reverse DNS ID such as
+    org.gnome.Nautilus only the last part, shortened to 16 characters, and
+    its title shortened to 60. The ID of a Chrome web app contains dots
+    without being a reverse DNS ID and stays whole. <tt> keeps the columns
+    aligned, and everything from niri is escaped. The bar sits on HDMI-A-1
+    here, which sorts after the other two outputs.
+    """
+    workspaces = [
+        niri_workspace(11, 1, "DP-1", active=True, focused=True),
+        niri_workspace(12, 2, "DP-1"),
+        niri_workspace(21, 1, "HDMI-A-1"),
+        niri_workspace(22, 2, "HDMI-A-1", active=True),
+        niri_workspace(23, 3, "HDMI-A-1", name="Später"),
+        niri_workspace(24, 4, "HDMI-A-1"),
+        niri_workspace(31, 1, "DP-2", name="Mail & <Chat>", active=True),
+        niri_workspace(32, 2, "DP-2"),
+    ]
+    long_title = "A window title that goes on and on, long past the width of any tooltip"
+    windows = [
+        niri_window(224, 22, "com.example.AVeryLongApplicationName", long_title, floating=True),
+        niri_window(221, 22, "org.gnome.Nautilus", "Home", column=2, row=1),
+        niri_window(225, 22, "chrome-web.whatsapp.com__-Default", "WhatsApp", column=3),
+        niri_window(222, 22, "kitty", "~/src & <tests>", column=1),
+        niri_window(223, 22, "org.gnome.Nautilus", "Downloads", column=2, row=2),
+        niri_window(311, 31, "thunderbird", "Inbox"),
+    ]
+    expected = "\n".join([
+        "<tt>HDMI-A-1",
+        "▸ 2",
+        f"    {'kitty':16}  ~/src &amp; &lt;tests&gt;",
+        f"    {'Nautilus':16}  Home",
+        f"    {'Nautilus':16}  Downloads",
+        f"    {'chrome-web.what…':16}  WhatsApp",
+        f"    {'AVeryLongApplic…':16}  {long_title[:59]}…",
+        "  3 · Später",
+        "",
+        "DP-1",
+        "▸ 1",
+        "",
+        "DP-2",
+        "▸ 1 · Mail &amp; &lt;Chat&gt;",
+        f"    {'thunderbird':16}  Inbox</tt>",
+    ])
+    label = "waybar-niri-workspaces tooltip"
+    out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output="HDMI-A-1")
+    expect_workspaces(label, out, "2/3", [], out_errors)
+    if out is not None and out["tooltip"] != expected:
+        out_errors.append(f"❌ {label}:\n{out['tooltip']}\nexpected:\n{expected}")
+
+
+def check_workspaces_classes(workdir, out_errors):
+    """The class "focused" marks the bar whose output has the focus, "urgent" one with an urgent workspace on its output.
+
+    An urgent workspace on another output does not concern this bar; the bar
+    on that output shows it.
+    """
+    cases = [
+        ("on the output with the focus", "DP-1", None, ["focused"]),
+        ("on an output without the focus", "HDMI-A-1", None, []),
+        ("with an urgent workspace on its output", "DP-1", 15, ["focused", "urgent"]),
+        ("with an urgent workspace on another output", "HDMI-A-1", 15, []),
+        ("without the focus, with an urgent workspace on its output", "HDMI-A-1", 22, ["urgent"]),
+    ]
+    for label, output, urgent, classes in cases:
+        workspaces, windows = two_outputs()
+        if urgent is not None:
+            by_id(workspaces, urgent)["is_urgent"] = True
+        label = f"waybar-niri-workspaces {label}"
+        out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output=output)
+        expect_workspaces(label, out, "3/7" if output == "DP-1" else "1/2", classes, out_errors)
+
+
+def check_workspaces_unknown_events(workdir, out_errors):
+    """Events the helper does not know are skipped, in the first burst of the stream as well.
+
+    niri-git has been sending TouchpadToggled since October 2026, and no
+    released version of niri-ipc knows it, so a module that parses the
+    stream with niri-ipc stops there. The stand-in puts that event, one from
+    a niri yet to come, an event that is no object and a line that is no
+    JSON between the workspaces and the windows.
+    """
+    workspaces, windows = two_outputs()
+    first, last = initial_events(workspaces, windows)
+    events = [first, {"TouchpadToggled": {"on": True}}, {"SomethingFromTheFuture": {"detail": [1, 2]}},
+              "UnitEvent", [1, 2], b"no JSON at all", last, {"KeyboardLayoutsChanged": {}}]
+    label = "waybar-niri-workspaces with unknown events in the first burst"
+    expect_workspaces(label, workspaces_show(workdir, label, events, out_errors, output="DP-1"), "3/7", ["focused"],
+                      out_errors)
+
+
+def check_workspaces_waits_for_windows(workdir, out_errors):
+    """Nothing is printed before niri has sent the list of windows.
+
+    The total depends on the workspaces that hold windows: without them the
+    typical case would show 3/3 instead of 3/7. A window that opens before
+    the list arrives does not make the list known.
+    """
+    workspaces, windows = two_outputs()
+    label = "waybar-niri-workspaces before the windows are known"
+    stub = NiriStub(workdir)
+    helper = WorkspacesHelper({"NIRI_SOCKET": stub.path, "WAYBAR_OUTPUT_NAME": "DP-1"})
+    try:
+        connection, _ = stub.accept()
+        if connection is None:
+            out_errors.append(f"❌ {label}: the helper did not connect to niri within {HELPER_TIMEOUT} s.")
+            return
+        with connection:
+            first, last = initial_events(workspaces, windows)
+            niri_send(connection, {"Ok": "Handled"}, first, {"WindowOpenedOrChanged": {"window": windows[0]}})
+            early = helper.line(QUIET_PERIOD)
+            if early is not TIMED_OUT:
+                out_errors.append(f"❌ {label}: printed {early!r}.")
+                return
+            niri_send(connection, last)
+            label = "waybar-niri-workspaces once the windows are known"
+            expect_workspaces(label, workspaces_output(label, helper.line(), out_errors), "3/7", ["focused"],
+                              out_errors)
+    finally:
+        helper.stop()
+        stub.close()
+
+
+def check_workspaces_events(workdir, out_errors):
+    """Later events change single entries as niri-ipc's EventStreamState does, and only a change prints a line.
+
+    WorkspaceActivated makes a workspace the active one of its output and,
+    with "focused", the focused one of all outputs; windows that open and
+    close change the workspaces in use; WorkspacesChanged and WindowsChanged
+    replace the whole lists. A window that moves to another column sends
+    WindowLayoutsChanged alone, and the tooltip follows it.
+    WorkspaceActivated and WorkspaceUrgencyChanged naming a workspace that
+    is not known change nothing, and neither do WindowClosed and
+    WindowLayoutsChanged naming a window that is not known, where
+    EventStreamState would panic on WorkspaceActivated, WindowClosed and
+    WindowLayoutsChanged. Along with them, the check sends
+    WorkspaceActiveWindowChanged naming a workspace that is not known, where
+    EventStreamState would panic as well, and WindowUrgencyChanged naming a
+    window that is not known; the module shows neither active_window_id nor
+    the urgency of a window, so check_workspaces_state_unknown_ids follows
+    these two in the helper's State. A step whose events leave the line as
+    it is must not print it again, so the last event of each step is the
+    one that changes the line; a line printed in between would arrive in
+    place of the expected one.
+    """
+    workspaces, windows = two_outputs()
+    replaced, _ = two_outputs(active=5)
+    by_id(replaced, 15)["name"] = "Neu"
+    moved = niri_window(103, 13, title="window 3", column=3)["layout"]
+    steps = [
+        ([{"WorkspaceActivated": {"id": 15, "focused": True}}], "5/7", ["focused"], None),
+        ([{"WindowFocusChanged": {"id": 105}},
+          {"WorkspaceActivated": {"id": 99, "focused": True}},
+          {"WorkspaceUrgencyChanged": {"id": 99, "urgent": True}},
+          {"WorkspaceActiveWindowChanged": {"workspace_id": 99, "active_window_id": 105}},
+          {"WindowClosed": {"id": 999}},
+          {"WindowUrgencyChanged": {"id": 999, "urgent": True}},
+          {"WindowLayoutsChanged": {"changes": [[999, moved]]}},
+          {"WindowOpenedOrChanged": {"window": niri_window(108, 18, title="window 8")}}], "5/8", ["focused"], None),
+        ([{"WorkspaceActivated": {"id": 21, "focused": True}}], "5/8", [], None),
+        ([{"WindowClosed": {"id": 108}}], "5/7", [], None),
+        ([{"WorkspaceUrgencyChanged": {"id": 12, "urgent": True}}], "5/7", ["urgent"], None),
+        ([{"WindowOpenedOrChanged": {"window": niri_window(109, 13, title="window 9", column=2)}}],
+         "5/7", ["urgent"], ("window 3", "window 9")),
+        ([{"WindowLayoutsChanged": {"changes": [[103, moved]]}}], "5/7", ["urgent"], ("window 9", "window 3")),
+        ([{"WorkspacesChanged": {"workspaces": replaced}}], "5/7 · Neu", ["focused"], None),
+        ([{"WindowsChanged": {"windows": []}}], "5/5 · Neu", ["focused"], None),
+    ]
+    stub = NiriStub(workdir)
+    helper = WorkspacesHelper({"NIRI_SOCKET": stub.path, "WAYBAR_OUTPUT_NAME": "DP-1"})
+    try:
+        connection, _ = stub.accept()
+        if connection is None:
+            out_errors.append(f"❌ waybar-niri-workspaces did not connect to niri within {HELPER_TIMEOUT} s.")
+            return
+        with connection:
+            niri_send(connection, {"Ok": "Handled"}, *initial_events(workspaces, windows))
+            label = "waybar-niri-workspaces at the start of the event stream"
+            out = workspaces_output(label, helper.line(), out_errors)
+            expect_workspaces(label, out, "3/7", ["focused"], out_errors)
+            for events, text, classes, order in steps:
+                niri_send(connection, *events)
+                label = f"waybar-niri-workspaces after {', '.join(next(iter(e)) for e in events)}"
+                out = workspaces_output(label, helper.line(), out_errors)
+                if out is None:
+                    return
+                expect_workspaces(label, out, text, classes, out_errors)
+                if order and not 0 <= out["tooltip"].find(order[0]) < out["tooltip"].find(order[1]):
+                    out_errors.append(f"❌ {label}: the tooltip does not list {order[0]!r} before {order[1]!r}: "
+                                      f"{out['tooltip']!r}.")
+            extra = helper.line(QUIET_PERIOD)
+            if extra is not TIMED_OUT:
+                out_errors.append(f"❌ waybar-niri-workspaces printed {extra!r} without a change.")
+    finally:
+        helper.stop()
+        stub.close()
+
+
+# Loads the helper as a module, applies the events received via stdin as a JSON
+# list against its State, and prints the workspaces and windows of the State as
+# a JSON line immediately after each event.
+STATE_PROBE = r'''
+import importlib.machinery, importlib.util, json, sys
+loader = importlib.machinery.SourceFileLoader("waybar_niri_workspaces", sys.argv[1])
+helper = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+loader.exec_module(helper)
+state = helper.State()
+for event in json.load(sys.stdin):
+    state.apply(event)
+    print(json.dumps({"workspaces": state.workspaces, "windows": state.windows}))
+'''
+
+
+def state_after_each(label, events, out_errors):
+    """The helper's State after each of EVENTS, as STATE_PROBE prints it; None after reporting a failure.
+
+    JSON turns the ids that key the workspaces and the windows into strings.
+    """
+    try:
+        res = subprocess.run([sys.executable, "-I", "-B", "-c", STATE_PROBE, repo_path(NIRI_WORKSPACES)],
+                             input=json.dumps(events), capture_output=True, text=True, timeout=HELPER_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        out_errors.append(f"❌ {label}: did not finish within {HELPER_TIMEOUT} s.")
+        return None
+    lines = res.stdout.splitlines()
+    try:
+        states = [json.loads(line) for line in lines]
+    except ValueError:
+        states = None
+    if res.returncode != 0 or states is None or len(states) != len(events):
+        out_errors.append(f"❌ {label}: exit status {res.returncode}, stderr {res.stderr!r}, {len(lines)} lines "
+                          f"printed; expected status 0 and a line of JSON for each of the {len(events)} events.")
+        return None
+    return states
+
+
+def check_workspaces_window_focus(out_errors):
+    """WindowFocusChanged gives the focus to the window it names, and to none without an id; an id that is not known changes nothing.
+
+    niri sends no id once no window has the focus. For an id it does not
+    know, EventStreamState takes the focus from every window as well, while
+    WindowClosed, WindowUrgencyChanged and WindowLayoutsChanged naming a
+    window that is not known change nothing here. The focus of a window does
+    not show in the module, so the check applies the events to the helper's
+    State and reads the focus from there.
+    """
+    workspaces, windows = two_outputs()
+    by_id(windows, 103)["is_focused"] = True
+    steps = [
+        ({"WindowFocusChanged": {"id": 105}}, [105]),
+        ({"WindowFocusChanged": {"id": 999}}, [105]),
+        ({"WindowFocusChanged": {"id": None}}, []),
+        ({"WindowFocusChanged": {"id": 999}}, []),
+        ({"WindowFocusChanged": {"id": 202}}, [202]),
+    ]
+    events = initial_events(workspaces, windows) + [event for event, _ in steps]
+    expected = [[], [103]] + [focused for _, focused in steps]
+    label = "waybar-niri-workspaces following WindowFocusChanged"
+    states = state_after_each(label, events, out_errors)
+    if states is None:
+        return
+    got = [sorted(w["id"] for w in (state["windows"] or {}).values() if w.get("is_focused")) for state in states]
+    if got != expected:
+        out_errors.append(f"❌ {label}: the focused windows went {got!r}; expected {expected!r}.")
+
+
+def state_changes(before, after):
+    """The entries that differ between two States as STATE_PROBE prints them, named like "workspace 15" or "window 105"."""
+    changes = []
+    for part, noun in (("workspaces", "workspace"), ("windows", "window")):
+        old, new = before[part] or {}, after[part] or {}
+        changes += [f"{noun} {key}" for key in sorted(set(old) | set(new)) if old.get(key) != new.get(key)]
+    return changes
+
+
+def check_workspaces_state_unknown_ids(out_errors):
+    """WorkspaceActiveWindowChanged naming a workspace that is not known and WindowUrgencyChanged naming a window that is not known change nothing.
+
+    The module shows neither active_window_id nor the urgency of a window,
+    so check_workspaces_events, which sends both, cannot tell what they do.
+    The check applies them to the helper's State, as
+    check_workspaces_window_focus does with WindowFocusChanged, and compares
+    the State after each event with the one before. Before each of them, an
+    event of the same kind names a workspace or a window that is known and
+    has to change that one entry: a State that the probe printed without its
+    workspaces or its windows would otherwise let the event pass.
+    """
+    workspaces, windows = two_outputs()
+    steps = [
+        ({"WorkspaceActiveWindowChanged": {"workspace_id": 15, "active_window_id": 105}}, ["workspace 15"]),
+        ({"WorkspaceActiveWindowChanged": {"workspace_id": 99, "active_window_id": 105}}, []),
+        ({"WindowUrgencyChanged": {"id": 105, "urgent": True}}, ["window 105"]),
+        ({"WindowUrgencyChanged": {"id": 999, "urgent": True}}, []),
+    ]
+    events = initial_events(workspaces, windows) + [event for event, _ in steps]
+    states = state_after_each("waybar-niri-workspaces applying events to its State", events, out_errors)
+    if states is None:
+        return
+    for (event, expected), before, after in zip(steps, states[1:], states[2:]):
+        changed = state_changes(before, after)
+        if changed != expected:
+            out_errors.append(f"❌ waybar-niri-workspaces following {json.dumps(event)}: changed "
+                              f"{changed or 'nothing'} in its State; expected {expected or 'nothing'}.")
+
+
+# Loads the helper as a module, puts a pause() in its place that logs every
+# delay and immediately returns, then executes it. The stand-in ends the
+# helper once it has paused as many times as the check asks.
+RECORDED_PAUSES = r'''
+import importlib.machinery, importlib.util, json, sys
+path, log, count = sys.argv[1], sys.argv[2], int(sys.argv[3])
+loader = importlib.machinery.SourceFileLoader("waybar_niri_workspaces", path)
+helper = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+loader.exec_module(helper)
+pauses = []
+def pause(seconds):
+    pauses.append(seconds)
+    with open(log, "w") as f:
+        json.dump(pauses, f)
+    if len(pauses) == count:
+        sys.exit(0)
+helper.pause = pause
+sys.exit(helper.main())
+'''
+
+
+def workspaces_pauses(workdir, env, count):
+    """Runs the helper with a stand-in for its pause() until it has paused COUNT times.
+
+    Returns the delays it asked for, the lines it printed and its exit
+    status, or None if it did not get there within HELPER_TIMEOUT.
+    """
+    log = os.path.join(tempfile.mkdtemp(dir=workdir), "pauses")
+    helper = WorkspacesHelper(env, [sys.executable, "-I", "-B", "-c", RECORDED_PAUSES,
+                                    repo_path(NIRI_WORKSPACES), log, str(count)])
+    try:
+        ended = helper.ended()
+        if ended is None:
+            return None
+        lines = [json.loads(line) for line in helper.remaining_lines()]
+        with open(log) as f:
+            return {"pauses": json.load(f), "lines": lines, "status": ended[0], "stderr": ended[1]}
+    except (OSError, ValueError):
+        return None
+    finally:
+        helper.stop()
+
+
+def check_workspaces_reconnect(workdir, out_errors):
+    """After a connection fails or ends, the helper shows "?" and tries again after 1, 2, 4 and then every 8 seconds.
+
+    A connection that niri answered starts the series again at 1 second; an
+    answer that refuses the event stream does not count as one. The helper
+    runs with a stand-in for its pause(), which records each delay and
+    returns at once, so that the check neither waits 15 seconds nor depends
+    on how busy the machine is. The stand-in for niri closes connections
+    without an answer, refuses one, and answers one with the workspaces and
+    windows before it closes it.
+    """
+    missing = os.path.join(workdir, "no-niri-here")
+    run = workspaces_pauses(workdir, {"NIRI_SOCKET": missing, "WAYBAR_OUTPUT_NAME": "DP-1"}, 5)
+    label = "waybar-niri-workspaces without a niri to connect to"
+    if run is None or run["pauses"] != [1, 2, 4, 8, 8] or run["status"] != 0 or run["stderr"]:
+        out_errors.append(f"❌ {label}: expected the delays [1, 2, 4, 8, 8], got {run!r}.")
+    elif [(line["text"], line["class"]) for line in run["lines"]] != [("?", ["error"])] \
+            or missing not in run["lines"][0]["tooltip"]:
+        out_errors.append(f"❌ {label}: expected one \"?\" of class error that names {missing} in its tooltip, "
+                          f"got {run['lines']!r}.")
+
+    script = ["close", "close", "refuse", "close", "close", "answer", "close"]
+    stub = NiriStub(workdir)
+
+    def serve():
+        for action in script:
+            connection, _ = stub.accept()
+            if connection is None:
+                return
+            with connection:
+                if action == "refuse":
+                    niri_send(connection, {"Err": "the stand-in refuses"})
+                elif action == "answer":
+                    niri_send(connection, {"Ok": "Handled"}, *initial_events(*two_outputs()))
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        run = workspaces_pauses(workdir, {"NIRI_SOCKET": stub.path, "WAYBAR_OUTPUT_NAME": "DP-1"}, len(script))
+    finally:
+        server.join(HELPER_TIMEOUT)
+        stub.close()
+    label = "waybar-niri-workspaces reconnecting to niri"
+    if run is None or run["pauses"] != [1, 2, 4, 8, 8, 1, 2] or run["status"] != 0 or run["stderr"]:
+        out_errors.append(f"❌ {label}: expected the delays [1, 2, 4, 8, 8, 1, 2], got {run!r}.")
+        return
+    shown = [(line["text"], line["class"]) for line in run["lines"]]
+    error = ("?", ["error"])
+    if shown != [error, error, error, ("3/7", ["focused"]), error, error]:
+        out_errors.append(f"❌ {label}: showed {shown!r}; expected \"?\" for each failure that differs from the "
+                          f"one before, and 3/7 while niri answered.")
+
+
+def expect_quiet_end(label, helper, out_errors):
+    """The helper ends with status 0 and nothing on stderr once waybar has closed the pipe."""
+    ended = helper.ended()
+    if ended is None:
+        out_errors.append(f"❌ {label}: still runs {HELPER_TIMEOUT} s after waybar closed the pipe.")
+    elif ended != (0, b""):
+        out_errors.append(f"❌ {label}: ended with status {ended[0]} and {ended[1]!r} on stderr after waybar closed "
+                          f"the pipe; expected status 0 and nothing on stderr.")
+
+
+def check_workspaces_outside_niri(workdir, out_errors):
+    """Without NIRI_SOCKET, the helper prints an empty text once, which hides the module, and keeps running.
+
+    ditana-config sets up waybar alike for niri and Wayfire, so the module is
+    in Wayfire's bar as well. waybar 0.15 does not check exec-if for a custom
+    module without an interval, so the helper hides the module itself. Were
+    it to end, waybar would start it again after restart-interval, every few
+    seconds. It ends quietly once waybar closes the pipe.
+    """
+    label = "waybar-niri-workspaces without NIRI_SOCKET"
+    helper = WorkspacesHelper({})
+    try:
+        out = workspaces_output(label, helper.line(), out_errors)
+        if out is not None and out["text"] != "":
+            out_errors.append(f"❌ {label}: shows {out['text']!r}, expected an empty text, which hides the module.")
+        extra = helper.line(QUIET_PERIOD)
+        if extra is not TIMED_OUT:
+            out_errors.append(f"❌ {label}: printed {extra!r} after hiding the module, or ended.")
+        helper.close_pipe()
+        expect_quiet_end(label, helper, out_errors)
+    finally:
+        helper.stop()
+
+
+def check_workspaces_closed_pipe(workdir, out_errors):
+    """When waybar closes the pipe, the helper ends quietly with status 0, while it follows niri and while it waits to reconnect.
+
+    A write to a closed pipe fails with BrokenPipeError in Python, and an
+    exception left unhandled ends the helper with a traceback on stderr,
+    which waybar passes on to its log. While the helper follows niri, the
+    stand-in sends a change after the pipe is closed, so that the helper has
+    a line to print. While it waits to reconnect, nothing it could print
+    would differ from the "?" it shows, so only the closed pipe itself can
+    end the wait.
+    """
+    label = "waybar-niri-workspaces following niri"
+    stub = NiriStub(workdir)
+    helper = WorkspacesHelper({"NIRI_SOCKET": stub.path, "WAYBAR_OUTPUT_NAME": "DP-1"})
+    try:
+        connection, _ = stub.accept()
+        if connection is None:
+            out_errors.append(f"❌ {label}: the helper did not connect to niri within {HELPER_TIMEOUT} s.")
+        else:
+            with connection:
+                niri_send(connection, {"Ok": "Handled"}, *initial_events(*two_outputs()))
+                workspaces_output(label, helper.line(), out_errors)
+                helper.close_pipe()
+                try:
+                    niri_send(connection, {"WorkspaceActivated": {"id": 15, "focused": True}})
+                except OSError:
+                    pass
+                expect_quiet_end(label, helper, out_errors)
+    finally:
+        helper.stop()
+        stub.close()
+
+    label = "waybar-niri-workspaces waiting to reconnect"
+    helper = WorkspacesHelper({"NIRI_SOCKET": os.path.join(workdir, "no-niri-here"), "WAYBAR_OUTPUT_NAME": "DP-1"})
+    try:
+        out = workspaces_output(label, helper.line(), out_errors)
+        expect_workspaces(label, out, "?", ["error"], out_errors)
+        helper.close_pipe()
+        expect_quiet_end(label, helper, out_errors)
+    finally:
+        helper.stop()
+
+
+# Stand-ins for niri msg and rofi; stand_in_home details their behaviour.
+NIRI_STAND_IN = r'''#!PYTHON -IS
+import json, os, sys
+
+ASCII_CASE = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+args = sys.argv[1:]
+with open(os.environ["STUB_NIRI_LOG"], "a") as f:
+    f.write(json.dumps(args) + "\n")
+state = os.environ["STUB_NIRI_STATE"]
+with open(state) as f:
+    workspaces = json.load(f)
+focused = next(w for w in workspaces if w["is_focused"])
+
+
+def done(changed=False):
+    if changed:
+        with open(state, "w") as f:
+            json.dump(workspaces, f)
+    sys.exit(0)
+
+
+def refuse(message):
+    print(f"error: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+if args == ["msg", "-j", "workspaces"]:
+    print(json.dumps(workspaces))
+    done()
+if args[:2] != ["msg", "action"] or len(args) < 3:
+    refuse(f"unexpected arguments {args}")
+action, rest = args[2], args[3:]
+if action == "set-workspace-name":
+    if rest[:1] == ["--"]:
+        rest = rest[1:]
+    elif rest[:1] and rest[0].startswith("-") and rest[0] != "-":
+        refuse(f"unexpected argument '{rest[0]}' found")
+    if len(rest) != 1:
+        refuse(f"unexpected arguments {rest}")
+    taken = any(w["name"] is not None and w["name"].translate(ASCII_CASE) == rest[0].translate(ASCII_CASE)
+                for w in workspaces)
+    if not taken:
+        focused["name"] = rest[0]
+    done(not taken)
+if action == "unset-workspace-name" and not rest:
+    focused["name"] = None
+    done(True)
+refuse(f"unexpected action {args[2:]}")
+'''
+
+ROFI_STAND_IN = r'''#!PYTHON -IS
+import json, os, sys
+
+args = sys.argv[1:]
+with open(os.environ["STUB_ROFI_LOG"], "a") as f:
+    f.write(json.dumps(args) + "\n")
+if "-v" in args or "-version" in args:
+    print("Version: 2.0.0")
+    sys.exit(0)
+if "-h" in args or "-help" in args or "--help" in args:
+    print("rofi usage:\n\trofi [-options ...]")
+    sys.exit(0)
+with open(os.environ["STUB_ROFI_ANSWERS"]) as f:
+    answers = json.load(f)
+if not answers:
+    sys.exit(1)
+with open(os.environ["STUB_ROFI_ANSWERS"], "w") as f:
+    json.dump(answers[1:], f)
+answer = answers[0]
+if "focus" in answer:
+    with open(os.environ["STUB_NIRI_STATE"]) as f:
+        workspaces = json.load(f)
+    target = next(w for w in workspaces if w["id"] == answer["focus"])
+    previous = next(w for w in workspaces if w["output"] == target["output"] and w["is_active"])
+    for w in workspaces:
+        if w["output"] == target["output"]:
+            w["is_active"] = w is target
+        w["is_focused"] = w is target
+    if previous is not target and previous["name"] is None and previous["active_window_id"] is None:
+        workspaces.remove(previous)
+        for w in workspaces:
+            if w["output"] == previous["output"] and w["idx"] > previous["idx"]:
+                w["idx"] -= 1
+    with open(os.environ["STUB_NIRI_STATE"], "w") as f:
+        json.dump(workspaces, f)
+field = args[args.index("-filter") + 1] if "-filter" in args[:-1] else ""
+field = answer.get("type", field)
+status = answer.get("exit", 0)
+if status == 0 or 10 <= status <= 28:
+    print(field)
+sys.exit(status)
+'''
+
+PASS_THROUGH_LAUNCH = '#!/bin/sh\nexec "$@"\n'
+
+
+def stand_in_home(workdir, workspaces, answers):
+    """A directory with the stand-ins for niri and rofi; returns it and the environment that runs with them.
+
+    The stand-in for niri holds WORKSPACES and logs every call. It names
+    and unnames the focused workspace, as niri does. Like niri, it drops a
+    name without a word that a workspace already carries, the focused one
+    included, comparing ASCII letters regardless of case and every other
+    character exactly (Rust's eq_ignore_ascii_case). Like clap, which parses
+    the arguments of niri msg, it refuses a name that begins with "-" unless
+    "--" came before it.
+
+    The stand-in for rofi logs every call and answers with ANSWERS in turn.
+    Each answer is what the user does in the dialog: "type" replaces the
+    text in the field, which otherwise holds what -filter put there, and
+    "exit" is the exit status, 0 (Enter) unless given. "focus" names the id
+    of a workspace that gets the focus while the dialog is open, as when the
+    user presses a key that niri has bound to focus-workspace-down; it
+    becomes the active workspace of its output as well. If the workspace
+    that was active there before is empty and unnamed, the stand-in removes
+    it, and the workspaces below it on that output move up by one index, as
+    niri does with such a workspace between two others once the switch has
+    ended. A workspace counts as empty when it has no active_window_id, as
+    niri reports one without windows. Like rofi, it prints the field for
+    Enter (0) and for a custom key (10 to 28), and nothing for Escape (1).
+    Like rofi, it looks for -v and -help among all words of its command
+    line, wherever they stand, and then prints its version or its usage
+    instead of opening a dialog. A dialog beyond the answers is left with
+    Escape.
+
+    PATH holds nothing but the stand-ins, python3 and sh, so that no check
+    can reach the real niri or rofi; NIRI_SOCKET and WAYLAND_DISPLAY are
+    not passed on either.
+    """
+    home = tempfile.mkdtemp(dir=workdir)
+    bin_dir = os.path.join(home, "bin")
+    os.mkdir(bin_dir)
+    for name, source in (("niri", NIRI_STAND_IN), ("rofi", ROFI_STAND_IN)):
+        write_file(os.path.join(bin_dir, name), source.replace("PYTHON", sys.executable, 1))
+        os.chmod(os.path.join(bin_dir, name), 0o755)
+    os.symlink(sys.executable, os.path.join(bin_dir, "python3"))
+    os.symlink("/bin/sh", os.path.join(bin_dir, "sh"))
+    write_file(os.path.join(home, "launch"), PASS_THROUGH_LAUNCH)
+    os.chmod(os.path.join(home, "launch"), 0o755)
+    write_file(os.path.join(home, "workspaces.json"), json.dumps(workspaces))
+    write_file(os.path.join(home, "answers.json"), json.dumps(answers))
+    env = {
+        "PATH": bin_dir,
+        "HOME": home,
+        "STUB_NIRI_STATE": os.path.join(home, "workspaces.json"),
+        "STUB_NIRI_LOG": os.path.join(home, "niri.log"),
+        "STUB_ROFI_LOG": os.path.join(home, "rofi.log"),
+        "STUB_ROFI_ANSWERS": os.path.join(home, "answers.json"),
+    }
+    return home, env
+
+
+def stand_in_results(home, res):
+    """What happened with the stand-ins in HOME during the run RES: niri's calls and workspaces, rofi's calls."""
+    with open(os.path.join(home, "workspaces.json")) as f:
+        workspaces = json.load(f)
+    return {
+        "status": None if res is None else res.returncode,
+        "stderr": None if res is None else res.stderr,
+        "workspaces": workspaces,
+        "niri": [json.loads(line) for line in read_lines(os.path.join(home, "niri.log"))],
+        "rofi": [json.loads(line) for line in read_lines(os.path.join(home, "rofi.log"))],
+    }
+
+
+def rename_run(workdir, workspaces, answers):
+    """Runs rename-niri-workspace with the stand-ins for niri and rofi; see stand_in_home and stand_in_results."""
+    home, env = stand_in_home(workdir, workspaces, answers)
+    try:
+        res = subprocess.run([repo_path(RENAME_WORKSPACE)], env=env, capture_output=True, text=True,
+                             timeout=HELPER_TIMEOUT)
+    except (subprocess.TimeoutExpired, OSError):
+        res = None
+    return stand_in_results(home, res)
+
+
+def niri_actions(run):
+    """The actions sent to niri, without the queries."""
+    return [call[2:] for call in run["niri"] if call[:2] == ["msg", "action"]]
+
+
+def rofi_option(argv, option):
+    """The value rofi takes for OPTION from ARGV, or None."""
+    return argv[argv.index(option) + 1] if option in argv[:-1] else None
+
+
+def dialog_scene(name=None, other_name=None):
+    """Workspace 3 on DP-1 has the focus and carries NAME; workspace 2 on HDMI-A-1 carries OTHER_NAME."""
+    return [niri_workspace(12, 2, "DP-1"),
+            niri_workspace(13, 3, "DP-1", name=name, active=True, focused=True),
+            niri_workspace(21, 1, "HDMI-A-1"),
+            niri_workspace(22, 2, "HDMI-A-1", name=other_name, active=True)]
+
+
+def expect_rename(label, run, names, actions, out_errors):
+    """The dialog ended with status 0, sent exactly ACTIONS to niri and left the workspaces with NAMES (id: name)."""
+    got = {w["id"]: w["name"] for w in run["workspaces"] if w["id"] in names}
+    if run["status"] != 0 or niri_actions(run) != actions or got != names:
+        out_errors.append(f"❌ {label}: exit status {run['status']} (stderr {run['stderr']!r}), actions "
+                          f"{niri_actions(run)!r}, names {got!r}; expected status 0, actions {actions!r}, "
+                          f"names {names!r}.")
+
+
+def expect_dialogs(label, run, count, out_errors):
+    """The dialog opened COUNT times; returns the command lines of rofi, or None after reporting a different count."""
+    if len(run["rofi"]) != count:
+        out_errors.append(f"❌ {label}: opened rofi {len(run['rofi'])} times, expected {count}: {run['rofi']!r}.")
+        return None
+    return run["rofi"]
+
+
+def check_rename_field(workdir, out_errors):
+    """The field holds the current name; confirming it unchanged sends nothing to niri.
+
+    The prompt names the workspace by the index that focus-workspace takes,
+    and the note below the field says what an empty field does. An unnamed
+    workspace starts with an empty field, and confirming that leaves it
+    unnamed, again without a call.
+    """
+    for name in ("Projekt", None):
+        label = f"rename-niri-workspace on a workspace named {name!r}, confirmed as it is"
+        run = rename_run(workdir, dialog_scene(name), [{}])
+        dialogs = expect_dialogs(label, run, 1, out_errors)
+        if dialogs and (rofi_option(dialogs[0], "-p") != "Workspace 3" or rofi_option(dialogs[0], "-filter") != name
+                        or rofi_option(dialogs[0], "-mesg") != RENAME_HINT):
+            out_errors.append(f"❌ {label}: rofi ran with {dialogs[0]!r}; expected the prompt 'Workspace 3', "
+                              f"the field holding {name!r} and the note {RENAME_HINT!r}.")
+        expect_rename(label, run, {13: name}, [], out_errors)
+
+
+def check_rename_option_like_names(workdir, out_errors):
+    """A name that begins with "-" stays out of rofi's field, and "--" goes before every name sent to niri.
+
+    rofi takes every word of its command line for an option: "-filter -v"
+    makes it print its version and exit with 0, and that version would have
+    become the name. niri msg parses its arguments with clap, which takes
+    "-x" for an option unless "--" came before it.
+    """
+    label = "rename-niri-workspace on a workspace named '-v'"
+    run = rename_run(workdir, dialog_scene("-v"), [{"type": "Neu"}])
+    dialogs = expect_dialogs(label, run, 1, out_errors)
+    if dialogs and ("-filter" in dialogs[0] or "-v" in dialogs[0]):
+        out_errors.append(f"❌ {label}: rofi ran with {dialogs[0]!r}, which puts '-v' on its command line.")
+    expect_rename(label, run, {13: "Neu"}, [["set-workspace-name", "--", "Neu"]], out_errors)
+
+    label = "rename-niri-workspace setting the name '-x'"
+    run = rename_run(workdir, dialog_scene("Projekt"), [{"type": "-x"}])
+    expect_rename(label, run, {13: "-x"}, [["set-workspace-name", "--", "-x"]], out_errors)
+
+
+def check_rename_empty_field(workdir, out_errors):
+    """An empty field removes the name only when the dialog opened with a text in the field, which the user deleted.
+
+    That text is the current name or, when the dialog opens again after a
+    conflict, the text entered before. A text that begins with "-" cannot go
+    into the field, which then opens empty: confirming it changes nothing,
+    and the note says that an empty field keeps the name. Before, Enter on
+    that empty field removed the name: with "Projekt" on workspace 3 and
+    "-X" on another one, typing "-x" opened the dialog again without a text,
+    and Enter took "Projekt" away.
+    """
+    label = "rename-niri-workspace with the name deleted from the field"
+    run = rename_run(workdir, dialog_scene("Projekt"), [{"type": ""}])
+    expect_rename(label, run, {13: None}, [["unset-workspace-name"]], out_errors)
+
+    label = "rename-niri-workspace with the text entered before deleted from the field"
+    run = rename_run(workdir, dialog_scene("Projekt", "Mail"), [{"type": "mail"}, {"type": ""}])
+    dialogs = expect_dialogs(label, run, 2, out_errors)
+    if dialogs and rofi_option(dialogs[1], "-filter") != "mail":
+        out_errors.append(f"❌ {label}: rofi ran again with {dialogs[1]!r}; expected the field holding 'mail'.")
+    expect_rename(label, run, {13: None, 22: "Mail"}, [["unset-workspace-name"]], out_errors)
+
+    label = "rename-niri-workspace with an empty field on a workspace named '-v'"
+    run = rename_run(workdir, dialog_scene("-v"), [{}])
+    dialogs = expect_dialogs(label, run, 1, out_errors)
+    if dialogs and rofi_option(dialogs[0], "-mesg") != RENAME_KEEP_HINT:
+        out_errors.append(f"❌ {label}: rofi ran with {dialogs[0]!r}; expected the note {RENAME_KEEP_HINT!r}.")
+    expect_rename(label, run, {13: "-v"}, [], out_errors)
+
+    label = "rename-niri-workspace with an empty field after '-x', which workspace 2 on HDMI-A-1 carries as '-X'"
+    run = rename_run(workdir, dialog_scene("Projekt", "-X"), [{"type": "-x"}, {}])
+    note = f'Workspace 2 on HDMI-A-1 is already named "-X".\n{RENAME_KEEP_HINT}'
+    dialogs = expect_dialogs(label, run, 2, out_errors)
+    if dialogs and ("-filter" in dialogs[1] or rofi_option(dialogs[1], "-mesg") != note):
+        out_errors.append(f"❌ {label}: rofi ran again with {dialogs[1]!r}; expected the field empty and the note "
+                          f"{note!r}.")
+    expect_rename(label, run, {13: "Projekt", 22: "-X"}, [], out_errors)
+
+
+def check_rename_cancel(workdir, out_errors):
+    """Escape and rofi's custom keys change nothing.
+
+    rofi exits with 1 for Escape and with 10 to 28 for the custom keys
+    kb-custom-1 to kb-custom-19; for a custom key it prints the text in the
+    field as for Enter.
+    """
+    for status in (1, 10, 28):
+        label = f"rename-niri-workspace left with exit status {status} of rofi"
+        run = rename_run(workdir, dialog_scene("Projekt"), [{"type": "Neu", "exit": status}])
+        expect_rename(label, run, {13: "Projekt"}, [], out_errors)
+
+
+def check_rename_case_change(workdir, out_errors):
+    """A change of case alone removes the name and then sets it again.
+
+    niri drops a name without a word when a workspace carries it already,
+    the focused one included, and compares ASCII letters regardless of case:
+    set-workspace-name alone would leave "projekt" as it was. "Ä" and "ä"
+    are no ASCII letters and differ for niri, so that change is a plain
+    rename.
+    """
+    label = "rename-niri-workspace changing 'projekt' to 'Projekt'"
+    run = rename_run(workdir, dialog_scene("projekt"), [{"type": "Projekt"}])
+    expect_rename(label, run, {13: "Projekt"},
+                  [["unset-workspace-name"], ["set-workspace-name", "--", "Projekt"]], out_errors)
+
+    label = "rename-niri-workspace changing 'äpfel' to 'Äpfel'"
+    run = rename_run(workdir, dialog_scene("äpfel"), [{"type": "Äpfel"}])
+    expect_rename(label, run, {13: "Äpfel"}, [["set-workspace-name", "--", "Äpfel"]], out_errors)
+
+
+def check_rename_taken_name(workdir, out_errors):
+    """A name another workspace carries opens the dialog again, with the text as entered and a note naming that workspace and its output.
+
+    niri would drop the name without a word. The comparison is niri's, so
+    "MAIL & <CHAT>" is taken by "Mail & <Chat>" while "äpfel" is not taken
+    by "Äpfel". The note is Pango markup, and the name in it escaped. The
+    text entered again follows the rule for the field: one that begins with
+    "-" stays out of it.
+    """
+    label = "rename-niri-workspace with a name that workspace 2 on HDMI-A-1 carries"
+    run = rename_run(workdir, dialog_scene(None, "Mail & <Chat>"), [{"type": "MAIL & <CHAT>"}, {"type": "Post"}])
+    note = f'Workspace 2 on HDMI-A-1 is already named "Mail &amp; &lt;Chat&gt;".\n{RENAME_HINT}'
+    dialogs = expect_dialogs(label, run, 2, out_errors)
+    if dialogs and (rofi_option(dialogs[1], "-filter") != "MAIL & <CHAT>" or rofi_option(dialogs[1], "-mesg") != note
+                    or rofi_option(dialogs[1], "-p") != "Workspace 3"):
+        out_errors.append(f"❌ {label}: rofi ran again with {dialogs[1]!r}; expected the field holding "
+                          f"'MAIL & <CHAT>' and the note {note!r}.")
+    expect_rename(label, run, {13: "Post", 22: "Mail & <Chat>"}, [["set-workspace-name", "--", "Post"]], out_errors)
+
+    label = "rename-niri-workspace with 'äpfel' while workspace 2 on HDMI-A-1 carries 'Äpfel'"
+    run = rename_run(workdir, dialog_scene(None, "Äpfel"), [{"type": "äpfel"}])
+    expect_dialogs(label, run, 1, out_errors)
+    expect_rename(label, run, {13: "äpfel", 22: "Äpfel"}, [["set-workspace-name", "--", "äpfel"]], out_errors)
+
+    label = "rename-niri-workspace with '-x' while workspace 2 on HDMI-A-1 carries '-X'"
+    run = rename_run(workdir, dialog_scene(None, "-X"), [{"type": "-x"}, {"exit": 1}])
+    dialogs = expect_dialogs(label, run, 2, out_errors)
+    if dialogs and ("-filter" in dialogs[1] or '"-X"' not in (rofi_option(dialogs[1], "-mesg") or "")):
+        out_errors.append(f"❌ {label}: rofi ran again with {dialogs[1]!r}; expected the field empty and a note "
+                          f"naming '-X'.")
+    expect_rename(label, run, {13: None, 22: "-X"}, [], out_errors)
+
+
+def check_rename_focus_moved(workdir, out_errors):
+    """When another workspace has the focus by the time the user confirms, the dialog changes nothing.
+
+    niri keeps handling its key bindings while rofi is open, since rofi asks
+    for a shortcuts inhibitor only with -global-kb. The dialog reads the
+    focused workspace again after the user confirms; without comparing it to
+    the one it opened for, Mod+Page_Down pressed during the dialog gave the
+    name to the workspace below, and an empty field removed that one's name.
+    The stand-in for rofi moves the focus before it answers: from workspace 3
+    to workspace 4 below it, as Mod+Page_Down does, in the first dialog and
+    in one opened again after a conflict. Such a move changes the index and
+    the name of the focused workspace alike, so a dialog that compared
+    either of them in place of the id would pass those cases too. Comparing
+    the name, it would name the wrong workspace when the focus moves from
+    one unnamed workspace to another; comparing the output and the index,
+    when niri removes the workspace that the focus left, empty and unnamed,
+    and the one below takes its index. Each of these two is a case of its
+    own. In the first, workspace 3 holds a window, so that niri keeps it and
+    workspace 4 keeps its index; in the second, both workspaces are unnamed
+    as well, so that neither the output nor the index nor the name, nor all
+    of them together, tell them apart.
+
+    Each case also checks that the focus did move, to the index the case
+    gives, and that nothing went to stderr: a case naming a target that its
+    scene does not hold makes the stand-in for rofi end with a traceback and
+    exit status 1, which the dialog takes for Escape, so the case would pass
+    without the dialog comparing anything; and a workspace 4 that kept its
+    index, because the stand-in left the empty workspace 3 in place, would
+    let a dialog pass that compared the index.
+    """
+    named = dialog_scene("Projekt", "Mail & <Chat>") + [niri_workspace(14, 4, "DP-1", name="Unten")]
+    named_kept = {13: "Projekt", 14: "Unten", 22: "Mail & <Chat>"}
+    unnamed = dialog_scene() + [niri_workspace(14, 4, "DP-1")]
+    by_id(unnamed, 13)["active_window_id"] = 103
+    emptied = dialog_scene() + [niri_workspace(14, 4, "DP-1")]
+    cases = [
+        ("a new name after the focus moved to workspace 4", named, [{"type": "Neu", "focus": 14}], named_kept, 4),
+        ("an empty field after the focus moved to workspace 4", named, [{"type": "", "focus": 14}], named_kept, 4),
+        ("a new name in the dialog opened again after the focus moved to workspace 4", named,
+         [{"type": "MAIL & <CHAT>"}, {"type": "Neu", "focus": 14}], named_kept, 4),
+        ("a new name after the focus moved from the unnamed workspace 3 to the unnamed workspace 4", unnamed,
+         [{"type": "Neu", "focus": 14}], {13: None, 14: None}, 4),
+        # Workspace 3 is empty and lacks a name, just as it was after the user
+        # closed its last window, and niri retains it solely while it remains
+        # active. Pressing Mod+Page_Down in the dialog moves the focus to
+        # workspace 4, and upon completion of the switch, niri removes workspace
+        # 3, causing workspace 4 to assume index 3. DP-1 continues to be the
+        # focused output, so rofi, whose layer surface lies there, keeps the
+        # keyboard, and the user can confirm. The focused workspace then aligns
+        # with the one the dialog initially opened for, matching in output,
+        # index and name, and differs only in its id.
+        ("a new name after the focus moved from the empty workspace 3 to workspace 4, which then took the index 3",
+         emptied, [{"type": "Neu", "focus": 14}], {14: None}, 3),
+    ]
+    for case, scene, answers, names, index in cases:
+        label = f"rename-niri-workspace confirming {case}"
+        target = next(answer["focus"] for answer in answers if "focus" in answer)
+        run = rename_run(workdir, scene, answers)
+        focused = [(w["id"], w["idx"]) for w in run["workspaces"] if w["is_focused"]]
+        if focused != [(target, index)] or run["stderr"]:
+            out_errors.append(f"❌ {label}: the focus ended on {focused!r} (id, index) with {run['stderr']!r} on "
+                              f"stderr; expected it on the id {target} at the index {index}, where the stand-in for "
+                              f"rofi moves it, and nothing on stderr.")
+            continue
+        expect_dialogs(label, run, len(answers), out_errors)
+        expect_rename(label, run, names, [], out_errors)
+
+
+def check_workspaces_commands(bar_config, workdir, out_errors):
+    """A click on the module opens the rename dialog for the focused workspace, and the module does not respond to scrolling.
+
+    waybar 0.15 sets WAYBAR_OUTPUT_NAME for exec only: AModule starts the
+    commands for clicks and scrolling through forkExec without the output,
+    so no command can address the bar's output by name. A click needs none,
+    as niri focuses the output under the pointer on every click that hits
+    no window, before waybar starts the command. A command that focused the
+    output from WAYBAR_OUTPUT_NAME first would send focus-monitor with an
+    empty name, which niri ignores.
+
+    Scrolling on the module used to switch the workspaces of the focused
+    output. With warp-mouse-to-focus, which the niri config of the skel
+    turns on, niri puts the pointer onto the window that has the focus after
+    focus-workspace-up and focus-workspace-down, so once a switch reached a
+    workspace with a window, the next step of the mouse wheel scrolled in
+    that window, a page in the browser for instance. waybar also takes every
+    smooth-scroll event of a touchpad for a scroll command of its own, as
+    smooth-scrolling-threshold is 0 unless set, so a short swipe skipped
+    several workspaces, whereas the skel rate-limits its bindings for the
+    mouse wheel with cooldown-ms=150. Mod+mouse wheel and the keyboard
+    shortcuts switch workspaces instead. waybar connects no handler for
+    scrolling to a custom module that has none of on-scroll-up,
+    on-scroll-down, on-scroll-left and on-scroll-right, so the module must
+    have none of them.
+
+    The click runs here through /bin/sh without WAYBAR_OUTPUT_NAME, as
+    waybar runs it, with a launch that passes its arguments straight on,
+    the dialog from this repository and the stand-ins for niri and rofi.
+    Workspace 3 on DP-1 has the focus, as niri leaves it after a click on
+    the bar of DP-1, so the dialog has to ask for workspace 3, and leaving
+    it with Escape has to send niri nothing.
+    """
+    bars = bar_config if isinstance(bar_config, list) else [bar_config]
+    module = next((bar[WORKSPACES_MODULE] for bar in bars if isinstance(bar.get(WORKSPACES_MODULE), dict)), None)
+    if module is None:
+        out_errors.append(f"❌ waybar has no '{WORKSPACES_MODULE}' module to check the commands of.")
+        return
+    scroll_keys = sorted(key for key in module if key.startswith("on-scroll"))
+    if scroll_keys:
+        out_errors.append(f"❌ waybar '{WORKSPACES_MODULE}' responds to scrolling through {', '.join(scroll_keys)}; "
+                          f"after a switch, niri puts the pointer onto the window that has the focus, where the next "
+                          f"step of the mouse wheel lands.")
+    label = f"waybar '{WORKSPACES_MODULE}' on-click"
+    command = module.get("on-click")
+    if not isinstance(command, str):
+        out_errors.append(f"❌ {label} is missing.")
+        return
+    home, env = stand_in_home(workdir, dialog_scene(), [{"exit": 1}])
+    helpers = os.path.abspath(repo_path("/usr/lib/ditana")) + "/"
+    command = command.replace(LAUNCH, os.path.join(home, "launch")).replace("/usr/lib/ditana/", helpers)
+    try:
+        res = subprocess.run(["/bin/sh", "-c", command], env=env, capture_output=True, text=True,
+                             timeout=HELPER_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        res = None
+    run = stand_in_results(home, res)
+    if run["status"] != 0 or niri_actions(run):
+        out_errors.append(f"❌ {label}: exit status {run['status']} (stderr {run['stderr']!r}), sent "
+                          f"{niri_actions(run)!r} to niri; expected status 0 and nothing sent.")
+    opened = [rofi_option(argv, "-p") for argv in run["rofi"]]
+    if opened != ["Workspace 3"]:
+        out_errors.append(f"❌ {label}: opened the dialogs {opened!r}; expected ['Workspace 3'].")
+
+
+def check_niri_workspaces(all_settings, out_errors):
+    with tempfile.TemporaryDirectory() as workdir:
+        check_workspaces_numbers(workdir, out_errors)
+        check_workspaces_outputs(workdir, out_errors)
+        check_workspaces_names(workdir, out_errors)
+        check_workspaces_backslashes(workdir, out_errors)
+        check_workspaces_tooltip(workdir, out_errors)
+        check_workspaces_classes(workdir, out_errors)
+        check_workspaces_unknown_events(workdir, out_errors)
+        check_workspaces_waits_for_windows(workdir, out_errors)
+        check_workspaces_events(workdir, out_errors)
+        check_workspaces_window_focus(out_errors)
+        check_workspaces_state_unknown_ids(out_errors)
+        check_workspaces_reconnect(workdir, out_errors)
+        check_workspaces_outside_niri(workdir, out_errors)
+        check_workspaces_closed_pipe(workdir, out_errors)
+        check_rename_field(workdir, out_errors)
+        check_rename_option_like_names(workdir, out_errors)
+        check_rename_empty_field(workdir, out_errors)
+        check_rename_cancel(workdir, out_errors)
+        check_rename_case_change(workdir, out_errors)
+        check_rename_taken_name(workdir, out_errors)
+        check_rename_focus_moved(workdir, out_errors)
+        try:
+            bar_config = installed_waybar_config(all_settings, workdir)
+        except (RuntimeError, ValueError):
+            bar_config = None
+        if bar_config is not None:
+            check_workspaces_commands(bar_config, workdir, out_errors)
+
+
+print("🔍 Checking the waybar module for niri's workspaces and its rename dialog...")
+niri_errors = []
+check_niri_workspaces(settings, niri_errors)
+for line in niri_errors:
+    print(line)
+if niri_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
 # waybar-display-scale adjusts the bar's dimensions according to the largest
 # display's DPI and pixel width.
 #
@@ -1683,6 +3007,38 @@ if thunar_errors:
     errors = True
 
 # ---------------------------------------------------------------------------
+# Every program found within /usr/lib/ditana/ that the niri config of the
+# skel calls is shipped.
+# ---------------------------------------------------------------------------
+
+NIRI_CONFIG = '/etc/skel/.config/niri/config.kdl'
+
+
+def check_niri_binds(all_settings, out_errors):
+    """Every program under /usr/lib/ditana/ that the niri config of the skel calls is shipped by some setting.
+
+    Mod+N opens the rename dialog, for instance. A key bound to a program
+    that is not there does nothing visible: niri writes the error to the
+    journal when it fails to start the program, and nothing appears on
+    screen.
+    """
+    shipped = {f for s in all_settings for f in s.get('files', [])}
+    with open(repo_path(NIRI_CONFIG)) as f:
+        programs = sorted(set(DITANA_PROGRAM_RE.findall(f.read())))
+    for program in programs:
+        if program not in shipped:
+            out_errors.append(f"❌ {NIRI_CONFIG} names {program}, which no setting ships.")
+
+
+print("🔍 Checking programs under /usr/lib/ditana/ that the niri config of the skel calls...")
+niri_bind_errors = []
+check_niri_binds(settings, niri_bind_errors)
+for line in niri_bind_errors:
+    print(line)
+if niri_bind_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
 # Each shell script included with Ditana must successfully pass shellcheck.
 # ---------------------------------------------------------------------------
 
@@ -1726,6 +3082,48 @@ for path in sorted(referenced_files):
     elif not ok:
         print(f"❌ Shellcheck failed for {path}:\n{msg.strip()}")
         errors = True
+
+# ---------------------------------------------------------------------------
+# Each setting that ships a Python script installs python alongside it.
+# ---------------------------------------------------------------------------
+
+
+def python_script(path):
+    """Whether the file at PATH begins with a #! line that runs Python."""
+    with open(path, "rb") as f:
+        first = f.readline().decode(errors="replace")
+    words = first[2:].split() if first.startswith("#!") else []
+    if words and os.path.basename(words[0]) == "env":
+        words = [w for w in words[1:] if not w.startswith("-")]
+    return bool(words) and os.path.basename(words[0]).startswith("python")
+
+
+def check_python_helpers(all_settings, out_errors):
+    """A setting that ships a Python script installs python along with it.
+
+    The workspace helper and the rename dialog are Python scripts. Today
+    python reaches every Wayland session anyway: uwsm depends on it, and
+    under niri so does niri-settings-git. But those are dependencies of
+    other packages, which an update of them can drop, and a script whose
+    interpreter is missing fails without a word on screen: waybar hides the
+    module whose helper does not start, and a key bound to the rename
+    dialog does nothing visible.
+    """
+    for s in all_settings:
+        for target in s.get('files', []):
+            path = repo_path(target)
+            if os.path.isfile(path) and python_script(path) and "python" not in s.get('arch-packages', []):
+                out_errors.append(f"❌ Setting '{s.get('name')}' ships the Python script {target} "
+                                  f"without installing python.")
+
+
+print("🔍 Checking that settings shipping Python scripts install python...")
+python_errors = []
+check_python_helpers(settings, python_errors)
+for line in python_errors:
+    print(line)
+if python_errors:
+    errors = True
 
 # ---------------------------------------------------------------------------
 

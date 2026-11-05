@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2026 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of ditana-config, see https://github.com/acrion/ditana-config
+#
+# ditana-config is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ditana-config is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
+
+# Names the focused niri workspace through a small rofi dialog, triggered by
+# Mod+N or by clicking the workspace module in waybar. niri focuses the output
+# beneath the pointer on every click that lands outside a window, before waybar
+# starts the command, so a click names the active workspace of the bar's
+# output. The field holds the current name; pressing Enter applies the field's
+# content, while clearing the field eliminates the name. Escape and rofi's
+# custom keys (exit status 1, and 10 to 28) have no effect, and a name that
+# stays the same is not re-sent.
+#
+# A text beginning with "-" stays out of the field: rofi takes every word of
+# its command line for an option, so a workspace named "-v" would cause rofi to
+# output its version, which would then be adopted as the name. This holds true
+# for the current name as well as for any text entered before a conflict, which
+# the dialog presents again (see below). An empty field removes the name only
+# if the field contained text when the dialog opened, which the user
+# subsequently erased; when the text could not be placed in the field,
+# confirming the empty field has no effect, and the note beneath the field says
+# that it keeps the name.
+#
+# Upon opening, the dialog records the workspace that holds the focus, and
+# makes no alteration if a different workspace holds it after the user
+# confirms: niri continues handling its key bindings while rofi is active, as
+# rofi only requests a shortcuts inhibitor when using -global-kb. Mod+Page_Down
+# during the dialog would otherwise give the name to the workspace below, and
+# an empty field would remove that one's name.
+#
+# niri drops a name without a word when a workspace already carries it, even
+# the one currently in focus; it compares ASCII letters regardless of case and
+# every other character precisely, meaning "Ä" and "ä" are distinct. A mere
+# change of case thus eliminates the existing name prior to assigning the new
+# one. If the name is present in another workspace, the dialog reappears,
+# displaying the input text and a note indicating which workspace on which
+# output holds it. "--" comes before the name, ensuring niri msg does not take
+# a name like "-x" as an option.
+
+import html
+import json
+import subprocess
+import sys
+
+HINT = "An empty name removes the name."
+KEEP_HINT = "An empty field keeps the name."
+
+# The launcher's theme on Mod+D, reduced to just the prompt, the field,
+# and the note positioned beneath: no list, no mode switcher, and no
+# pager.
+THEME = ("window { width: 24em; children: [ inputbar, message ]; } "
+         "inputbar { children: [ prompt, wrapper ]; spacing: 0.5em; } "
+         "prompt { vertical-align: 0.5; }")
+
+ASCII_CASE = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def same_name(a, b):
+    """Whether niri takes A and B for the same workspace name."""
+    return a.translate(ASCII_CASE) == b.translate(ASCII_CASE)
+
+
+def markup(text):
+    return html.escape(text, quote=False)
+
+
+def niri(*args):
+    return subprocess.run(["niri", "msg", *args], stdout=subprocess.PIPE, text=True, check=True).stdout
+
+
+def focused_workspace():
+    """All workspaces, and the focused one among them."""
+    workspaces = json.loads(niri("-j", "workspaces"))
+    focused = next((workspace for workspace in workspaces if workspace.get("is_focused")), None)
+    if focused is None:
+        raise RuntimeError("niri reports no focused workspace")
+    return workspaces, focused
+
+
+def field_text(text):
+    """TEXT as rofi's field can hold it: empty if TEXT starts with "-", which rofi would take for an option."""
+    return "" if text.startswith("-") else text
+
+
+def ask(index, field, message):
+    """What the user confirms in the dialog that opens with FIELD, or None if they leave it without confirming."""
+    command = ["rofi", "-dmenu", "-theme", "fancy", "-theme-str", THEME,
+               "-p", f"Workspace {index}", "-mesg", message]
+    if field:
+        command += ["-filter", field]
+    result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout.split("\n", 1)[0]
+
+
+def main():
+    try:
+        _, focused = focused_workspace()
+        target = focused.get("id")
+        text, conflict = focused.get("name") or "", ""
+        while True:
+            field = field_text(text)
+            hint = KEEP_HINT if text and not field else HINT
+            entered = ask(focused.get("idx"), field, markup(conflict + hint))
+            if entered is None:
+                return 0
+            workspaces, focused = focused_workspace()
+            # The dialog remained open while the focus was transferred
+            # to a different workspace; see above.
+            if focused.get("id") != target:
+                return 0
+            current = focused.get("name") or ""
+            if entered == current:
+                return 0
+            if not entered:
+                # Only a field that the user cleared eliminates the name.
+                if field:
+                    niri("action", "unset-workspace-name")
+                return 0
+            holder = next((workspace for workspace in workspaces
+                           if workspace.get("id") != focused.get("id") and workspace.get("name")
+                           and same_name(workspace["name"], entered)), None)
+            if holder is None:
+                if current and same_name(current, entered):
+                    niri("action", "unset-workspace-name")
+                niri("action", "set-workspace-name", "--", entered)
+                return 0
+            text = entered
+            conflict = (f'Workspace {holder.get("idx")} on {holder.get("output")} '
+                        f'is already named "{holder["name"]}".\n')
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as e:
+        print(f"rename-niri-workspace: {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

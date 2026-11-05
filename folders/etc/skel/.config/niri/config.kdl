@@ -478,6 +478,10 @@ binds {
     Mod+Shift+U         { move-workspace-down; }
     Mod+Shift+I         { move-workspace-up; }
 
+    // Names the workspace currently under focus, similar to clicking the
+    // workspace module in the bar; clearing the field removes the name.
+    Mod+N hotkey-overlay-title="Name the Workspace" { spawn "/usr/lib/ditana/rename-niri-workspace"; }
+
     // You can bind mouse wheel scroll ticks using the following syntax.
     // These binds will change direction based on the natural-scroll setting.
     //

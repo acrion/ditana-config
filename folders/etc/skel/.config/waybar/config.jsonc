@@ -17,6 +17,7 @@
     "custom/settings"
   ],
   "modules-center": [
+    "custom/workspaces",
     "wlr/taskbar"
   ],
   "modules-right": [
@@ -103,6 +104,25 @@
     "tooltip": true,
     "tooltip-format": "System Actions &amp; Power Menu",
     "on-click": "/usr/lib/ditana/launch nwgbar",
+  },
+  // The module shows the active workspace of the bar's output as "3/7",
+  // accompanied by its name if one is set; the tooltip enumerates, for each
+  // output, the workspaces that either host windows or have a name
+  // assigned, along with the active one, each accompanied by its associated
+  // windows. A click triggers the dialog that names the focused workspace,
+  // which matches the active workspace of this output: niri directs focus
+  // to the output under the cursor for every click that does not hit a
+  // window, before waybar starts the command. The module does not respond
+  // to scrolling: with warp-mouse-to-focus, niri puts the pointer on the
+  // newly focused window after every switch, so the subsequent mouse wheel
+  // step lands within that window. Mod+mouse wheel and the keyboard
+  // shortcuts perform workspace switching instead. Outside niri, the helper
+  // hides the module.
+  "custom/workspaces": {
+    "exec": "/usr/lib/ditana/waybar-niri-workspaces",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "/usr/lib/ditana/launch /usr/lib/ditana/rename-niri-workspace",
   },
   "wlr/taskbar": {
     "format": "{icon}",

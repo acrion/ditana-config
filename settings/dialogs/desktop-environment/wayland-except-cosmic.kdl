@@ -19,10 +19,13 @@
           "/etc/skel/.config/nwg-launchers/nwgbar/bar.json" \
           "/usr/lib/ditana/launch" \
           "/usr/lib/ditana/open-disks" \
-          "/usr/lib/ditana/waybar-io-pressure"
+          "/usr/lib/ditana/waybar-io-pressure" \
+          "/usr/lib/ditana/waybar-niri-workspaces" \
+          "/usr/lib/ditana/rename-niri-workspace"
     arch-packages "waybar" \
                   "nwg-launchers" \
-                  "swaylock"
+                  "swaylock" \
+                  "python" // for the workspace helpers, even though uwsm happens to pull it in as well
   }
 
 - name="install-waybar-display-scale" \
