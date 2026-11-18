@@ -25,11 +25,12 @@
 # in use if it holds a window or carries a name, and the active workspace is
 # always included; thus, the empty workspace that niri keeps at the bottom of
 # every output is counted only when it is active. A name follows after " · ".
-# The tooltip lists, for each output, the workspaces that hold windows or carry
-# a name, along with the active one, listing each workspace's windows,
-# beginning with the output that hosts the bar. The class is "focused" if the
-# bar's output holds the focus, and "urgent" if one of its workspaces is marked
-# as urgent.
+# The text is rendered in bold dark grey on a field of Ditana's orange inside
+# the module's grey box. The tooltip lists, for each output, the workspaces that
+# hold windows or carry a name, along with the active one, listing each
+# workspace's windows, beginning with the output that hosts the bar. The class
+# is "focused" if the bar's output holds the focus, and "urgent" if one of its
+# workspaces is marked as urgent.
 #
 # waybar's built-in niri/workspaces module is unaware of any total, and in
 # waybar 0.15 it fails to reestablish the connection once its link to niri is
@@ -73,6 +74,13 @@ SEPARATOR = " · "
 ELLIPSIS = "…"
 ACTIVE_MARK = "▸ "
 STDOUT = 1
+
+# On Ditana's orange background, the colour of niri's focus ring on the active
+# monitor, the text of the active workspace appears in bold, dark grey,
+# positioned within the module's grey box. The space inside, before and after
+# the text, allows the orange to enclose it cleanly. The "?" indicating a
+# failed connection refers to no workspace and stays on the grey.
+HIGHLIGHT = '<span background="#ffbb00" foreground="#262626" weight="bold"> {} </span>'
 
 # An app ID expressed in reverse DNS format, for example org.gnome.Nautilus: a
 # top-level domain consisting of lowercase letters followed by a minimum of
@@ -308,7 +316,7 @@ def render(state, wanted_output):
                 app_id = app_label(window.get("app_id") or "").ljust(APP_ID_WIDTH)
                 title = shorten(window.get("title") or "", TITLE_WIDTH)
                 lines.append(f"    {markup(app_id)}  {markup(title)}".rstrip())
-    return text, "<tt>" + "\n".join(lines) + "</tt>", classes
+    return HIGHLIGHT.format(text), "<tt>" + "\n".join(lines) + "</tt>", classes
 
 
 def read_lines(sock):

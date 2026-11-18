@@ -1445,9 +1445,28 @@ def workspaces_show(workdir, label, events, out_errors, output=None):
         stub.close()
 
 
+def workspace_text(text):
+    """TEXT without the markup of the highlight that check_workspaces_highlight pins down, or TEXT itself if it has none.
+
+    Every other check that compares the text compares what the highlight
+    encloses, so that a change to its markup fails that one check alone. A
+    name reaches the text escaped, so every "<" in it starts a tag, and the
+    tags go whatever their form; the one space on each side goes as well. A
+    highlight around nothing stays as it is: only an empty text hides the
+    module.
+    """
+    plain = re.sub(r"<[^>]*>", "", text)
+    inside = plain.removeprefix(" ").removesuffix(" ")
+    return inside if plain != text and inside else text
+
+
 def expect_workspaces(label, out, text, classes, out_errors):
-    if out is not None and (out["text"] != text or out["class"] != classes):
-        out_errors.append(f"❌ {label}: shows {out['text']!r} with class {out['class']!r}, "
+    """The module shows TEXT with CLASSES, once workspace_text has taken the highlight off."""
+    if out is None:
+        return
+    shown = workspace_text(out["text"])
+    if shown != text or out["class"] != classes:
+        out_errors.append(f"❌ {label}: shows {shown!r} with class {out['class']!r}, "
                           f"expected {text!r} with {classes!r}.")
 
 
@@ -1521,6 +1540,51 @@ def check_workspaces_names(workdir, out_errors):
         label = f"waybar-niri-workspaces with the name {name!r}"
         out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output="DP-1")
         expect_workspaces(label, out, f"3/7 · {shown}", ["focused"], out_errors)
+
+
+def check_workspaces_highlight(workdir, out_errors):
+    """The text stands dark grey in bold on Ditana's orange, with a space inside before and after it; the "?" of a failed connection does not.
+
+    #ffbb00 is the colour of niri's focus ring on the active monitor in the
+    skel config.kdl, and the Ditana logo carries it too. The span puts the
+    orange behind the text alone, so that it forms a field within the
+    module's box, which stays grey and turns red with the class urgent; the
+    spaces let the orange enclose the text instead of ending at its first
+    and last character. Every bar highlights the active workspace of its own
+    output, whether that output has the focus or not, and the name is part
+    of the highlighted text. The "?" names no workspace and stays on the
+    grey. The other checks compare the text without the markup of the
+    highlight, so that a change to its markup fails this check alone. The
+    empty text that hides the module outside niri stays empty, which
+    check_workspaces_outside_niri pins down: waybar would show a span around
+    nothing.
+    """
+    highlighted = '<span background="#ffbb00" foreground="#262626" weight="bold"> {} </span>'
+    _, windows = two_outputs()
+    named, _ = two_outputs()
+    by_id(named, 13)["name"] = "Tom & Jerry"
+    urgent, _ = two_outputs()
+    by_id(urgent, 22)["is_urgent"] = True
+    cases = [
+        ("on the output with the focus", two_outputs()[0], "DP-1", "3/7"),
+        ("with a name", named, "DP-1", "3/7 · Tom &amp; Jerry"),
+        ("without the focus, with an urgent workspace", urgent, "HDMI-A-1", "1/2"),
+    ]
+    for label, workspaces, output, text in cases:
+        label = f"waybar-niri-workspaces highlighting the active workspace {label}"
+        out = workspaces_show(workdir, label, initial_events(workspaces, windows), out_errors, output=output)
+        expected = highlighted.format(text)
+        if out is not None and out["text"] != expected:
+            out_errors.append(f"❌ {label}: shows {out['text']!r}, expected {expected!r}.")
+
+    label = "waybar-niri-workspaces without a connection to niri"
+    helper = WorkspacesHelper({"NIRI_SOCKET": os.path.join(workdir, "no-niri-here"), "WAYBAR_OUTPUT_NAME": "DP-1"})
+    try:
+        out = workspaces_output(label, helper.line(), out_errors)
+        if out is not None and out["text"] != "?":
+            out_errors.append(f"❌ {label}: shows {out['text']!r}, expected a \"?\" without the highlight.")
+    finally:
+        helper.stop()
 
 
 def check_workspaces_backslashes(workdir, out_errors):
@@ -1911,7 +1975,7 @@ def check_workspaces_reconnect(workdir, out_errors):
     label = "waybar-niri-workspaces without a niri to connect to"
     if run is None or run["pauses"] != [1, 2, 4, 8, 8] or run["status"] != 0 or run["stderr"]:
         out_errors.append(f"❌ {label}: expected the delays [1, 2, 4, 8, 8], got {run!r}.")
-    elif [(line["text"], line["class"]) for line in run["lines"]] != [("?", ["error"])] \
+    elif [(workspace_text(line["text"]), line["class"]) for line in run["lines"]] != [("?", ["error"])] \
             or missing not in run["lines"][0]["tooltip"]:
         out_errors.append(f"❌ {label}: expected one \"?\" of class error that names {missing} in its tooltip, "
                           f"got {run['lines']!r}.")
@@ -1941,7 +2005,7 @@ def check_workspaces_reconnect(workdir, out_errors):
     if run is None or run["pauses"] != [1, 2, 4, 8, 8, 1, 2] or run["status"] != 0 or run["stderr"]:
         out_errors.append(f"❌ {label}: expected the delays [1, 2, 4, 8, 8, 1, 2], got {run!r}.")
         return
-    shown = [(line["text"], line["class"]) for line in run["lines"]]
+    shown = [(workspace_text(line["text"]), line["class"]) for line in run["lines"]]
     error = ("?", ["error"])
     if shown != [error, error, error, ("3/7", ["focused"]), error, error]:
         out_errors.append(f"❌ {label}: showed {shown!r}; expected \"?\" for each failure that differs from the "
@@ -2517,6 +2581,7 @@ def check_niri_workspaces(all_settings, out_errors):
         check_workspaces_numbers(workdir, out_errors)
         check_workspaces_outputs(workdir, out_errors)
         check_workspaces_names(workdir, out_errors)
+        check_workspaces_highlight(workdir, out_errors)
         check_workspaces_backslashes(workdir, out_errors)
         check_workspaces_tooltip(workdir, out_errors)
         check_workspaces_classes(workdir, out_errors)
