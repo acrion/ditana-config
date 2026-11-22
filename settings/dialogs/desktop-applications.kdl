@@ -100,6 +100,20 @@
     }
   }
 
+- name="install-discord" \
+  dialog-name="Desktop Applications" \
+  short-description="Install Discord" \
+  long-description="Discord is a proprietary voice, video and text chat platform organised into servers and channels. It is widely used by gaming, open-source and hobby communities, and offers group calls, screen sharing, direct messages and file sharing. It is installed as a Flatpak, which keeps the application in a sandbox and updates it independently of the system packages." \
+  license-category="CLOSED" \
+  spdx-identifiers="" \
+  available="`install-desktop-environment`" \
+  default-value=#false {
+    flatpak-packages "com.discordapp.Discord"
+    mime-defaults {
+        - "com.discordapp.Discord.desktop" "x-scheme-handler/discord"
+    }
+  }
+
 - name="install-variety" \
   dialog-name="Desktop Applications" \
   short-description="Install Variety" \
