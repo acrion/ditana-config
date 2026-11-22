@@ -190,6 +190,15 @@ This standardized approach ensures uniform behavior across various C and C++ lib
     }
   }
 
+- name="install-plocate" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Install plocate for fast file name search" \
+  long-description="Install $packages, a much faster replacement for locate that is compatible with mlocate's database. The command plocate finds files by name across the whole file system within milliseconds, by looking them up in an index instead of walking the directory tree. The index is rebuilt once a day by plocate-updatedb.timer, which the package activates on its own, so files created since the last run are not found until then." \
+  spdx-identifiers="GPL-2.0-or-later GPL-2.0-only" \
+  default-value="`profile-developer`" {
+    arch-packages "plocate"
+  }
+
 - name="install-pacman-additional-tools" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Tools for Arch package maintainers" \
