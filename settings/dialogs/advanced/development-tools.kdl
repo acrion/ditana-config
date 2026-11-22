@@ -179,6 +179,17 @@ This standardized approach ensures uniform behavior across various C and C++ lib
                   "taplo-cli" // toml
   }
 
+- name="enable-schedstats" \
+  dialog-name="Development Tools and Libraries" \
+  short-description="Enable kernel scheduler statistics (kernel.sched_schedstats=1)" \
+  long-description="Enable the kernel's scheduler statistics. The kernel then records per task how long it waits in the run queue, sleeps and blocks, and exposes this in /proc/<pid>/schedstat, /proc/<pid>/sched and /proc/schedstat. Tools such as perf sched, latencytop or the delay columns of htop and atop rely on this data. This setting installs no package; it adds a small overhead to every scheduler path and is of no use without such a tool." \
+  spdx-identifiers="GPL-2.0-only" \
+  default-value="`profile-developer`" {
+    sysctl {
+        - "kernel.sched_schedstats" "1"
+    }
+  }
+
 - name="install-pacman-additional-tools" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install Tools for Arch package maintainers" \
