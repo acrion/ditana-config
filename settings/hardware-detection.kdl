@@ -2,7 +2,7 @@
 - name="uefi" detect="'/sys/firmware/efi'.IO.e" required-by-chroot=#true
 - name="total-ram-gib" detect="('/proc/meminfo'.IO.lines.grep(/MemTotal/).first.words[1] / 1024 / 1024).ceiling"
 - name="avx2-available" detect="'/proc/cpuinfo'.IO.lines.first(*.contains('flags')).contains('avx2').so"
-- name="has-bluetooth" detect="qx{lsusb}.lines.grep(*.contains(/:i bluetooth/)).so || qx{lspci}.lines.grep(*.contains(/:i bluetooth/)).so || 'sys/class/bluetooth'.IO.e"
+- name="has-bluetooth" detect="qx{lsusb}.lines.grep(*.contains(/:i bluetooth/)).so || qx{lspci}.lines.grep(*.contains(/:i bluetooth/)).so || '/sys/class/bluetooth'.IO.e"
 - name="amd-gpu-pci-id" detect=#"qx{lspci -nn}.lines.grep(/:i 'vga' .* 'amd'/).&{ $_ ?? .first.match(/\w+':' (\w+) ']'/).[0].Str !! '' }"#
 - name="nvidia-pci-id" detect=#"qx{lspci -nn}.lines.grep(/:i 'vga'.*'nvidia'/).&{ $_ ?? .first.match(/\w+':' (\w+) ']'/).[0].Str !! '' }"#
 - name="has-hybrid-nvidia-gpu" detect="my @gpus = qx{lspci -d ::0300}.lines.grep(*.chars > 0); @gpus > 1 && @gpus.any.contains(/:i nvidia/) && !@gpus.all.contains(/:i nvidia/)"
