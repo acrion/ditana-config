@@ -71,13 +71,12 @@ This standardized approach ensures uniform behavior across various C and C++ lib
 - name="install-zed" \
   dialog-name="Development Tools and Libraries" \
   short-description="Install the Zed code editor" \
-  long-description="Install Zed, a high-performance, multiplayer code editor from the creators of Atom and Tree-sitter. Written in Rust with GPU-accelerated rendering for a low-latency editing experience. Includes packages for language support and to keep you logged into your Zed account: $packages" \
+  long-description="Install Zed, a high-performance, multiplayer code editor from the creators of Atom and Tree-sitter. Written in Rust with GPU-accelerated rendering for a low-latency editing experience. Includes packages for language support: $packages" \
   spdx-identifiers="GPL-3.0-or-later,AGPL-3.0-or-later,Apache-2.0" \
   available="`install-desktop-environment`" \
   default-value="`install-desktop-environment AND profile-developer`" {
     arch-packages "zed" \
-                  "eslint" \ // optional dependency of zed
-                  "org.freedesktop.secrets" // optional dependency of zed
+                  "eslint" // optional dependency of zed
     mime-defaults {
         - "dev.zed.Zed.desktop" "text/plain" "text/x-readme" "text/x-install" "text/x-log" "text/x-changelog" "text/x-authors" "text/x-makefile" "text/x-cmake" "text/x-meson"
     }
