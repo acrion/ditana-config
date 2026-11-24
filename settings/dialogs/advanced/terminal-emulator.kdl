@@ -57,12 +57,12 @@
 WezTerm is a GPU-accelerated terminal emulator and multiplexer for X11 and Wayland.
  • Built-in tabs, splits, pane navigation, scrollback search, OSC 133 prompt markers, hyperlinks, both Sixel and the Kitty image protocol, and Lua configuration.
  • Ditana ships a zellij-style preconfiguration: Alt+1..9 switch tabs, Alt+hjkl navigate panes, Alt+Shift+hjkl create splits, Alt+m swaps panes, Alt+e dumps the scrollback into your $EDITOR. Edit or delete ~/.config/wezterm/wezterm.lua to change the bindings.
- • Packaging: named wezterm-git in the Ditana repo because upstream releases very infrequently; built natively, not pulled from the AUR.
+ • Packaging: installed from the official Arch repositories, which ship a development snapshot rather than the 2024 release.
 """ \
   spdx-identifiers="MIT" \
   available="`install-desktop-environment`" \
   default-value=#false {
-    arch-packages "wezterm-git" \
+    arch-packages "wezterm" \
                   "xdg-terminal-exec-git"
     files "/etc/skel/.config/wezterm/wezterm.lua" \
           "/usr/share/pixmaps/ditana-logo-tiny.png"
