@@ -74,6 +74,24 @@
                   "systemctl enable ditana_kbdrate.service"
   }
 
+- name="block-localsearch" default-value=#true {
+    // localsearch, GNOME's file indexing service (formerly known as Tracker),
+    // must never be executed on Ditana, regardless of which package provides it
+    // or any subsequent update. nautilus depends on it strictly, as do
+    // gnome-music and gnome-photos. It must remain installed nonetheless, since
+    // nautilus aborts without its GSettings schema, so NoExtract blocks only
+    // the files it starts from: its D-Bus services, its systemd user units, and
+    // its autostart entry. validate-logic.py verifies against the repositories
+    // that these patterns cover every such file, that none of them matches any
+    // other file of localsearch, and that each pattern matches files from
+    // exactly one package.
+    //
+    // Like every setting that enters NoExtract patterns, it ships the helper
+    // it calls for that purpose itself.
+    files "/usr/lib/ditana/no-extract"
+    chroot-script #"/usr/lib/ditana/no-extract "Ditana never runs localsearch, GNOME's file indexer: the NoExtract lines that follow keep pacman from extracting its D-Bus services, user units and autostart entry. To allow it, remove this comment and those lines, then run 'pacman -S localsearch', which extracts these files again." 'etc/xdg/autostart/localsearch*' 'usr/lib/systemd/user/localsearch*' 'usr/share/dbus-1/services/org.freedesktop.LocalSearch*' 'usr/share/dbus-1/services/org.freedesktop.Tracker3.Miner*' 'usr/share/dbus-1/services/org.freedesktop.Tracker3.Writeback*'"#
+  }
+
 - name="enable-paccache" default-value=#true {
     arch-packages "pacman-contrib"
     chroot-script "systemctl enable paccache.timer"

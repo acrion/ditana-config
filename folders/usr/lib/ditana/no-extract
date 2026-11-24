@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2026 acrion innovations GmbH
+# Authors: Stefan Zipproth, s.zipproth@acrion.ch
+#
+# This file is part of ditana-config, see https://github.com/acrion/ditana-config
+#
+# ditana-config is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ditana-config is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with ditana-config. If not, see <https://www.gnu.org/licenses/>.
+
+# Keeps pacman from extracting files that match PATTERN, across any package and
+# in every later transaction, and removes those already placed on disk by
+# packages. Settings invoke it within their chroot-script, and each one ships it
+# in its files.
+#
+# Each PATTERN that is not already present in /etc/pacman.conf is inserted as a
+# line "NoExtract = PATTERN" directly below the line "#NoExtract" inside the
+# [options] section, or below the line "[options]" if the section lacks that
+# line, with REASON provided as a comment line positioned above them. pacman
+# does not recognize comments appended to the end of a line; thus, a "# ..."
+# behind a pattern would be read as further patterns. A pattern already listed
+# in the file remains in its existing position, ensuring each pattern appears
+# only once, regardless of how many settings enter it or the sequence in which
+# their chroot-scripts run.
+#
+# pacstrap and the following transactions execute before any chroot-script,
+# meaning the files already exist on disk at that point. The script removes
+# those files that belong to an installed package, as determined by the file
+# lists in pacman's local database, provided the list specifies their
+# exclusion; subsequent updates automatically skip them. The evaluation logic
+# follows pacman's approach: it applies fnmatch(3) without flags to a pattern,
+# allowing * to match a slash as well, against the path inside the package,
+# which does not start with a leading slash; it reads the list from the end,
+# where the first matching pattern determines the outcome, and a leading !
+# turns that match into an exception.
+#
+# An exception does not influence a pattern that an earlier call has entered:
+# each call inserts its lines above those already present, so pacman, reading
+# the list from the end, reaches the earlier pattern first. Within a single
+# call, an exception must likewise come after the pattern it exempts from.
+#
+# DITANA_ROOT is prefixed to every path, enabling tests to direct the script
+# toward a directory of their choosing.
+
+set -u
+shopt -s nullglob
+shopt -u extglob
+
+usage() {
+    printf 'usage: %s REASON PATTERN...\n' "${0##*/}" >&2
+    exit 2
+}
+
+fail() {
+    printf '%s: %s\n' "${0##*/}" "$1" >&2
+    exit 1
+}
+
+(( $# >= 2 )) || usage
+reason=$1
+shift
+# REASON must occupy a single comment line, and pacman splits the value of
+# NoExtract at blanks.
+[[ -n $reason && $reason != *$'\n'* ]] || usage
+for pattern; do
+    [[ -n $pattern && $pattern != *[[:space:]]* ]] || usage
+done
+
+root=${DITANA_ROOT:-}
+conf=$root/etc/pacman.conf
+section_re='^[[:space:]]*\[(.*)\][[:space:]]*$'
+noextract_re='^[[:space:]]*NoExtract[[:space:]]*=[[:space:]]*(.*)$'
+anchor_re='^#NoExtract([[:space:]=]|$)'
+
+# Sets the array noextract with the patterns from the NoExtract lines
+# within the [options] section of the provided lines, in the order in
+# which pacman reads them.
+read_noextract() {
+    local line section='' values
+    noextract=()
+    for line; do
+        if [[ $line =~ $section_re ]]; then
+            section=${BASH_REMATCH[1]}
+        elif [[ $section == options && $line =~ $noextract_re ]]; then
+            IFS=' ' read -r -a values <<< "${BASH_REMATCH[1]}"
+            noextract+=("${values[@]}")
+        fi
+    done
+}
+
+# Whether the first argument appears within the remaining ones.
+contains() {
+    local item=$1 element
+    shift
+    for element; do
+        [[ $element == "$item" ]] && return 0
+    done
+    return 1
+}
+
+# Whether pacman leaves the path $1 out under the list in noextract.
+blocked() {
+    local i pattern inverted
+    for (( i = ${#noextract[@]} - 1; i >= 0; i-- )); do
+        pattern=${noextract[i]}
+        inverted=0
+        case $pattern in
+            '!'*) inverted=1; pattern=${pattern:1} ;;
+            \\*) pattern=${pattern:1} ;;
+        esac
+        # The pattern is meant to match as a pattern, not as a string.
+        # shellcheck disable=SC2254
+        case $1 in
+            $pattern) return "$inverted" ;;
+        esac
+    done
+    return 1
+}
+
+[[ -f $conf ]] || fail "$conf does not exist."
+mapfile -t lines < "$conf" || fail "Cannot read $conf."
+read_noextract "${lines[@]}"
+
+missing=()
+for pattern; do
+    contains "$pattern" "${noextract[@]}" "${missing[@]}" || missing+=("$pattern")
+done
+
+if (( ${#missing[@]} )); then
+    anchor=
+    section=
+    for i in "${!lines[@]}"; do
+        if [[ ${lines[i]} =~ $section_re ]]; then
+            section=${BASH_REMATCH[1]}
+            if [[ $section == options && -z $anchor ]]; then
+                anchor=$i
+            fi
+        elif [[ $section == options && ${lines[i]} =~ $anchor_re ]]; then
+            anchor=$i
+            break
+        fi
+    done
+    [[ -n $anchor ]] || fail "$conf has no [options] section."
+    out=("${lines[@]:0:anchor + 1}" "# $reason")
+    for pattern in "${missing[@]}"; do
+        out+=("NoExtract = $pattern")
+    done
+    out+=("${lines[@]:anchor + 1}")
+    printf '%s\n' "${out[@]}" > "$conf" || fail "Cannot write $conf."
+    read_noextract "${out[@]}"
+fi
+
+# A path that matches a pattern starts with the part of the pattern preceding
+# its first wildcard; grep picks these candidates, and blocked() decides.
+candidates=()
+for pattern; do
+    case $pattern in
+        '!'*) continue ;;
+        \\*) pattern=${pattern:1} ;;
+    esac
+    candidates+=(-e "${pattern%%[*?[\\]*}")
+done
+packages=("$root"/var/lib/pacman/local/*/files)
+status=0
+if (( ${#candidates[@]} && ${#packages[@]} )); then
+    while IFS= read -r path; do
+        if blocked "$path"; then
+            rm -f -- "$root/$path" || status=1
+        fi
+    done < <(
+        LC_ALL=C awk '
+            $0 == "%FILES%" { listing = 1; next }
+            $0 == "" { listing = 0 }
+            listing && !/\/$/' "${packages[@]}" |
+            LC_ALL=C grep -F "${candidates[@]}"
+    )
+fi
+exit "$status"

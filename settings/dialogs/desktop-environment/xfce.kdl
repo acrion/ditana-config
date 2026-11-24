@@ -75,6 +75,7 @@
           "/etc/skel/.config/kalu/kalu.conf" \
           \ // === Ditana XFCE helper scripts ===
           "/usr/lib/ditana/xfce-first-login" \
+          "/usr/lib/ditana/no-extract" \
           \ // === Wallpapers ===
           "/usr/share/backgrounds/xfce/ditana-wallpaper.jpg" \
           "/usr/share/backgrounds/xfce/ditana-blue.png" \
@@ -89,7 +90,7 @@
           "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml`" \
           "`sed -i 's|@@MONOSPACE_FONT_FAMILY@@|{Settings.instance.get('monospace-font-family')}|g' /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml`"
     chroot-script "rm -f /usr/share/wayland-sessions/xfce-wayland.desktop" \ // remove XFCE (Wayland) entry
-                  "sed -i '/^#*NoExtract/a NoExtract = usr/share/wayland-sessions/xfce-wayland.desktop' /etc/pacman.conf"
+                  #"/usr/lib/ditana/no-extract "Ditana runs XFCE on Xorg: the NoExtract line that follows keeps the XFCE (Wayland) session of xfce4-session out of the session list. To get it back, remove this comment and that line, then run 'pacman -S xfce4-session'." usr/share/wayland-sessions/xfce-wayland.desktop"#
     autostart {
         - "XFCE;" "/usr/lib/ditana/xfce-first-login"
         - "XFCE;" "/usr/bin/kalu"

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+import contextlib
+import ctypes
+import difflib
+import fcntl
+import http.server
+import io
 import json
 import os
 import re
@@ -11,6 +17,7 @@ import stat
 import subprocess
 import sys
 import shutil
+import tarfile
 import tempfile
 import threading
 import time
@@ -3188,6 +3195,980 @@ check_python_helpers(settings, python_errors)
 for line in python_errors:
     print(line)
 if python_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# Files that pacman does not ever extract.
+#
+# A setting enters NoExtract patterns into /etc/pacman.conf by invoking
+# /usr/lib/ditana/no-extract within its chroot-script, and ships the helper
+# itself. block-localsearch utilizes it to keep localsearch from starting. The
+# helper runs here on a copy of the [options] section from Arch's pacman.conf,
+# situated within a temporary root, and the patterns are evaluated against the
+# file lists of the current repositories. pacman compares a pattern using
+# fnmatch(3) with no flags, permitting * to match a slash as well, against the
+# path inside the package, which does not include a leading slash; it reads the
+# list from the end, with the first matching pattern determining the outcome,
+# and a leading ! turns that match into an exception.
+# ---------------------------------------------------------------------------
+
+NO_EXTRACT = '/usr/lib/ditana/no-extract'
+BLOCK_LOCALSEARCH = 'block-localsearch'
+LOCALSEARCH = 'localsearch'
+LOCALSEARCH_ENTRY_DIRS = ('usr/lib/systemd/user/', 'usr/share/dbus-1/services/', 'etc/xdg/autostart/')
+ARCH_MIRRORLIST = '/etc/pacman.d/mirrorlist'
+DITANA_MIRRORLIST = '/etc/pacman.d/ditana-mirrorlist'
+REPO_SYNC_TIMEOUT = 600
+
+# The duration allowed for the processes of a pacman run to terminate following
+# SIGTERM, and then again following SIGKILL.
+STOP_GRACE = 5
+
+# The environment variable that marks the processes associated with a single
+# pacman run. Every process from the run inherits it, faked included.
+RUN_MARKER = 'DITANA_VALIDATE_RUN'
+
+# The [options] section found in /etc/pacman.conf, as provided by pacman 7.1.0.
+ARCH_PACMAN_OPTIONS = """\
+[options]
+# The following paths are commented out with their default values listed.
+# If you wish to use different paths, uncomment and update the paths.
+#RootDir     = /
+#DBPath      = /var/lib/pacman/
+#CacheDir    = /var/cache/pacman/pkg/
+#LogFile     = /var/log/pacman.log
+#GPGDir      = /etc/pacman.d/gnupg/
+#HookDir     = /etc/pacman.d/hooks/
+HoldPkg     = pacman glibc
+#XferCommand = /usr/bin/curl -L -C - -f -o %o %u
+#XferCommand = /usr/bin/wget --passive-ftp -c -O %o %u
+#CleanMethod = KeepInstalled
+Architecture = auto
+
+# Pacman won't upgrade packages listed in IgnorePkg and members of IgnoreGroup
+#IgnorePkg   =
+#IgnoreGroup =
+
+#NoUpgrade   =
+#NoExtract   =
+
+# Misc options
+#UseSyslog
+#Color
+#NoProgressBar
+CheckSpace
+#VerbosePkgLists
+ParallelDownloads = 5
+DownloadUser = alpm
+#DisableSandboxFilesystem
+#DisableSandboxSyscalls
+
+# By default, pacman accepts packages signed by keys that its local keyring
+# trusts (see pacman-key and its man page), as well as unsigned packages.
+SigLevel    = Required DatabaseOptional
+LocalFileSigLevel = Optional
+#RemoteFileSigLevel = Required
+"""
+ARCH_NO_EXTRACT_LINE = "#NoExtract   =\n"
+
+# The pacman.conf files that the helper runs on, each featuring the line below
+# which the patterns are placed: Arch's default one, and another that lacks
+# the line "#NoExtract", where they are positioned directly beneath
+# "[options]".
+NO_EXTRACT_CONFS = (
+    ("Arch's pacman.conf", ARCH_PACMAN_OPTIONS, ARCH_NO_EXTRACT_LINE),
+    ("a pacman.conf without #NoExtract", ARCH_PACMAN_OPTIONS.replace(ARCH_NO_EXTRACT_LINE, ""), "[options]\n"),
+)
+
+# What the local database of pacman inside the test root says each
+# installed package owns, excluding directories. The first three entries
+# detail the files they really install: the entry points of localsearch
+# and the Wayland session of xfce4-session, which must be removed, and
+# beside them the remaining files of the three, including the GSettings
+# schema of localsearch, which must be preserved. The last one belongs to
+# the calls made by the check itself.
+NO_EXTRACT_PACKAGES = {
+    "localsearch-3.12.0-1": [
+        "etc/xdg/autostart/localsearch-3.desktop",
+        "usr/bin/localsearch",
+        "usr/lib/systemd/user/localsearch-3.service",
+        "usr/lib/systemd/user/localsearch-control-3.service",
+        "usr/lib/systemd/user/localsearch-writeback-3.service",
+        "usr/share/dbus-1/services/org.freedesktop.LocalSearch3.Control.service",
+        "usr/share/dbus-1/services/org.freedesktop.LocalSearch3.Writeback.service",
+        "usr/share/dbus-1/services/org.freedesktop.LocalSearch3.service",
+        "usr/share/dbus-1/services/org.freedesktop.Tracker3.Miner.Files.Control.service",
+        "usr/share/dbus-1/services/org.freedesktop.Tracker3.Miner.Files.service",
+        "usr/share/dbus-1/services/org.freedesktop.Tracker3.Writeback.service",
+        "usr/share/glib-2.0/schemas/org.freedesktop.Tracker3.Miner.Files.gschema.xml",
+    ],
+    "tinysparql-3.12.0-1": [
+        "usr/bin/tinysparql",
+        "usr/lib/systemd/user/tinysparql-xdg-portal-3.service",
+        "usr/share/dbus-1/services/org.freedesktop.portal.Tracker.service",
+    ],
+    "xfce4-session-4.20.4-1": [
+        "usr/share/wayland-sessions/xfce-wayland.desktop",
+        "usr/share/xsessions/xfce.desktop",
+    ],
+    "ditana-no-extract-test-1-1": [
+        "usr/share/ditana-no-extract-test/drop",
+        "usr/share/ditana-no-extract-test/keep",
+        "usr/share/ditana-no-extract-test/overlap",
+        "usr/share/ditana-no-extract-test/sub/dir/drop",
+    ],
+}
+
+# Files present in the test root that were not installed by any package. A
+# pattern matches each of these, but they must remain nonetheless.
+NO_EXTRACT_UNOWNED = [
+    "etc/xdg/autostart/localsearch-local.desktop",
+    "usr/share/ditana-no-extract-test/unowned",
+]
+
+LIBC = ctypes.CDLL(None)
+LIBC.fnmatch.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int)
+LIBC.fnmatch.restype = ctypes.c_int
+
+
+def pacman_fnmatch(pattern, path):
+    """fnmatch(3) without flags, the call pacman makes for a NoExtract pattern.
+
+    Python's fnmatch module is no stand-in: it takes a backslash literally and
+    knows neither [^...] nor [[:alpha:]].
+    """
+    return LIBC.fnmatch(os.fsencode(pattern), os.fsencode(path), 0) == 0
+
+
+def pacman_glob(pattern):
+    """PATTERN as pacman hands it to fnmatch: without a leading ! or backslash."""
+    return pattern[1:] if pattern[:1] in ('!', '\\') else pattern
+
+
+def noextract_blocks(patterns, path):
+    """Whether pacman leaves PATH, which has no leading slash, out under the NoExtract list PATTERNS.
+
+    This is _alpm_fnmatch_patterns of libalpm: the list is read from its end,
+    the first pattern that matches decides, a leading ! makes it an
+    exception, and a leading backslash is dropped, so that a pattern can
+    begin with a literal !. It gave the same answer as
+    alpm_option_match_noextract of libalpm 16 for every list of up to three
+    patterns drawn from a pool covering these cases, on a set of paths.
+    """
+    for pattern in reversed(patterns):
+        if pacman_fnmatch(pacman_glob(pattern), path):
+            return not pattern.startswith('!')
+    return False
+
+
+def literal_prefix(pattern):
+    """The part of PATTERN before its first wildcard or backslash.
+
+    Every path the pattern matches begins with it, which lets a scan skip all
+    other paths before it calls fnmatch.
+    """
+    return re.split(r'[*?\[\\]', pacman_glob(pattern), maxsplit=1)[0]
+
+
+def no_extract_calls(all_settings, out_errors):
+    """The calls of the NoExtract helper in the settings, as (setting, reason, patterns).
+
+    A setting enters NoExtract patterns by a chroot-script line that calls the
+    helper and does nothing else. The checks below know the patterns of a
+    setting only through such calls, and they cannot tell whether another line
+    enters any. So every other script line that names the helper or NoExtract
+    is reported, whatever it does: patterns it entered would escape them.
+    """
+    calls = []
+    for s in all_settings:
+        name = s.get('name', 'unknown')
+        for field in INTERP_LIST_FIELDS:
+            for line in s.get(field, []):
+                if NO_EXTRACT not in line and 'NoExtract' not in line:
+                    continue
+                try:
+                    argv = shlex.split(line)
+                except ValueError:
+                    argv = []
+                if (field == 'chroot-script' and not is_backtick_code(line.strip())
+                        and len(argv) >= 3 and argv[0] == NO_EXTRACT):
+                    calls.append((name, argv[1], argv[2:]))
+                else:
+                    out_errors.append(f"❌ Setting '{name}' -> {field} names NoExtract or {NO_EXTRACT} in a line "
+                                      f"other than a chroot-script line '{NO_EXTRACT} REASON PATTERN...': {line!r}")
+    return calls
+
+
+def put_package_files(root):
+    """Puts the files of NO_EXTRACT_PACKAGES on the disk below ROOT, as pacman extracts them."""
+    for package, paths in NO_EXTRACT_PACKAGES.items():
+        for path in paths:
+            write_file(os.path.join(root, path), f"{package}\n")
+
+
+def no_extract_root(workdir, conf):
+    """A root holding CONF as its pacman.conf, and the files of NO_EXTRACT_PACKAGES and NO_EXTRACT_UNOWNED.
+
+    The packages are in pacman's local database there, as pacman lists them:
+    "%FILES%", then every directory with a trailing slash and every file, in
+    sorted order, then an empty line.
+    """
+    root = tempfile.mkdtemp(dir=workdir)
+    write_file(os.path.join(root, "etc/pacman.conf"), conf)
+    for package, paths in NO_EXTRACT_PACKAGES.items():
+        directories = {path[:i + 1] for path in paths for i, c in enumerate(path) if c == '/'}
+        write_file(os.path.join(root, "var/lib/pacman/local", package, "files"),
+                   "%FILES%\n" + "".join(f"{p}\n" for p in sorted(directories.union(paths))) + "\n")
+    put_package_files(root)
+    for path in NO_EXTRACT_UNOWNED:
+        write_file(os.path.join(root, path), "no package\n")
+    return root
+
+
+def no_extract_orders(calls):
+    """Every rotation of CALLS, forwards and backwards.
+
+    Each call comes first and last at least once, and each pair of calls runs
+    in both orders.
+    """
+    orders = []
+    for sequence in (calls, calls[::-1]):
+        for i in range(len(sequence)):
+            order = sequence[i:] + sequence[:i]
+            if order not in orders:
+                orders.append(order)
+    return orders
+
+
+def expected_no_extract_conf(conf, anchor, order):
+    """CONF after the calls in ORDER, and its NoExtract list, as the helper is to leave them.
+
+    Each call enters the patterns that are not listed yet, below its reason
+    and directly below the line ANCHOR, so that the latest call comes first; a
+    call with nothing left to enter leaves the file alone.
+    """
+    entered, blocks = set(), []
+    for _, reason, patterns in order:
+        new = []
+        for pattern in patterns:
+            if pattern not in entered:
+                entered.add(pattern)
+                new.append(pattern)
+        if new:
+            blocks.insert(0, (reason, new))
+    inserted = "".join(f"# {reason}\n" + "".join(f"NoExtract = {p}\n" for p in new) for reason, new in blocks)
+    head, line, tail = conf.partition(anchor)
+    return head + line + inserted + tail, [p for _, new in blocks for p in new]
+
+
+def check_no_extract_helper(calls, workdir, out_errors):
+    """The helper enters every pattern exactly once and deletes what packages have already extracted.
+
+    Settings run their chroot-scripts in an order nobody guarantees, and
+    several may enter the same pattern. The sed that xfce.kdl used before
+    appended its line behind every line that began with NoExtract or
+    #NoExtract, so n settings doing the same would have left 2^n - 1 lines.
+    The calls of the settings run here together with two of the check's own,
+    one that repeats one pattern from each call of the settings and one with
+    an exception, in several orders and each order twice, on Arch's
+    pacman.conf and on one without the line #NoExtract, where the helper
+    enters the patterns below [options] instead of giving up. pacman.conf must
+    then hold every pattern once, each call's new patterns below its reason; a
+    file that an installed package put on the disk and that the list blocks
+    must be gone, while every other file remains, also one that no package
+    installed; and pacman-conf must read exactly these patterns back.
+
+    Before the second round, the files of the packages are back on the disk,
+    as a second pacstrap into the root would put them there: pacstrap
+    extracts with the pacman.conf of the live system, so what the root's
+    pacman.conf lists keeps nothing out. The helper has to remove them again,
+    although every pattern is listed by then. A helper that deleted only the
+    files of the patterns it entered itself would pass the first round all
+    the same, since the first call that enters a pattern removes its files.
+    """
+    pacman_conf = shutil.which("pacman-conf")
+    if pacman_conf is None:
+        print("ℹ️  No pacman-conf here: skipping the check that pacman reads what no-extract enters.")
+    own = [
+        ("validate-logic.py, repeating", "Entered by validate-logic.py, mostly for the second time.",
+         [patterns[0] for _, _, patterns in calls] + ["usr/share/ditana-no-extract-test/overlap*"]),
+        ("validate-logic.py, with an exception", "Entered by validate-logic.py, with an exception.",
+         ["usr/share/ditana-no-extract-test/*", "!usr/share/ditana-no-extract-test/keep"]),
+    ]
+    for conf_name, conf_text, anchor in NO_EXTRACT_CONFS:
+        for order in no_extract_orders(calls + own):
+            label = f"no-extract on {conf_name}, called by " + ", ".join(f"'{name}'" for name, _, _ in order)
+            root = no_extract_root(workdir, conf_text)
+            conf = os.path.join(root, "etc/pacman.conf")
+            expected, listed = expected_no_extract_conf(conf_text, anchor, order)
+            found = []
+            for round_name in ("first", "second"):
+                if round_name == "second":
+                    put_package_files(root)
+                for name, reason, patterns in order:
+                    res = run_helper(NO_EXTRACT, [reason] + patterns, {"DITANA_ROOT": root})
+                    if res is None:
+                        found.append(f"❌ {label}: the call of '{name}' in the {round_name} round did not finish.")
+                    elif res.returncode != 0 or res.stderr:
+                        found.append(f"❌ {label}: the call of '{name}' in the {round_name} round ended with exit "
+                                     f"status {res.returncode}: {res.stderr.decode(errors='replace').strip()!r}")
+                with open(conf) as f:
+                    content = f.read()
+                if content != expected:
+                    diff = "".join(difflib.unified_diff(expected.splitlines(True), content.splitlines(True),
+                                                        "expected", "pacman.conf"))
+                    found.append(f"❌ {label}: pacman.conf after the {round_name} round is not as expected:\n{diff}")
+                for package, paths in NO_EXTRACT_PACKAGES.items():
+                    for path in paths:
+                        gone = not os.path.lexists(os.path.join(root, path))
+                        if gone and not noextract_blocks(listed, path):
+                            found.append(f"❌ {label}: after the {round_name} round, {path} of {package} is gone, "
+                                         f"although the list does not block it.")
+                        elif not gone and noextract_blocks(listed, path):
+                            found.append(f"❌ {label}: after the {round_name} round, {path} of {package} is still "
+                                         f"there, although the list blocks it.")
+                for path in NO_EXTRACT_UNOWNED:
+                    if not os.path.lexists(os.path.join(root, path)):
+                        found.append(f"❌ {label}: after the {round_name} round, {path} is gone, although no "
+                                     f"package installed it.")
+            if pacman_conf is not None:
+                res = subprocess.run([pacman_conf, "--config", conf, "NoExtract"], capture_output=True, text=True)
+                if res.returncode != 0 or res.stderr or res.stdout.splitlines() != listed:
+                    found.append(f"❌ {label}: pacman-conf reads NoExtract as {res.stdout.splitlines()!r} (exit "
+                                 f"status {res.returncode}, {res.stderr.strip()!r}), expected {listed!r}.")
+            if found:
+                out_errors.extend(found)
+                break
+
+
+def check_no_extract_shipped(all_settings, calls, out_errors):
+    """Every setting that calls the helper ships it in its files.
+
+    The installer copies only the files of the settings that are enabled.
+    While block-localsearch alone shipped the helper, XFCE could not be
+    installed without block-localsearch: the chroot-script of install-xfce
+    called a helper that was not there.
+    """
+    shipping = {s.get('name', 'unknown') for s in all_settings if NO_EXTRACT in s.get('files', [])}
+    for name in sorted({name for name, _, _ in calls} - shipping):
+        out_errors.append(f"❌ Setting '{name}' calls {NO_EXTRACT} in its chroot-script without shipping it in its "
+                          f"files.")
+
+
+def cache_home():
+    """$XDG_CACHE_HOME, or ~/.cache where it is unset, empty or relative, as the XDG Base Directory Specification has it."""
+    path = os.environ.get("XDG_CACHE_HOME", "")
+    return path if os.path.isabs(path) else os.path.join(os.path.expanduser("~"), ".cache")
+
+
+def package_databases_path():
+    """Where the private copy of the file lists stays between runs."""
+    return os.path.join(cache_home(), "ditana-config", "package-databases")
+
+
+def check_package_databases_path(out_errors):
+    """The private copy of the file lists stays in the cache directory of the user, below ditana-config.
+
+    It has to outlast the run, so that pacman -Fy fetches only the lists that
+    changed on the mirror: extra.files alone is some 50 MB. The XDG Base
+    Directory Specification puts it below $XDG_CACHE_HOME, and below ~/.cache
+    where that is unset, empty or a relative path, which the specification
+    says to ignore.
+    """
+    default = os.path.join(os.path.expanduser("~"), ".cache", "ditana-config", "package-databases")
+    saved = os.environ.get("XDG_CACHE_HOME")
+    try:
+        for value, expected in (("/var/tmp/cache", "/var/tmp/cache/ditana-config/package-databases"),
+                                (None, default), ("", default), ("cache", default)):
+            if value is None:
+                os.environ.pop("XDG_CACHE_HOME", None)
+            else:
+                os.environ["XDG_CACHE_HOME"] = value
+            if package_databases_path() != expected:
+                described = "unset" if value is None else f"set to {value!r}"
+                out_errors.append(f"❌ With XDG_CACHE_HOME {described}, the private copy of the file lists would "
+                                  f"be kept in {package_databases_path()}, not in {expected}.")
+    finally:
+        if saved is None:
+            os.environ.pop("XDG_CACHE_HOME", None)
+        else:
+            os.environ["XDG_CACHE_HOME"] = saved
+
+
+def environment_pids(entry):
+    """The processes whose environment holds ENTRY, NAME=VALUE as bytes."""
+    pids = []
+    for name in os.listdir("/proc"):
+        if name.isdigit():
+            try:
+                with open(f"/proc/{name}/environ", "rb") as f:
+                    if entry in f.read().split(b"\0"):
+                        pids.append(int(name))
+            except OSError:
+                pass
+    return pids
+
+
+def process_names(entry):
+    """The names of the processes whose environment holds ENTRY, sorted."""
+    names = []
+    for pid in environment_pids(entry):
+        with contextlib.suppress(OSError), open(f"/proc/{pid}/comm") as f:
+            names.append(f.read().strip())
+    return sorted(names)
+
+
+def stop_processes(entry):
+    """Ends every process whose environment holds ENTRY; returns those that are still there after SIGTERM and SIGKILL.
+
+    Each signal gets STOP_GRACE seconds, and a process that turns up in the
+    meantime gets it too. SIGTERM comes first because faked removes its SysV
+    message queues and semaphore only when it ends that way.
+    """
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        signalled = set()
+        deadline = time.monotonic() + STOP_GRACE
+        while time.monotonic() < deadline:
+            pids = set(environment_pids(entry))
+            if not pids:
+                return []
+            for pid in pids - signalled:
+                try:
+                    os.kill(pid, sig)
+                except ProcessLookupError:
+                    pass
+            signalled |= pids
+            time.sleep(0.02)
+    return environment_pids(entry)
+
+
+def run_contained(argv, timeout, stderr_path, on_line=None):
+    """Runs ARGV, hands each line of its output to ON_LINE, and returns its exit status, or None if it did not finish within TIMEOUT seconds.
+
+    None of its processes outlives the call, whether ARGV ends, times out or
+    the caller fails. Under fakeroot that takes more than ending ARGV:
+    fakeroot is a shell script that starts faked as a daemon in a session of
+    its own and has a trap end it on exit, and SIGKILL runs no trap. When its
+    timeout expired, subprocess.run killed just the script, and faked and
+    pacman went on running. So every process of the run carries RUN_MARKER in
+    its environment, which they all inherit, and whatever still carries it at
+    the end is stopped. The stderr of ARGV goes to STDERR_PATH.
+
+    Raises RuntimeError if a process of the run is still there after SIGKILL.
+    """
+    marker = secrets.token_hex(8)
+    entry = f"{RUN_MARKER}={marker}".encode()
+    expired = threading.Event()
+
+    def expire():
+        expired.set()
+        stop_processes(entry)
+
+    with open(stderr_path, "wb") as stderr:
+        proc = subprocess.Popen(argv, env=dict(os.environ, **{RUN_MARKER: marker}), stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=stderr)
+    timer = threading.Timer(timeout, expire)
+    timer.start()
+    try:
+        for line in proc.stdout:
+            if on_line is not None:
+                on_line(line)
+    finally:
+        timer.cancel()
+        timer.join()
+        left = stop_processes(entry)
+        proc.stdout.close()
+        if not left:
+            proc.wait()
+    if left:
+        raise RuntimeError(f"processes {left} of {shlex.join(argv)} are still there after SIGKILL")
+    return None if expired.is_set() else proc.returncode
+
+
+def last_line(path, fallback):
+    """The last line of the file at PATH that is not blank, or FALLBACK."""
+    with open(path, errors="replace") as f:
+        lines = f.read().strip().splitlines()
+    return lines[-1] if lines else fallback
+
+
+def file_lists(dbpath, repos, workdir, on_entry, timeout=REPO_SYNC_TIMEOUT):
+    """Brings the private copy of the file lists at DBPATH up to date and hands each line of pacman -Fl to ON_ENTRY.
+
+    REPOS maps each repository to the line that names its servers, "Include
+    = MIRRORLIST" or "Server = URL". ON_ENTRY gets each line of pacman -Fl
+    --machinereadable as bytes: repository, package, version and path,
+    separated by NUL. The file lists of the system are no basis: only root
+    refreshes them, with pacman -Fy, and they may be weeks old. fakeroot lets
+    pacman -Fy refresh a copy of its own without root. pacman -Fl reads
+    nothing else, so the package databases of -Sy are not fetched. Nothing is
+    installed from the copy, so it checks no signatures, which would need the
+    keyring of root.
+
+    The copy stays at DBPATH between runs, and pacman fetches a list only if
+    it changed on the mirror. A mirror can answer with something that is no
+    database at all, such as the login page of a hotel's network with status
+    200: pacman -Fy keeps it, and pacman -Fl exits 0, lists nothing for that
+    repository and says "Unrecognized archive format" on stderr only. So
+    every repository has to turn up in the listing, and the list of one that
+    does not is deleted. Kept, it would be all that pacman reads from then
+    on, since the mirror answers 304 to a list that is newer than its own.
+
+    Runs that share DBPATH take turns. A pacman stopped by a timeout leaves
+    its lock db.lck behind, and every later -Fy would fail on it; while this
+    run holds its own lock, no other pacman uses the copy, so a db.lck found
+    then is stale.
+
+    Returns None, or why there is no usable copy. Raises RuntimeError if
+    pacman -Fl fails in another way.
+    """
+    try:
+        os.makedirs(dbpath, exist_ok=True)
+        lock = open(os.path.join(dbpath, "validate-logic.lock"), "w")
+    except OSError as e:
+        return f"no private copy of the file lists can be kept in {dbpath} ({e.strerror})"
+    with lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(os.path.join(dbpath, "db.lck"))
+        config = os.path.join(workdir, "file-lists.conf")
+        write_file(config, "[options]\nArchitecture = auto\nSigLevel = Never\n"
+                   + "".join(f"\n[{repo}]\n{servers}\n" for repo, servers in repos.items()))
+        stderr_path = os.path.join(workdir, "pacman.stderr")
+        pacman = ["pacman", "--dbpath", dbpath, "--config", config]
+        status = run_contained(["fakeroot", "--"] + pacman + ["--logfile", "/dev/null", "--disable-sandbox", "-Fy"],
+                               timeout, stderr_path)
+        if status is None:
+            return f"pacman -Fy did not finish within {timeout} s"
+        if status != 0:
+            return f"pacman -Fy failed ({last_line(stderr_path, f'exit status {status}')})"
+        listed = set()
+        current = None
+
+        def entry(line):
+            nonlocal current
+            if current is None or not line.startswith(current):
+                current = line.partition(b"\0")[0] + b"\0"
+                listed.add(os.fsdecode(current[:-1]))
+            on_entry(line)
+
+        status = run_contained(pacman + ["-Fl", "--machinereadable"], timeout, stderr_path, entry)
+        if status is None:
+            raise RuntimeError(f"pacman -Fl did not finish within {timeout} s")
+        if status != 0:
+            raise RuntimeError(f"pacman -Fl failed ({last_line(stderr_path, f'exit status {status}')})")
+        unreadable = [repo for repo in repos if repo not in listed]
+        for repo in unreadable:
+            with contextlib.suppress(FileNotFoundError):
+                os.remove(os.path.join(dbpath, "sync", f"{repo}.files"))
+        if unreadable:
+            return (f"pacman cannot read the file lists of {', '.join(unreadable)} "
+                    f"({last_line(stderr_path, 'it lists nothing for them')}), which are discarded")
+    return None
+
+
+class StandInMirrorHandler(http.server.SimpleHTTPRequestHandler):
+    """Answers a request of pacman as the mode of its StandInMirror says."""
+
+    PORTAL = b"<!DOCTYPE html>\n<html><body><form>Please log in to use this network.</form></body></html>\n"
+
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server, directory=server.directory)
+
+    def do_GET(self):
+        mirror = self.server
+        mirror.processes.append(process_names(mirror.probe))
+        if mirror.mode == "serve":
+            super().do_GET()
+        elif mirror.mode == "portal":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(self.PORTAL)))
+            self.end_headers()
+            self.wfile.write(self.PORTAL)
+        elif mirror.mode == "stall":
+            mirror.released.wait()
+        else:
+            self.send_error(404)
+
+    def log_request(self, code="-", size="-"):
+        self.server.requests.append((self.path, int(code)))
+
+    def log_message(self, format, *args):
+        pass
+
+
+class StandInMirror(http.server.ThreadingHTTPServer):
+    """A mirror on 127.0.0.1 that pacman -Fy reaches over HTTP, answering as its mode says.
+
+    "serve" serves the files in DIRECTORY and answers If-Modified-Since as a
+    mirror does; "portal" answers every request with the login page of a
+    network and status 200; "stall" answers nothing until the mirror is
+    closed; "missing" answers 404. requests holds the path and the status of
+    every answer, and processes, for every request, the names of the
+    processes whose environment held the entry PROBE at that moment.
+    """
+
+    daemon_threads = True
+
+    def __init__(self, directory, probe):
+        super().__init__(("127.0.0.1", 0), StandInMirrorHandler)
+        self.directory, self.probe, self.mode = directory, probe, "serve"
+        self.requests, self.processes = [], []
+        self.released = threading.Event()
+        self.url = f"http://127.0.0.1:{self.server_address[1]}"
+        threading.Thread(target=self.serve_forever, daemon=True).start()
+
+    def __exit__(self, *exc):
+        self.released.set()
+        self.shutdown()
+        self.server_close()
+
+
+@contextlib.contextmanager
+def probe_entry():
+    """An entry NAME=VALUE, as bytes, in the environment of every process started meanwhile.
+
+    It tells the processes of one run apart from all others, independently of
+    the marker that run_contained gives them.
+    """
+    name, value = "DITANA_VALIDATE_PROBE", secrets.token_hex(8)
+    os.environ[name] = value
+    try:
+        yield f"{name}={value}".encode()
+    finally:
+        del os.environ[name]
+
+
+def write_file_list_database(path, packages, mtime):
+    """A database of file lists such as pacman -Fy fetches, at PATH and with the modification time MTIME.
+
+    It is a tar archive compressed with gzip that holds NAME-1-1/desc and
+    NAME-1-1/files for each NAME in PACKAGES, which maps it to its paths.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with tarfile.open(path, "w:gz") as tar:
+        for name, paths in packages.items():
+            for member, text in (("desc", f"%NAME%\n{name}\n\n%VERSION%\n1-1\n\n"),
+                                 ("files", "%FILES%\n" + "".join(f"{p}\n" for p in paths) + "\n")):
+                data = text.encode()
+                info = tarfile.TarInfo(f"{name}-1-1/{member}")
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+    os.utime(path, (mtime, mtime))
+
+
+# The timeout that a run against a stand-in mirror that provides no response
+# receives.
+STAND_IN_TIMEOUT = 2
+
+
+def stand_in_file_lists(workdir, mirror, dbpath, timeout=REPO_SYNC_TIMEOUT):
+    """file_lists for a repository core on MIRROR: its problem, and the (package, path) pairs it listed."""
+    lines = []
+    try:
+        problem = file_lists(dbpath, {"core": f"Server = {mirror.url}"}, workdir, lines.append, timeout)
+    except RuntimeError as e:
+        problem = str(e)
+    return problem, sorted(tuple(os.fsdecode(line.rstrip(b"\n")).split("\0")[1::2]) for line in lines)
+
+
+def check_file_lists_keep_copy(workdir, out_errors):
+    """The private copy stays between runs, and pacman fetches a list again only when it changed on the mirror.
+
+    A fresh copy on every run fetched all lists every time, extra.files alone
+    some 50 MB. The first run against a stand-in mirror has to fetch
+    core.files, the second must get 304 for it, and once the list on the
+    mirror has changed, the third has to fetch and read the new one.
+    """
+    mirror_dir, dbpath = os.path.join(workdir, "keep-mirror"), os.path.join(workdir, "keep-copy")
+    database = os.path.join(mirror_dir, "core.files")
+    write_file_list_database(database, {"probe": ["usr/share/probe/one"]}, 1_700_000_000)
+    with probe_entry() as probe, StandInMirror(mirror_dir, probe) as mirror:
+        for run, status, listing in (("first", 200, [("probe", "usr/share/probe/one")]),
+                                     ("second", 304, [("probe", "usr/share/probe/one")]),
+                                     ("third", 200, [("probe", "usr/share/probe/two")])):
+            if run == "third":
+                write_file_list_database(database, {"probe": ["usr/share/probe/two"]}, 1_700_000_100)
+            before = len(mirror.requests)
+            problem, listed = stand_in_file_lists(workdir, mirror, dbpath)
+            answers = mirror.requests[before:]
+            if problem is not None or listed != listing or answers != [("/core.files", status)]:
+                out_errors.append(f"❌ file_lists, {run} run against a mirror: returned {problem!r} and listed "
+                                  f"{listed!r} after the answers {answers!r}, expected None and {listing!r} after "
+                                  f"{[('/core.files', status)]!r}.")
+                return
+
+
+def check_file_lists_unreadable(workdir, out_errors):
+    """A file list that pacman cannot read ends the checks against the repositories with a note, and is discarded.
+
+    A hotel's network answers every request with its login page until one
+    logs in, and with status 200. pacman -Fy keeps the page as core.files,
+    and pacman -Fl exits 0 and lists nothing, with "Unrecognized archive
+    format" on stderr only; the checks reported every pattern as matching
+    nothing then. The page is newer than the mirror's list, so kept, it would
+    be all that pacman reads from then on, the mirror answering 304. The run
+    against the portal has to name the problem and leave no core.files
+    behind, and the next one, against the mirror, has to read its list.
+    """
+    mirror_dir, dbpath = os.path.join(workdir, "portal-mirror"), os.path.join(workdir, "portal-copy")
+    write_file_list_database(os.path.join(mirror_dir, "core.files"), {"probe": ["usr/share/probe/one"]},
+                             1_700_000_000)
+    with probe_entry() as probe, StandInMirror(mirror_dir, probe) as mirror:
+        mirror.mode = "portal"
+        problem, listed = stand_in_file_lists(workdir, mirror, dbpath)
+        if problem is None or not problem.startswith("pacman cannot read the file lists of core "):
+            out_errors.append(f"❌ file_lists against a login page: returned {problem!r} and listed {listed!r}, "
+                              f"not that pacman cannot read the file lists of core.")
+        if os.path.exists(os.path.join(dbpath, "sync", "core.files")):
+            out_errors.append("❌ file_lists against a login page kept the page as core.files.")
+        mirror.mode = "serve"
+        problem, listed = stand_in_file_lists(workdir, mirror, dbpath)
+        if problem is not None or listed != [("probe", "usr/share/probe/one")]:
+            out_errors.append(f"❌ file_lists against a mirror, after a login page: returned {problem!r} and "
+                              f"listed {listed!r}, expected None and the list of the mirror.")
+
+
+def check_file_lists_stop_after_timeout(workdir, out_errors):
+    """No process of a run outlives its timeout, and the next run works.
+
+    When its timeout expired, subprocess.run killed just the fakeroot script:
+    faked, which fakeroot starts as a daemon in a session of its own, and
+    pacman went on running, and pacman's lock was left behind, on which every
+    later -Fy failed. Here the stand-in mirror answers nothing. While it
+    waits, fakeroot, faked and pacman have to be there, and once file_lists
+    has given up, none of them may be. The next run, against a mirror that
+    answers, has to read its list.
+    """
+    mirror_dir, dbpath = os.path.join(workdir, "stall-mirror"), os.path.join(workdir, "stall-copy")
+    write_file_list_database(os.path.join(mirror_dir, "core.files"), {"probe": ["usr/share/probe/one"]},
+                             1_700_000_000)
+    with probe_entry() as probe, StandInMirror(mirror_dir, probe) as mirror:
+        mirror.mode = "stall"
+        problem, _ = stand_in_file_lists(workdir, mirror, dbpath, STAND_IN_TIMEOUT)
+        during, after = mirror.processes[:1], process_names(probe)
+        if problem != f"pacman -Fy did not finish within {STAND_IN_TIMEOUT} s":
+            out_errors.append(f"❌ file_lists against a mirror that answers nothing returned {problem!r}.")
+        if not during or not {"fakeroot", "faked", "pacman"} <= set(during[0]):
+            out_errors.append(f"❌ file_lists against a mirror that answers nothing: while the mirror waited, "
+                              f"the run had the processes {during!r}, not fakeroot, faked and pacman.")
+        if after:
+            out_errors.append(f"❌ file_lists against a mirror that answers nothing left {after!r} running after "
+                              f"its timeout.")
+        mirror.released.set()
+        mirror.mode = "serve"
+        problem, listed = stand_in_file_lists(workdir, mirror, dbpath)
+        if problem is not None or listed != [("probe", "usr/share/probe/one")]:
+            out_errors.append(f"❌ file_lists against a mirror, after a timeout: returned {problem!r} and listed "
+                              f"{listed!r}, expected None and the list of the mirror.")
+
+
+def check_file_lists_stop_after_failure(workdir, out_errors):
+    """No process of a run outlives a failing pacman -Fy.
+
+    When pacman fails, fakeroot's trap sends faked a SIGTERM and exits
+    without waiting for faked to end. Here the stand-in mirror answers 404,
+    so pacman -Fy fails, and once file_lists has returned, nothing of the run
+    may be left.
+    """
+    mirror_dir, dbpath = os.path.join(workdir, "missing-mirror"), os.path.join(workdir, "missing-copy")
+    os.makedirs(mirror_dir)
+    with probe_entry() as probe, StandInMirror(mirror_dir, probe) as mirror:
+        mirror.mode = "missing"
+        problem, _ = stand_in_file_lists(workdir, mirror, dbpath)
+        during, after = mirror.processes[:1], process_names(probe)
+        if problem is None or not problem.startswith("pacman -Fy failed ("):
+            out_errors.append(f"❌ file_lists against a mirror that answers 404 returned {problem!r}.")
+        if not during or not {"fakeroot", "faked", "pacman"} <= set(during[0]):
+            out_errors.append(f"❌ file_lists against a mirror that answers 404: while the mirror answered, the "
+                              f"run had the processes {during!r}, not fakeroot, faked and pacman.")
+        if after:
+            out_errors.append(f"❌ file_lists against a mirror that answers 404 left {after!r} running.")
+
+
+class ReaderFailure(Exception):
+    """What the reader of the listing raises in check_file_lists_stop_after_exception."""
+
+
+def check_file_lists_stop_after_exception(workdir, out_errors):
+    """No process of a run outlives an exception in the code that reads its output.
+
+    A bug in the code that reads the listing raises while pacman -Fl is still
+    writing it, and pacman then blocks on the full pipe for as long as
+    validate-logic.py runs. Here the reader raises at the first line of a
+    listing larger than a pipe holds, while pacman is still there; once the
+    exception has left file_lists, nothing of the run may be left.
+    """
+    mirror_dir, dbpath = os.path.join(workdir, "raise-mirror"), os.path.join(workdir, "raise-copy")
+    write_file_list_database(os.path.join(mirror_dir, "core.files"),
+                             {"probe": [f"usr/share/probe/file-{i:05}" for i in range(5000)]}, 1_700_000_000)
+    with probe_entry() as probe, StandInMirror(mirror_dir, probe) as mirror:
+        during = []
+
+        def fail(line):
+            during.extend(process_names(probe))
+            raise ReaderFailure(line)
+
+        try:
+            problem = file_lists(dbpath, {"core": f"Server = {mirror.url}"}, workdir, fail)
+        except ReaderFailure:
+            pass
+        else:
+            out_errors.append(f"❌ file_lists did not pass on the exception of its reader, and returned {problem!r}.")
+        after = process_names(probe)
+        if "pacman" not in during:
+            out_errors.append(f"❌ file_lists: when its reader raised, the run had the processes {during!r}, "
+                              f"without pacman.")
+        if after:
+            out_errors.append(f"❌ file_lists left {after!r} running after its reader raised an exception.")
+
+
+def repository_matches(dbpath, repos, patterns, workdir):
+    """What each of PATTERNS matches in REPOS, and the files that localsearch installs there.
+
+    check_no_extract passes the repositories that a Ditana system installs
+    from: core, extra and multilib, and the Ditana repository where its
+    mirrorlist is installed. A single pacman -Fl lists every file of every
+    package. pacman -Fx would
+    go through all of them again for each pattern, and it compares with a
+    regular expression that ignores case. Only a path that begins with the
+    literal part of a pattern, or a file of localsearch, goes on to fnmatch.
+
+    Returns ({pattern: {package: first path it matches}}, [files of localsearch], None),
+    or (None, None, reason) where file_lists has no usable copy.
+    """
+    prefixes = tuple({os.fsencode(literal_prefix(p)) for p in patterns})
+    package_field = b"\0" + os.fsencode(LOCALSEARCH) + b"\0"
+    hits = {pattern: {} for pattern in patterns}
+    localsearch_files = []
+
+    def entry(line):
+        of_localsearch = package_field in line
+        if not of_localsearch and not line.rpartition(b"\0")[2].startswith(prefixes):
+            return
+        _, package, _, path = os.fsdecode(line.rstrip(b"\n")).split("\0")
+        if of_localsearch and not path.endswith("/"):
+            localsearch_files.append(path)
+        for pattern, packages in hits.items():
+            if package not in packages and pacman_fnmatch(pacman_glob(pattern), path):
+                packages[package] = path
+
+    problem = file_lists(dbpath, repos, workdir, entry)
+    if problem is not None:
+        return None, None, problem
+    return hits, localsearch_files, None
+
+
+def check_localsearch_entry_points(patterns, files, out_errors):
+    """Every file through which localsearch starts matches a pattern of block-localsearch.
+
+    localsearch has to stay installed: nautilus, gnome-music and gnome-photos
+    depend on it, and nautilus aborts without its GSettings schema. So only
+    the files it starts from are blocked, every file the package installs
+    below usr/lib/systemd/user/, usr/share/dbus-1/services/ and
+    etc/xdg/autostart/. Upstream has renamed them before: tracker-miner-fs-3
+    became localsearch-3 in 3.8, without an alias. A new name or a new entry
+    point would let localsearch run again without anything failing.
+    """
+    entry_points = [path for path in files if path.startswith(LOCALSEARCH_ENTRY_DIRS)]
+    if not patterns:
+        out_errors.append(f"❌ Setting '{BLOCK_LOCALSEARCH}' does not call {NO_EXTRACT}.")
+        return
+    if not entry_points:
+        out_errors.append(f"❌ {LOCALSEARCH} installs nothing below {', '.join(LOCALSEARCH_ENTRY_DIRS)} in the "
+                          f"repositories, or is gone from them: '{BLOCK_LOCALSEARCH}' needs a look.")
+        return
+    for path in entry_points:
+        if not noextract_blocks(patterns, path):
+            out_errors.append(f"❌ {LOCALSEARCH} installs {path}, which no pattern of '{BLOCK_LOCALSEARCH}' "
+                              f"blocks: localsearch can start through it.")
+
+
+def check_localsearch_spares_other_files(patterns, files, out_errors):
+    """No pattern of block-localsearch matches a file of localsearch outside the directories it starts from.
+
+    localsearch stays installed because nautilus aborts without its GSettings
+    schema, usr/share/glib-2.0/schemas/org.freedesktop.Tracker3.Miner.Files.gschema.xml.
+    A pattern that reaches beyond usr/lib/systemd/user/,
+    usr/share/dbus-1/services/ and etc/xdg/autostart/ can block it:
+    usr/share/*org.freedesktop.Tracker3.Miner* would, and the other checks
+    would pass all the same, since that pattern still covers the entry points
+    it was written for and matches files of localsearch alone. An exception
+    blocks nothing and is left out.
+    """
+    for pattern in patterns:
+        if pattern.startswith("!"):
+            continue
+        for path in files:
+            if not path.startswith(LOCALSEARCH_ENTRY_DIRS) and pacman_fnmatch(pacman_glob(pattern), path):
+                out_errors.append(f"❌ NoExtract pattern '{pattern}' of '{BLOCK_LOCALSEARCH}' matches {path} of "
+                                  f"{LOCALSEARCH}, outside the directories it starts from: it blocks more than "
+                                  f"its entry points.")
+
+
+def check_no_extract_patterns_one_package(calls, hits, out_errors):
+    """Every NoExtract pattern a setting enters matches files of exactly one package in the current repositories.
+
+    A pattern that matches nothing is dead: the file it was written for has
+    been renamed or dropped, and it blocks nothing any more. One that matches
+    files of several packages blocks something it was not meant for:
+    usr/lib/localsearch-* would also have taken localsearch-testutils apart.
+    """
+    for name, _, patterns in calls:
+        for pattern in patterns:
+            packages = hits[pattern]
+            if not packages:
+                out_errors.append(f"❌ NoExtract pattern '{pattern}' of '{name}' matches no file in the "
+                                  f"repositories: it blocks nothing.")
+            elif len(packages) > 1:
+                listing = ", ".join(f"{package} ({path})" for package, path in sorted(packages.items()))
+                out_errors.append(f"❌ NoExtract pattern '{pattern}' of '{name}' matches files of "
+                                  f"{len(packages)} packages, {listing}: it blocks more than it is meant to.")
+
+
+def check_no_extract(all_settings, out_errors):
+    calls = no_extract_calls(all_settings, out_errors)
+    check_no_extract_shipped(all_settings, calls, out_errors)
+    check_package_databases_path(out_errors)
+    with tempfile.TemporaryDirectory() as workdir:
+        check_no_extract_helper(calls, workdir, out_errors)
+        missing = [tool for tool in ("pacman", "fakeroot") if shutil.which(tool) is None]
+        if missing:
+            print(f"ℹ️  No {' and no '.join(missing)} here: skipping the checks of the private copy of the file "
+                  f"lists and of the NoExtract patterns against the repositories.")
+            return
+        check_file_lists_keep_copy(workdir, out_errors)
+        check_file_lists_unreadable(workdir, out_errors)
+        check_file_lists_stop_after_timeout(workdir, out_errors)
+        check_file_lists_stop_after_failure(workdir, out_errors)
+        check_file_lists_stop_after_exception(workdir, out_errors)
+        repos = {repo: f"Include = {ARCH_MIRRORLIST}" for repo in ("core", "extra", "multilib")}
+        if os.path.isfile(DITANA_MIRRORLIST):
+            repos["ditana"] = f"Include = {DITANA_MIRRORLIST}"
+        else:
+            print(f"ℹ️  No {DITANA_MIRRORLIST} here: comparing the NoExtract patterns with the Arch repositories only.")
+        patterns = list(dict.fromkeys(p for _, _, ps in calls for p in ps))
+        try:
+            hits, files, problem = repository_matches(package_databases_path(), repos, patterns, workdir)
+        except RuntimeError as e:
+            out_errors.append(f"❌ {e}")
+            return
+        if problem is not None:
+            print(f"ℹ️  {problem}: skipping the checks of the NoExtract patterns against the repositories.")
+            return
+        own = [p for name, _, ps in calls if name == BLOCK_LOCALSEARCH for p in ps]
+        check_localsearch_entry_points(own, files, out_errors)
+        check_localsearch_spares_other_files(own, files, out_errors)
+        check_no_extract_patterns_one_package(calls, hits, out_errors)
+
+
+print("🔍 Checking the NoExtract patterns that settings enter...")
+no_extract_errors = []
+check_no_extract(settings, no_extract_errors)
+for line in no_extract_errors:
+    print(line)
+if no_extract_errors:
     errors = True
 
 # ---------------------------------------------------------------------------
