@@ -3,11 +3,13 @@ repos:
     hooks:
       - id: kdlfmt
         name: KDL syntax validation
+        # When kdlfmt is missing, the hook skips through validate-logic.py,
+        # turning the skip into an error in CI unless DITANA_EXPECTED_SKIPS
+        # names kdlfmt.
         entry: |
           bash -c '
             if ! command -v kdlfmt >/dev/null 2>&1; then
-              echo "Info: kdlfmt is not installed. Skipping KDL validation." >&2
-              exit 0
+              exec python3 validate-logic.py --skip kdlfmt "No kdlfmt here: skipping the KDL syntax validation."
             fi
 
             failed=0

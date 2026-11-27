@@ -10,20 +10,50 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    env:
+      # In CI, every skip of a check not named here constitutes an error,
+      # and likewise, any name listed here whose check does not skip is also
+      # an error. The container lacks a systemd user manager and a German
+      # locale.
+      DITANA_EXPECTED_SKIPS: user-manager german-locale
     steps:
+      # git precedes the checkout, which would otherwise fetch the sources
+      # without .git.
+      - name: Install the tools
+        run: pacman -Syu --noconfirm git rust kdlfmt shellcheck pre-commit
+
       - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      # The workspace is owned by the runner's user and the steps run as root;
+      # git refuses to function within a repository that belongs to a different
+      # user.
+      - name: Let git work in the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install kdlfmt
-        uses: hougesen/kdlfmt@main
+      # The servers listed in the package ditana-mirrorlist, so that the
+      # NoExtract patterns are evaluated against the Ditana repository as well.
+      # Change them here as well whenever the Ditana mirrors are modified.
+      - name: Install the Ditana mirrorlist
+        run: |
+          cat > /etc/pacman.d/ditana-mirrorlist <<'EOF'
+          Server = https://ditana.org/$repo/$arch
+          Server = https://zipproth.de/ditana.org/$repo/$arch
+          EOF
+
+      # A container holds no block device in /dev. open-disks only tests
+      # the node using [[ -b ]] and passes it on, so nothing opens it.
+      - name: Create a block device node
+        run: mknod /dev/ditana-validate-block b 7 0
 
       - name: Build json-kdl-converter (for schema validation)
         run: cargo build --manifest-path json-kdl-converter/Cargo.toml --release
 
+      # --verbose shows the output from every hook, including those that pass,
+      # ensuring the log lists the skips and that DITANA_EXPECTED_SKIPS
+      # accounts for them.
       - name: Run pre-commit hooks
-        uses: pre-commit/action@v3.0.1
+        run: pre-commit run --show-diff-on-failure --color=always --all-files --verbose
 
       - name: Create archive
         run: |

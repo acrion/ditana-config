@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import contextlib
 import ctypes
 import difflib
@@ -23,6 +24,273 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 
+# ---------------------------------------------------------------------------
+# Checks that cannot run on every machine.
+#
+# A check that is missing something it needs skips with a line starting with
+# ℹ️ rather than failing, enabling the checks to execute on any machine. Each
+# skip goes through skip() under a distinct name. In CI, a skip counts as an
+# error unless DITANA_EXPECTED_SKIPS names it, ensuring that what CI verifies
+# cannot diminish without notice. An expected skip that fails to occur is also
+# an error in CI, so that the list keeps no stale entry.
+# ---------------------------------------------------------------------------
+
+EXPECTED_SKIPS = 'DITANA_EXPECTED_SKIPS'
+
+# Skips determined by another hook and communicated via
+# validate-logic.py --skip: a run of the checks cannot tell whether
+# they occurred.
+SKIPS_DECIDED_ELSEWHERE = ('kdlfmt',)
+
+# The names with which skip() was invoked during this run of the checks.
+skipped_names = set()
+
+
+def in_ci():
+    """Whether the checks run in CI: CI is set, as GitHub Actions sets it to true, and neither empty nor false nor 0.
+
+    Neither the case of the letters nor blanks around the value count.
+    """
+    return os.environ.get('CI', '').strip().lower() not in ('', 'false', '0')
+
+
+def skip(name, message, out_errors, skipped=skipped_names):
+    """Reports that a check does not run here: MESSAGE says what is missing and what is skipped, NAME names the skip.
+
+    Outside CI it prints an ℹ️ line, and the checks go on. In CI it is an
+    error, unless NAME is one of the names, separated by blanks, in
+    DITANA_EXPECTED_SKIPS. The checks of the NoExtract patterns against the
+    repositories used to skip in CI without anybody noticing: the runner had
+    no pacman and no fakeroot, and nobody reads the ℹ️ lines of a run that
+    passes. A workflow names the skips that its container cannot avoid, and
+    any other one fails the run.
+
+    Whatever it makes of the skip, NAME goes into SKIPPED, by default the
+    names of this run, which stale_expected_skips() compares with
+    DITANA_EXPECTED_SKIPS once all checks are done.
+    """
+    skipped.add(name)
+    if not in_ci():
+        print(f"ℹ️  {message} (skip {name})")
+    elif name in os.environ.get(EXPECTED_SKIPS, '').split():
+        print(f"ℹ️  {message} (skip {name}, which {EXPECTED_SKIPS} expects)")
+    else:
+        out_errors.append(f"❌ {message} In CI a skip is an error unless {EXPECTED_SKIPS} names it: {name}.")
+
+
+def skip_command(argv):
+    """validate-logic.py --skip NAME MESSAGE: skip() for a check outside this script, as an exit status.
+
+    Returns 1 where skip() makes the skip an error and 0 where it lets it
+    pass. Any other arguments end in the usage and 2, a mistyped switch and
+    an argument too many included, so that a caller who gets the call wrong
+    fails rather than passing as a skip. The skip belongs to the hook that
+    calls the command, not to a run of the checks, so it stays out of
+    skipped_names, which check_skip_command would otherwise fill in the
+    middle of a run.
+    """
+    if len(argv) != 4 or argv[1] != '--skip':
+        print("usage: validate-logic.py [--skip NAME MESSAGE]", file=sys.stderr)
+        return 2
+    found = []
+    skip(argv[2], argv[3], found, set())
+    for line in found:
+        print(line)
+    return 1 if found else 0
+
+
+def stale_expected_skips(skipped):
+    """The names in DITANA_EXPECTED_SKIPS that are neither in SKIPPED nor decided elsewhere, in CI; outside CI none.
+
+    An entry whose check no longer skips, say because the container has
+    gained a German locale, would otherwise stay in the list, and should the
+    check skip again one day, CI would let it pass without anybody noticing.
+    kdlfmt skips in a hook of its own, so a run of the checks cannot tell
+    whether it did.
+    """
+    if not in_ci():
+        return []
+    return [name for name in os.environ.get(EXPECTED_SKIPS, '').split()
+            if name not in skipped and name not in SKIPS_DECIDED_ELSEWHERE]
+
+
+@contextlib.contextmanager
+def environment(values):
+    """Sets the variables in VALUES, unsetting one whose value is None, and restores them all afterwards."""
+    saved = {name: os.environ.get(name) for name in values}
+
+    def put(assignments):
+        for name, value in assignments.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+    put(values)
+    try:
+        yield
+    finally:
+        put(saved)
+
+
+SKIP_PROBE = "No probe here: skipping the probe."
+
+
+def check_skip(out_errors):
+    """A skip is an ℹ️ line outside CI, in CI an error unless DITANA_EXPECTED_SKIPS names it, and recorded either way.
+
+    CI counts as set where the variable is set, as GitHub Actions sets it to
+    true, but not where it is empty, false or 0, whatever the case of the
+    letters and with blanks around it: FALSE and " false " are no CI either.
+    DITANA_EXPECTED_SKIPS separates the names by blanks, and only a whole
+    name counts: neither user nor systemd-user-manager covers user-manager.
+    In every case the name goes into the record that stale_expected_skips()
+    reads. Each case gives CI and DITANA_EXPECTED_SKIPS, None where the
+    variable is unset, and whether the skip is an error.
+    """
+    name = "user-manager"
+    cases = [
+        (None, None, False), ("", None, False), ("false", None, False), ("FALSE", None, False),
+        (" false ", None, False), ("0", None, False), (None, name, False),
+        ("true", None, True), ("1", None, True), ("true", "", True), ("true", "user", True),
+        ("true", f"systemd-{name}", True), ("true", f"german-locale {name}", False), ("TRUE", f"\t{name}\n", False),
+    ]
+    for ci, expected, error in cases:
+        found, recorded, stdout = [], set(), io.StringIO()
+        with environment({"CI": ci, EXPECTED_SKIPS: expected}), contextlib.redirect_stdout(stdout):
+            skip(name, SKIP_PROBE, found, recorded)
+        printed = stdout.getvalue()
+        if error:
+            ok = not printed and len(found) == 1 and found[0].startswith(f"❌ {SKIP_PROBE}") and name in found[0]
+        else:
+            ok = not found and printed.startswith(f"ℹ️  {SKIP_PROBE}") and name in printed
+        if not ok or recorded != {name}:
+            out_errors.append(f"❌ skip() with CI={ci!r} and {EXPECTED_SKIPS}={expected!r} printed {printed!r}, "
+                              f"reported {found!r} and recorded {sorted(recorded)!r}; expected "
+                              f"{'an error' if error else 'an ℹ️ line'} naming {name}, and {name} recorded.")
+
+
+def check_skip_command(out_errors):
+    """validate-logic.py --skip NAME MESSAGE exits with 1 where skip() makes the skip an error, and with 0 otherwise.
+
+    The KDL syntax validation is a hook of its own in .pre-commit-config.yaml
+    that runs before this script. Where kdlfmt is missing it skips through
+    this command, so that the rule of skip() holds for it as well. The
+    command takes exactly this form: an argument too few or too many, or a
+    mistyped switch, is a usage error with exit status 2, so that a hook
+    that gets the call wrong fails instead of passing as a skip. This check
+    calls skip_command() in this process, case by case; whether the script
+    itself ends there is the business of check_skip_command_runs_no_check.
+    """
+    cases = [
+        (None, None, ["--skip", "kdlfmt", SKIP_PROBE], 0, f"ℹ️  {SKIP_PROBE}"),
+        ("true", None, ["--skip", "kdlfmt", SKIP_PROBE], 1, f"❌ {SKIP_PROBE}"),
+        ("true", "kdlfmt", ["--skip", "kdlfmt", SKIP_PROBE], 0, f"ℹ️  {SKIP_PROBE}"),
+        (None, None, ["--skip", "kdlfmt"], 2, None),
+        (None, None, ["--skip", "kdlfmt", SKIP_PROBE, SKIP_PROBE], 2, None),
+        (None, None, ["--skp", "kdlfmt", SKIP_PROBE], 2, None),
+    ]
+    for ci, expected, args, status, start in cases:
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (environment({"CI": ci, EXPECTED_SKIPS: expected}), contextlib.redirect_stdout(stdout),
+              contextlib.redirect_stderr(stderr)):
+            got = skip_command(["validate-logic.py"] + args)
+        if start is None:
+            ok = got == status and not stdout.getvalue() and "usage:" in stderr.getvalue()
+        else:
+            ok = got == status and stdout.getvalue().startswith(start) and not stderr.getvalue()
+        if not ok:
+            out_errors.append(f"❌ validate-logic.py {shlex.join(args)} with CI={ci!r} and {EXPECTED_SKIPS}="
+                              f"{expected!r}: exit status {got}, printed {stdout.getvalue()!r} and "
+                              f"{stderr.getvalue()!r}; expected {status}.")
+
+
+SKIP_COPY = 'DITANA_VALIDATE_SKIP_COPY'
+
+
+def check_skip_command_runs_no_check(out_errors):
+    """validate-logic.py --skip NAME MESSAGE ends with skip_command(), before the first check.
+
+    check_skip_command calls skip_command() in this process, so it cannot
+    see whether the script gets there. Should the branch at the top of the
+    checks break, --skip would run all of them and end with 0 where they
+    pass, and the KDL syntax validation would pass in CI where kdlfmt is
+    missing. So this check runs the script itself, in CI with no skip
+    expected, and wants the one error line of skip_command() and exit status
+    1. A copy that got past the branch would come to this check as well, and
+    DITANA_VALIDATE_SKIP_COPY in its environment keeps it from starting a
+    copy of its own, and that one another, without end.
+    """
+    if os.environ.get(SKIP_COPY) is not None:
+        return
+    args = ["--skip", "kdlfmt", SKIP_PROBE]
+    env = {name: value for name, value in os.environ.items() if name != EXPECTED_SKIPS}
+    env.update({"CI": "true", SKIP_COPY: "1"})
+    run = subprocess.run([sys.executable, os.path.abspath(__file__)] + args, env=env, stdin=subprocess.DEVNULL,
+                         capture_output=True, text=True)
+    lines = run.stdout.splitlines()
+    if (run.returncode != 1 or len(lines) != 1 or not lines[0].startswith(f"❌ {SKIP_PROBE}")
+            or "kdlfmt" not in lines[0]):
+        out_errors.append(f"❌ validate-logic.py {shlex.join(args)} in CI with no skip expected: exit status "
+                          f"{run.returncode}, printed {lines[:3]!r} and {run.stderr.splitlines()[:3]!r}; expected "
+                          f"exit status 1 and only the error line of the skip.")
+
+
+def check_stale_expected_skips(out_errors):
+    """In CI, a name in DITANA_EXPECTED_SKIPS whose check did not skip is stale, unless another hook decides it.
+
+    A stale entry would let its skip pass in CI without notice once the
+    check skips again. kdlfmt skips in the KDL syntax validation, a hook of
+    its own, so this run cannot tell whether it did. Outside CI the list
+    means nothing, and only a whole name counts. Each case gives CI and
+    DITANA_EXPECTED_SKIPS, None where the variable is unset, the names that
+    skipped and the stale ones.
+    """
+    cases = [
+        (None, "user-manager", set(), []),
+        ("false", "user-manager", set(), []),
+        ("true", None, {"user-manager"}, []),
+        ("true", "user-manager german-locale", {"user-manager", "german-locale"}, []),
+        ("true", "user-manager german-locale", {"user-manager"}, ["german-locale"]),
+        ("true", "german-locale user-manager", set(), ["german-locale", "user-manager"]),
+        ("true", "kdlfmt user-manager", {"user-manager"}, []),
+        ("true", "user", {"user-manager"}, ["user"]),
+    ]
+    for ci, expected, skipped, stale in cases:
+        with environment({"CI": ci, EXPECTED_SKIPS: expected}):
+            got = stale_expected_skips(skipped)
+        if got != stale:
+            out_errors.append(f"❌ stale_expected_skips() with CI={ci!r}, {EXPECTED_SKIPS}={expected!r} and the "
+                              f"skips {sorted(skipped)!r} returned {got!r}; expected {stale!r}.")
+
+
+def check_skips_go_through_skip(out_errors):
+    """No code in this script but skip() prints ℹ️, the mark of a skip.
+
+    A check that printed its own skip line would go past the rule of skip():
+    in CI it would pass where DITANA_EXPECTED_SKIPS does not name it, the
+    way the checks against the repositories went missing in CI before, and
+    stale_expected_skips() would never hear of it. So the source of this
+    script is parsed, and every call of print outside skip() whose
+    arguments hold a string with ℹ️ in it is reported with its line.
+    """
+    with open(__file__, encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    inside = {id(node) for definition in ast.walk(tree)
+              if isinstance(definition, ast.FunctionDef) and definition.name == "skip"
+              for node in ast.walk(definition)}
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print"
+                and id(node) not in inside
+                and any(isinstance(part, ast.Constant) and isinstance(part.value, str) and "ℹ" in part.value
+                        for part in ast.walk(node))):
+            out_errors.append(f"❌ validate-logic.py, line {node.lineno}: a check prints ℹ️ itself instead of "
+                              f"skipping through skip().")
+
+
+if len(sys.argv) > 1:
+    sys.exit(skip_command(sys.argv))
+
 config_path = '/tmp/ditana-config.json'
 try:
     with open(config_path) as f:
@@ -33,6 +301,65 @@ except FileNotFoundError:
 
 settings = config.get('settings',[])
 errors = False
+
+print("🔍 Checking how a check skips where something is missing...")
+skip_errors = []
+check_skip(skip_errors)
+check_skip_command(skip_errors)
+check_skip_command_runs_no_check(skip_errors)
+check_stale_expected_skips(skip_errors)
+check_skips_go_through_skip(skip_errors)
+for line in skip_errors:
+    print(line)
+if skip_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# The GitHub workflows responsible for executing these checks.
+# ---------------------------------------------------------------------------
+
+WORKFLOWS = ('.github/workflows/release.yml', '.github/workflows/release-develop.yml',
+             '.github/workflows/daily-check.yml')
+DAILY_WORKFLOW = '.github/workflows/daily-check.yml'
+
+
+def check_workflows_verbose(out_errors):
+    """Every workflow runs pre-commit with --verbose, so that its log shows the skips of a run that passes.
+
+    pre-commit shows the output of a hook that passes only with --verbose.
+    Without it, nothing in the log of a passing run would show which checks
+    skipped, nor that DITANA_EXPECTED_SKIPS expects them, and so nothing
+    would show that the rule of skip() is in force at all.
+    """
+    for path in WORKFLOWS:
+        with open(path) as f:
+            calls = [line.split() for line in f if "pre-commit run" in line and not line.lstrip().startswith("#")]
+        if not calls or any(not {"--verbose", "-v"} & set(call) for call in calls):
+            out_errors.append(f"❌ {path} does not run pre-commit with --verbose, so a log of it that passes "
+                              f"would not show the skips.")
+
+
+def check_daily_workflow_by_hand(out_errors):
+    """The daily workflow can be started by hand: workflow_dispatch is one of the events under its on:.
+
+    Otherwise a change to the workflow, or a fix for what it found in the
+    repositories, could only be tried out by waiting for its next scheduled
+    run.
+    """
+    with open(DAILY_WORKFLOW) as f:
+        text = f.read()
+    if not re.search(r'^on:[ \t]*\n(?:(?:[ \t]+.*|[ \t]*)\n)*?[ \t]+workflow_dispatch:', text, re.M):
+        out_errors.append(f"❌ {DAILY_WORKFLOW} cannot be started by hand: workflow_dispatch is missing under its on:.")
+
+
+print("🔍 Checking the GitHub workflows...")
+workflow_errors = []
+check_workflows_verbose(workflow_errors)
+check_daily_workflow_by_hand(workflow_errors)
+for line in workflow_errors:
+    print(line)
+if workflow_errors:
+    errors = True
 
 def run_check(cmd, stdin_str=""):
     try:
@@ -704,7 +1031,8 @@ def check_open_disks(workdir, out_errors):
 
     device = some_block_device()
     if device is None:
-        print("ℹ️  No block device node in /dev here: skipping the block-device case of open-disks.")
+        skip("block-device", "No block device node in /dev here: skipping the block-device case of open-disks.",
+             out_errors)
     else:
         run = open_disks_run(workdir, device)
         if run["argv"] != ["gnome-disks", f"--block-device={device}"] or run["targets"]:
@@ -859,7 +1187,7 @@ with tempfile.TemporaryDirectory() as workdir:
         check_launch_leaves_process_group(workdir, os.environ, "scope", waybar_errors)
         check_launch_leaves_cgroup(workdir, waybar_errors)
     else:
-        print("ℹ️  No systemd user manager here: skipping the scope checks of launch.")
+        skip("user-manager", "No systemd user manager here: skipping the scope checks of launch.", waybar_errors)
 
     check_open_disks(workdir, waybar_errors)
     check_open_disks_reports_failures(workdir, waybar_errors)
@@ -1182,7 +1510,7 @@ def check_io_locale(workdir, out_errors):
     """
     wanted = german_locales()
     if not wanted:
-        print("ℹ️  No German locale here: skipping the locale checks of waybar-io-pressure.")
+        skip("german-locale", "No German locale here: skipping the locale checks of waybar-io-pressure.", out_errors)
         return
     root = io_root(workdir, psi_content("29.72"))
     reference = io_run(root, env={"LC_ALL": "C"})
@@ -1208,7 +1536,8 @@ def check_io_locale_arguments(workdir, out_errors):
     """
     wanted = german_locales()
     if not wanted:
-        print("ℹ️  No German locale here: skipping the locale checks of the arguments of waybar-io-pressure.")
+        skip("german-locale", "No German locale here: skipping the locale checks of the arguments of "
+             "waybar-io-pressure.", out_errors)
         return
     root = io_root(workdir, psi_content())
     for charmap, locale_name in wanted.items():
@@ -3488,7 +3817,8 @@ def check_no_extract_helper(calls, workdir, out_errors):
     """
     pacman_conf = shutil.which("pacman-conf")
     if pacman_conf is None:
-        print("ℹ️  No pacman-conf here: skipping the check that pacman reads what no-extract enters.")
+        skip("pacman-conf", "No pacman-conf here: skipping the check that pacman reads what no-extract enters.",
+             out_errors)
     own = [
         ("validate-logic.py, repeating", "Entered by validate-logic.py, mostly for the second time.",
          [patterns[0] for _, _, patterns in calls] + ["usr/share/ditana-no-extract-test/overlap*"]),
@@ -3901,7 +4231,7 @@ def check_file_lists_keep_copy(workdir, out_errors):
 
 
 def check_file_lists_unreadable(workdir, out_errors):
-    """A file list that pacman cannot read ends the checks against the repositories with a note, and is discarded.
+    """A file list that pacman cannot read ends the checks against the repositories with a skip, and is discarded.
 
     A hotel's network answers every request with its login page until one
     logs in, and with status 200. pacman -Fy keeps the page as core.files,
@@ -4135,8 +4465,8 @@ def check_no_extract(all_settings, out_errors):
         check_no_extract_helper(calls, workdir, out_errors)
         missing = [tool for tool in ("pacman", "fakeroot") if shutil.which(tool) is None]
         if missing:
-            print(f"ℹ️  No {' and no '.join(missing)} here: skipping the checks of the private copy of the file "
-                  f"lists and of the NoExtract patterns against the repositories.")
+            skip("pacman-fakeroot", f"No {' and no '.join(missing)} here: skipping the checks of the private copy of "
+                 f"the file lists and of the NoExtract patterns against the repositories.", out_errors)
             return
         check_file_lists_keep_copy(workdir, out_errors)
         check_file_lists_unreadable(workdir, out_errors)
@@ -4147,7 +4477,8 @@ def check_no_extract(all_settings, out_errors):
         if os.path.isfile(DITANA_MIRRORLIST):
             repos["ditana"] = f"Include = {DITANA_MIRRORLIST}"
         else:
-            print(f"ℹ️  No {DITANA_MIRRORLIST} here: comparing the NoExtract patterns with the Arch repositories only.")
+            skip("ditana-mirrorlist", f"No {DITANA_MIRRORLIST} here: comparing the NoExtract patterns with the Arch "
+                 f"repositories only.", out_errors)
         patterns = list(dict.fromkeys(p for _, _, ps in calls for p in ps))
         try:
             hits, files, problem = repository_matches(package_databases_path(), repos, patterns, workdir)
@@ -4155,7 +4486,8 @@ def check_no_extract(all_settings, out_errors):
             out_errors.append(f"❌ {e}")
             return
         if problem is not None:
-            print(f"ℹ️  {problem}: skipping the checks of the NoExtract patterns against the repositories.")
+            skip("file-lists", f"{problem}: skipping the checks of the NoExtract patterns against the repositories.",
+                 out_errors)
             return
         own = [p for name, _, ps in calls if name == BLOCK_LOCALSEARCH for p in ps]
         check_localsearch_entry_points(own, files, out_errors)
@@ -4188,6 +4520,12 @@ if unreferenced:
         for f in sorted(unreferenced):
             print(f"   - {f}")
         errors = True
+
+print(f"🔍 Checking that the skips {EXPECTED_SKIPS} expects took place...")
+for name in stale_expected_skips(skipped_names):
+    print(f"❌ {EXPECTED_SKIPS} expects the skip {name}, but no check skipped as {name}. In CI an expected skip "
+          f"that does not take place is an error, so that no stale entry stays in the list: remove {name} from it.")
+    errors = True
 
 if errors:
     print("❌ Validation failed!")
