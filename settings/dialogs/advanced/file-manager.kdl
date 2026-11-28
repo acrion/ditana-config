@@ -56,6 +56,7 @@
 
 - name="install-ramdisk-thunar-bookmark" \
   default-value="`install-thunar AND install-ramdisk`" {
-    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet)
-          "/usr/share/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
+    files \ // Adds a "RAM Disk" entry to the Thunar sidebar on first login (tmpfiles.d writes the bookmarks file only if it doesn't exist yet).
+          \ // It is delivered via the skeleton, for the rationale specified at install-ramdisk.
+          "/etc/skel/.config/user-tmpfiles.d/ditana-thunar-ramdisk.conf"
   }

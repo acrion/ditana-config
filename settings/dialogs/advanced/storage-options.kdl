@@ -122,6 +122,7 @@ and runtime state that normally clutter the runtime directory.
 - Backed by tmpfs — read/write at memory speed, zero disk wear
 - Private to you (mode 0700) and automatically cleared at logout
 - Exposed via the $RAMDISK environment variable and the ~/RAMDisk symlink
+- Set up for every account created from /etc/skel, yours included
 - Appears naturally in any file manager alongside Documents, Downloads, etc.
 
 Well suited for video editing scratch files, build caches, data-processing
@@ -129,8 +130,11 @@ pipelines, or anything temporary that benefits from zero-latency storage.
 """ \
   spdx-identifiers="AGPL-3.0-or-later" \
   default-value=#true {
-    files \ // Declarative tmpfiles.d rule: creates the ramdisk directory and the home symlink at user login
-          "/usr/share/user-tmpfiles.d/ditana-ramdisk.conf" \
+    files \ // Declarative tmpfiles.d rule: creates the ramdisk directory and the home symlink at user login.
+          \ // It is distributed via the skeleton, ensuring that only accounts created from it apply the rule:
+          \ // from /usr/share/user-tmpfiles.d, the user manager of every account applied it, including greetd's
+          \ // greeter, whose home is /, and each boot logged a failure to create /RAMDisk.
+          "/etc/skel/.config/user-tmpfiles.d/ditana-ramdisk.conf" \
           \ // Expose the RAMDISK variable to systemd user services and logind-started sessions
           "/etc/environment.d/90-ditana-ramdisk.conf" \
           \ // Expose the RAMDISK variable to interactive login shells (TTY, SSH)

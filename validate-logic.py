@@ -3440,6 +3440,241 @@ if niri_bind_errors:
     errors = True
 
 # ---------------------------------------------------------------------------
+# The rules for the RAM disk apply exclusively to accounts created from the
+# skeleton, and to no others.
+#
+# systemd-tmpfiles-setup.service executes within the user manager of each
+# account, including that of a system account like greetd's greeter. Thus,
+# the rules are contained in the skeleton, and only a home made from it
+# holds them. The checks apply them using the actual systemd-tmpfiles,
+# inside a stand-in root for an installed system.
+# ---------------------------------------------------------------------------
+
+RAMDISK_SETTINGS = ('install-ramdisk', 'install-ramdisk-thunar-bookmark')
+SKELETON = '/etc/skel'
+SKELETON_USER_HOME = 'home/user'
+NOBODY = 65534
+# The parameters by which systemd-tmpfiles-setup.service in a user manager
+# starts systemd-tmpfiles.
+USER_TMPFILES_SETUP = ('--user', '--create', '--remove', '--boot')
+
+
+def runtime_dir(root):
+    """The runtime directory below ROOT that logind creates for an account with the uid of this process."""
+    return os.path.join(root, "run/user", str(os.getuid()))
+
+
+def ramdisk_root(all_settings, workdir):
+    """A stand-in below WORKDIR for the root of an installed system that holds a home made from the skeleton.
+
+    The files of RAMDISK_SETTINGS lie at their targets, as the installer
+    copies them; a file missing from folders/ is left out, since the check
+    of referenced files reports it. home/user is a copy of etc/skel, as
+    useradd -m makes it, and runtime_dir() exists, as logind creates it
+    for a session. The path it returns runs through no symbolic link, for
+    the reason check_ramdisk_below_link gives.
+    """
+    root = os.path.realpath(tempfile.mkdtemp(dir=workdir))
+    for s in all_settings:
+        if s.get('name') not in RAMDISK_SETTINGS:
+            continue
+        for target in s.get('files', []):
+            if os.path.isfile(repo_path(target)):
+                path = os.path.join(root, target.lstrip("/"))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                shutil.copy(repo_path(target), path)
+    skeleton = os.path.join(root, SKELETON.lstrip("/"))
+    home = os.path.join(root, SKELETON_USER_HOME)
+    if os.path.isdir(skeleton):
+        shutil.copytree(skeleton, home)
+    else:
+        os.makedirs(home)
+    os.makedirs(runtime_dir(root), mode=0o700)
+    return root
+
+
+def user_tmpfiles_setup(tmpfiles, root, home):
+    """Runs TMPFILES as systemd-tmpfiles-setup.service does in the user manager of an account whose home is HOME.
+
+    The environment is built from scratch: HOME, XDG_RUNTIME_DIR from
+    runtime_dir(), and XDG_CONFIG_DIRS and XDG_DATA_DIRS, which put
+    ROOT/etc, ROOT/usr/local/share and ROOT/usr/share in the search path in
+    place of /etc, /usr/local/share and /usr/share. Neither the rules of the
+    machine running the checks nor the XDG_CONFIG_HOME and XDG_DATA_HOME of
+    its user get in. --root would be the direct way, but systemd-tmpfiles
+    refuses it together with --user: "Combination of --user and --root= is
+    not supported."
+    """
+    env = {
+        "PATH": os.environ.get("PATH", os.defpath),
+        "HOME": home,
+        "XDG_RUNTIME_DIR": runtime_dir(root),
+        "XDG_CONFIG_DIRS": os.path.join(root, "etc"),
+        "XDG_DATA_DIRS": os.path.join(root, "usr/local/share") + ":" + os.path.join(root, "usr/share"),
+    }
+    return subprocess.run([tmpfiles, *USER_TMPFILES_SETUP], env=env, stdin=subprocess.DEVNULL,
+                          capture_output=True, text=True)
+
+
+def tree_state(root):
+    """Every path below ROOT, with its type and mode, and with the target of a symlink or the content of a file."""
+    state = {}
+    for directory, dirs, files in os.walk(root):
+        for name in dirs + files:
+            path = os.path.join(directory, name)
+            info = os.lstat(path)
+            if stat.S_ISLNK(info.st_mode):
+                detail = os.readlink(path)
+            elif stat.S_ISREG(info.st_mode):
+                with open(path, "rb") as f:
+                    detail = f.read()
+            else:
+                detail = None
+            state[os.path.relpath(path, root)] = (stat.S_IFMT(info.st_mode), stat.S_IMODE(info.st_mode), detail)
+    return state
+
+
+def check_ramdisk_system_account(tmpfiles, all_settings, workdir, out_errors):
+    """For an account whose home is /, such as greetd's greeter, the RAM disk rules create nothing and report nothing.
+
+    From /usr/share/user-tmpfiles.d the rules ran in the user manager of
+    every account. For the greeter the link became /RAMDisk, and each boot
+    left "systemd-tmpfiles: Failed to create symlink '/RAMDisk': Permission
+    denied" in the journal as an error; the - behind the type changes the
+    exit status, not the message. The account is not created from the
+    skeleton, so the rules must not reach it at all. Here the stand-in root
+    is the home as well, as / is the greeter's, and it can be written to: a
+    rule that reached the account leaves a path behind even where its run
+    reports nothing, as when the checks run as root.
+    """
+    root = ramdisk_root(all_settings, workdir)
+    before = tree_state(root)
+    run = user_tmpfiles_setup(tmpfiles, root, root)
+    after = tree_state(root)
+    changed = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
+    label = "systemd-tmpfiles in the user manager of an account whose home is /"
+    if run.returncode != 0 or run.stdout or run.stderr:
+        out_errors.append(f"❌ {label} exited with {run.returncode} and printed {run.stdout + run.stderr!r}; "
+                          f"expected exit status 0 and no output.")
+    if changed:
+        out_errors.append(f"❌ {label} created or changed {', '.join(changed)}; expected nothing.")
+
+
+def check_ramdisk_skeleton_user(tmpfiles, all_settings, workdir, out_errors):
+    """A user whose home was made from the skeleton still gets the RAM disk, the link ~/RAMDisk to it and its bookmark.
+
+    The RAM disk is the directory ramdisk in the runtime directory, with
+    mode 0700. The bookmarks file of GTK, which Thunar shows in its side
+    pane, holds the one line "file://HOME/RAMDisk RAM Disk". Moving the
+    rules out of /usr/share/user-tmpfiles.d must not cost the user created
+    by the installer any of this, and the rules still run without a word.
+    """
+    root = ramdisk_root(all_settings, workdir)
+    home = os.path.join(root, SKELETON_USER_HOME)
+    ramdisk = os.path.join(runtime_dir(root), "ramdisk")
+    link = os.path.join(home, "RAMDisk")
+    bookmarks = os.path.join(home, ".config/gtk-3.0/bookmarks")
+    run = user_tmpfiles_setup(tmpfiles, root, home)
+    label = "systemd-tmpfiles in the user manager of a user created from the skeleton"
+    if run.returncode != 0 or run.stdout or run.stderr:
+        out_errors.append(f"❌ {label} exited with {run.returncode} and printed {run.stdout + run.stderr!r}; "
+                          f"expected exit status 0 and no output.")
+    mode = stat.S_IMODE(os.lstat(ramdisk).st_mode) if os.path.isdir(ramdisk) else None
+    if mode is None or os.path.islink(ramdisk):
+        out_errors.append(f"❌ {label} created no directory {os.path.relpath(ramdisk, root)}.")
+    elif mode != 0o700:
+        out_errors.append(f"❌ {label} created {os.path.relpath(ramdisk, root)} with mode {mode:04o}; expected 0700.")
+    target = os.readlink(link) if os.path.islink(link) else None
+    if target != ramdisk:
+        found = "as no link" if target is None else f"linking to {target}"
+        out_errors.append(f"❌ {label} left {os.path.relpath(link, root)} {found}; expected a link to {ramdisk}.")
+    expected = [f"file://{home}/RAMDisk RAM Disk"]
+    if not os.path.isfile(bookmarks):
+        out_errors.append(f"❌ {label} created no {os.path.relpath(bookmarks, root)}.")
+    else:
+        with open(bookmarks) as f:
+            lines = f.read().splitlines()
+        if lines != expected:
+            out_errors.append(f"❌ {label} wrote {lines!r} to {os.path.relpath(bookmarks, root)}; "
+                              f"expected {expected!r}.")
+
+
+def check_ramdisk_below_link(tmpfiles, all_settings, workdir, out_errors):
+    """Both checks above still pass where the path to the stand-in root runs through a symbolic link that is not root's.
+
+    TMPDIR may name such a link, say ~/tmp leading to another disk, and the
+    stand-in roots then lie below it. systemd-tmpfiles takes the step from
+    an absolute link that an account other than root owns to / for an
+    unsafe path transition and goes no further, and the - behind the type
+    of each RAM disk rule makes it do so without a word and with exit
+    status 0. The check of a user created from the skeleton then found
+    neither the RAM disk nor ~/RAMDisk nor the bookmarks and blamed the
+    rules, and the check of an account whose home is / let
+    ditana-ramdisk.conf pass even from /usr/share/user-tmpfiles.d, as it
+    could create nothing there either. So ramdisk_root() resolves the path.
+    Here WORKDIR/link leads to WORKDIR/target, and it is absolute, since a
+    relative link within one directory is a safe step. Where the checks
+    run as root, as in CI, the link is handed to nobody, since a link of
+    root's own is a safe step too, and where no other uid is mapped, as
+    for uid 0 in a user namespace of one uid, the check skips. It runs only
+    where both checks pass in WORKDIR itself, as it would otherwise just
+    repeat what they found.
+    """
+    target = os.path.join(workdir, "target")
+    link = os.path.join(workdir, "link")
+    os.mkdir(target)
+    os.symlink(os.path.abspath(target), link)
+    if os.getuid() == 0:
+        try:
+            os.lchown(link, NOBODY, -1)
+        except OSError:
+            skip("other-account", "No account but root can own a symbolic link here: skipping the RAM disk checks "
+                 "below a link that another account owns.", out_errors)
+            return
+    found = []
+    check_ramdisk_system_account(tmpfiles, all_settings, link, found)
+    check_ramdisk_skeleton_user(tmpfiles, all_settings, link, found)
+    owner = os.lstat(link).st_uid
+    out_errors.extend(f"❌ Below a symbolic link that uid {owner} owns, {line.removeprefix('❌ ')}" for line in found)
+
+
+def check_ramdisk(all_settings, out_errors):
+    """Applies the RAM disk rules of RAMDISK_SETTINGS with the real systemd-tmpfiles, and skips where it is missing.
+
+    The checks find the rules through the files of these settings. Under
+    another name a setting would ship nothing into the stand-in root, and
+    the check for an account whose home is / would pass for want of rules
+    rather than because they stay out of its reach, so a missing name is an
+    error of its own.
+    """
+    names = {s.get('name') for s in all_settings}
+    missing = [name for name in RAMDISK_SETTINGS if name not in names]
+    if missing:
+        out_errors.append(f"❌ No setting is named {' or '.join(missing)}, whose RAM disk rules these checks apply.")
+        return
+    tmpfiles = shutil.which("systemd-tmpfiles")
+    if tmpfiles is None:
+        skip("systemd-tmpfiles", "No systemd-tmpfiles here: skipping the checks of what the RAM disk rules create for "
+             "an account whose home is / and for a user created from the skeleton.", out_errors)
+        return
+    with tempfile.TemporaryDirectory() as workdir:
+        found = []
+        check_ramdisk_system_account(tmpfiles, all_settings, workdir, found)
+        check_ramdisk_skeleton_user(tmpfiles, all_settings, workdir, found)
+        if not found:
+            check_ramdisk_below_link(tmpfiles, all_settings, workdir, found)
+        out_errors.extend(found)
+
+
+print("🔍 Checking what the RAM disk rules create in the user manager of each account...")
+ramdisk_errors = []
+check_ramdisk(settings, ramdisk_errors)
+for line in ramdisk_errors:
+    print(line)
+if ramdisk_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
 # Each shell script included with Ditana must successfully pass shellcheck.
 # ---------------------------------------------------------------------------
 
