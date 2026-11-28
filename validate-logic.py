@@ -3780,6 +3780,14 @@ NO_EXTRACT = '/usr/lib/ditana/no-extract'
 BLOCK_LOCALSEARCH = 'block-localsearch'
 LOCALSEARCH = 'localsearch'
 LOCALSEARCH_ENTRY_DIRS = ('usr/lib/systemd/user/', 'usr/share/dbus-1/services/', 'etc/xdg/autostart/')
+# Each package, one of its dependencies, and the setting whose NoExtract
+# patterns rest on that dependency: install-niri installs
+# xdg-desktop-portal-gnome, which brings nautilus, and nautilus brings
+# localsearch.
+NAUTILUS_DEPENDENCIES = (
+    ("xdg-desktop-portal-gnome", "nautilus", "install-niri"),
+    ("nautilus", LOCALSEARCH, BLOCK_LOCALSEARCH),
+)
 ARCH_MIRRORLIST = '/etc/pacman.d/mirrorlist'
 DITANA_MIRRORLIST = '/etc/pacman.d/ditana-mirrorlist'
 REPO_SYNC_TIMEOUT = 600
@@ -3844,13 +3852,15 @@ NO_EXTRACT_CONFS = (
     ("a pacman.conf without #NoExtract", ARCH_PACMAN_OPTIONS.replace(ARCH_NO_EXTRACT_LINE, ""), "[options]\n"),
 )
 
-# What the local database of pacman inside the test root says each
-# installed package owns, excluding directories. The first three entries
-# detail the files they really install: the entry points of localsearch
-# and the Wayland session of xfce4-session, which must be removed, and
-# beside them the remaining files of the three, including the GSettings
-# schema of localsearch, which must be preserved. The last one belongs to
-# the calls made by the check itself.
+# What the local database of pacman within the test root says each installed
+# package owns, excluding directories. The first four entries detail the
+# files they really install: the entry points of localsearch, the Wayland
+# session of xfce4-session, and the D-Bus service of nautilus for
+# org.freedesktop.FileManager1 together with its launcher, which need to be
+# deleted, and alongside these the other files of the four, including the
+# GSettings schema of localsearch and the D-Bus service of nautilus under its
+# own name, which must be preserved. The last one belongs to the calls made
+# by the check itself.
 NO_EXTRACT_PACKAGES = {
     "localsearch-3.12.0-1": [
         "etc/xdg/autostart/localsearch-3.desktop",
@@ -3874,6 +3884,14 @@ NO_EXTRACT_PACKAGES = {
     "xfce4-session-4.20.4-1": [
         "usr/share/wayland-sessions/xfce-wayland.desktop",
         "usr/share/xsessions/xfce.desktop",
+    ],
+    "nautilus-51.2-1": [
+        "usr/bin/nautilus",
+        "usr/share/applications/nautilus-autorun-software.desktop",
+        "usr/share/applications/org.gnome.Nautilus.desktop",
+        "usr/share/dbus-1/services/org.freedesktop.FileManager1.service",
+        "usr/share/dbus-1/services/org.gnome.Nautilus.service",
+        "usr/share/glib-2.0/schemas/org.gnome.nautilus.gschema.xml",
     ],
     "ditana-no-extract-test-1-1": [
         "usr/share/ditana-no-extract-test/drop",
@@ -4207,7 +4225,7 @@ def stop_processes(entry):
     return environment_pids(entry)
 
 
-def run_contained(argv, timeout, stderr_path, on_line=None):
+def run_contained(argv, timeout, stderr_path, on_line=None, env=None):
     """Runs ARGV, hands each line of its output to ON_LINE, and returns its exit status, or None if it did not finish within TIMEOUT seconds.
 
     None of its processes outlives the call, whether ARGV ends, times out or
@@ -4217,7 +4235,10 @@ def run_contained(argv, timeout, stderr_path, on_line=None):
     timeout expired, subprocess.run killed just the script, and faked and
     pacman went on running. So every process of the run carries RUN_MARKER in
     its environment, which they all inherit, and whatever still carries it at
-    the end is stopped. The stderr of ARGV goes to STDERR_PATH.
+    the end is stopped. The stderr of ARGV goes to STDERR_PATH, or along with
+    its output to ON_LINE where STDERR_PATH is None. ARGV starts with ENV
+    where it is given, in place of the environment of this process, and
+    RUN_MARKER goes into it all the same.
 
     Raises RuntimeError if a process of the run is still there after SIGKILL.
     """
@@ -4229,9 +4250,9 @@ def run_contained(argv, timeout, stderr_path, on_line=None):
         expired.set()
         stop_processes(entry)
 
-    with open(stderr_path, "wb") as stderr:
-        proc = subprocess.Popen(argv, env=dict(os.environ, **{RUN_MARKER: marker}), stdin=subprocess.DEVNULL,
-                                stdout=subprocess.PIPE, stderr=stderr)
+    with (open(stderr_path, "wb") if stderr_path is not None else contextlib.nullcontext(subprocess.STDOUT)) as stderr:
+        proc = subprocess.Popen(argv, env=dict(os.environ if env is None else env, **{RUN_MARKER: marker}),
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=stderr)
     timer = threading.Timer(timeout, expire)
     timer.start()
     try:
@@ -4405,16 +4426,18 @@ def probe_entry():
         del os.environ[name]
 
 
-def write_file_list_database(path, packages, mtime):
+def write_file_list_database(path, packages, mtime, desc=None):
     """A database of file lists such as pacman -Fy fetches, at PATH and with the modification time MTIME.
 
     It is a tar archive compressed with gzip that holds NAME-1-1/desc and
     NAME-1-1/files for each NAME in PACKAGES, which maps it to its paths.
+    DESC maps a NAME to further fields of its desc, such as %DEPENDS%.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with tarfile.open(path, "w:gz") as tar:
         for name, paths in packages.items():
-            for member, text in (("desc", f"%NAME%\n{name}\n\n%VERSION%\n1-1\n\n"),
+            fields = (desc or {}).get(name, "")
+            for member, text in (("desc", f"%NAME%\n{name}\n\n%VERSION%\n1-1\n\n{fields}"),
                                  ("files", "%FILES%\n" + "".join(f"{p}\n" for p in paths) + "\n")):
                 data = text.encode()
                 info = tarfile.TarInfo(f"{name}-1-1/{member}")
@@ -4672,6 +4695,84 @@ def check_localsearch_spares_other_files(patterns, files, out_errors):
                                   f"its entry points.")
 
 
+def package_dependencies(dbpath, repos, names):
+    """The dependencies by name of the packages NAMES in REPOS, as the private copy of the file lists at DBPATH holds them.
+
+    The file list of a repository holds the desc of every package beside its
+    files, with %NAME% and %DEPENDS%, so the dependencies come without the
+    package databases of -Sy. A version constraint is dropped: nautilus>=40
+    counts as nautilus. A package in several repositories counts as it is in
+    the first of REPOS, the one pacman installs it from. Returns {name:
+    [dependencies]} for the packages it finds.
+    """
+    found = {}
+    for repo in repos:
+        with tarfile.open(os.path.join(dbpath, "sync", f"{repo}.files"), "r|*") as archive:
+            for member in archive:
+                directory, _, base = member.name.partition("/")
+                if base != "desc" or directory.rsplit("-", 2)[0] not in names:
+                    continue
+                fields, key = {}, None
+                for line in archive.extractfile(member).read().decode().splitlines():
+                    if re.fullmatch(r"%[A-Z0-9]+%", line):
+                        key = line
+                        fields[key] = []
+                    elif line and key is not None:
+                        fields[key].append(line)
+                    else:
+                        key = None
+                name = fields.get("%NAME%", [None])[0]
+                if name in names and name not in found:
+                    found[name] = [re.split(r"[<>=]", dep, maxsplit=1)[0] for dep in fields.get("%DEPENDS%", [])]
+    return found
+
+
+def check_package_dependencies(workdir, out_errors):
+    """package_dependencies() reads %DEPENDS% alone, drops version constraints, and takes a package from the first repository that holds it.
+
+    A desc lists %OPTDEPENDS%, %MAKEDEPENDS% and %CHECKDEPENDS% beside
+    %DEPENDS%, and a name taken from one of them would let
+    check_nautilus_dependencies pass for a package that installs without
+    it. The stand-in repositories hold a package with a version constraint
+    on one dependency and its other dependencies beside, and a package that
+    both repositories hold, with different dependencies.
+    """
+    dbpath = os.path.join(workdir, "dependencies")
+    write_file_list_database(os.path.join(dbpath, "sync", "first.files"), {"probe": [], "twice": []}, 1_700_000_000,
+                             {"probe": "%DEPENDS%\nnautilus>=40\nglib2\n\n%OPTDEPENDS%\nlocalsearch: search\n\n"
+                                       "%MAKEDEPENDS%\nmeson\n\n%CHECKDEPENDS%\npython\n\n",
+                              "twice": "%DEPENDS%\nfirst\n\n"})
+    write_file_list_database(os.path.join(dbpath, "sync", "second.files"), {"twice": [], "other": []},
+                             1_700_000_000, {"twice": "%DEPENDS%\nsecond\n\n", "other": "%DEPENDS%\nnautilus\n\n"})
+    expected = {"probe": ["nautilus", "glib2"], "twice": ["first"]}
+    got = package_dependencies(dbpath, ("first", "second"), {"probe", "twice", "missing"})
+    if got != expected:
+        out_errors.append(f"❌ package_dependencies() read {got!r} from the stand-in repositories; expected "
+                          f"{expected!r}.")
+
+
+def check_nautilus_dependencies(depends, out_errors):
+    """xdg-desktop-portal-gnome still depends on nautilus, and nautilus on localsearch, in the current repositories.
+
+    install-niri installs xdg-desktop-portal-gnome for ScreenCast and
+    Screenshot, and nautilus comes with it. That is why install-niri keeps
+    pacman from extracting the D-Bus service of nautilus for
+    org.freedesktop.FileManager1 and its launcher. nautilus in turn brings
+    localsearch, which block-localsearch keeps installed but never lets
+    run, since nautilus aborts without its GSettings schema. Should one of
+    these dependencies go, the patterns that rest on it block files of a
+    package that no longer arrives for the reason they give, and they need
+    a second look. DEPENDS is what package_dependencies() returns.
+    """
+    for package, dependency, setting in NAUTILUS_DEPENDENCIES:
+        if package not in depends:
+            out_errors.append(f"❌ {package} is not in the repositories, and the NoExtract patterns of '{setting}' rest "
+                              f"on its dependency on {dependency}: they need a second look.")
+        elif dependency not in depends[package]:
+            out_errors.append(f"❌ {package} no longer depends on {dependency} in the repositories, and the NoExtract "
+                              f"patterns of '{setting}' rest on that dependency: they need a second look.")
+
+
 def check_no_extract_patterns_one_package(calls, hits, out_errors):
     """Every NoExtract pattern a setting enters matches files of exactly one package in the current repositories.
 
@@ -4698,10 +4799,12 @@ def check_no_extract(all_settings, out_errors):
     check_package_databases_path(out_errors)
     with tempfile.TemporaryDirectory() as workdir:
         check_no_extract_helper(calls, workdir, out_errors)
+        check_package_dependencies(workdir, out_errors)
         missing = [tool for tool in ("pacman", "fakeroot") if shutil.which(tool) is None]
         if missing:
             skip("pacman-fakeroot", f"No {' and no '.join(missing)} here: skipping the checks of the private copy of "
-                 f"the file lists and of the NoExtract patterns against the repositories.", out_errors)
+                 f"the file lists, and of the NoExtract patterns and the dependencies they rest on against the "
+                 f"repositories.", out_errors)
             return
         check_file_lists_keep_copy(workdir, out_errors)
         check_file_lists_unreadable(workdir, out_errors)
@@ -4721,13 +4824,20 @@ def check_no_extract(all_settings, out_errors):
             out_errors.append(f"❌ {e}")
             return
         if problem is not None:
-            skip("file-lists", f"{problem}: skipping the checks of the NoExtract patterns against the repositories.",
-                 out_errors)
+            skip("file-lists", f"{problem}: skipping the checks of the NoExtract patterns and the dependencies they "
+                 f"rest on against the repositories.", out_errors)
             return
         own = [p for name, _, ps in calls if name == BLOCK_LOCALSEARCH for p in ps]
         check_localsearch_entry_points(own, files, out_errors)
         check_localsearch_spares_other_files(own, files, out_errors)
         check_no_extract_patterns_one_package(calls, hits, out_errors)
+        try:
+            depends = package_dependencies(package_databases_path(), repos,
+                                           {package for package, _, _ in NAUTILUS_DEPENDENCIES})
+        except (OSError, tarfile.TarError) as e:
+            out_errors.append(f"❌ The private copy of the file lists yields no dependencies: {e}")
+        else:
+            check_nautilus_dependencies(depends, out_errors)
 
 
 print("🔍 Checking the NoExtract patterns that settings enter...")
@@ -4736,6 +4846,329 @@ check_no_extract(settings, no_extract_errors)
 for line in no_extract_errors:
     print(line)
 if no_extract_errors:
+    errors = True
+
+# ---------------------------------------------------------------------------
+# Where xdg-desktop-portal routes each interface under niri, COSMIC, and XFCE.
+#
+# niri gets ScreenCast and Screenshot exclusively from
+# xdg-desktop-portal-gnome, and install-niri installs it. The
+# niri-portals.conf that Ditana ships in /etc/xdg/xdg-desktop-portal/ hands
+# FileChooser to xdg-desktop-portal-gtk, and xdg-desktop-portal reads this
+# configuration on top of niri's own file located in
+# /usr/share/xdg-desktop-portal/. The checks start the real xdg-desktop-portal
+# with the portals installed here and read where it routes each interface.
+# ---------------------------------------------------------------------------
+
+XDG_DESKTOP_PORTAL = '/usr/lib/xdg-desktop-portal'
+PORTAL_CONFIG_DIR = '/etc/xdg/xdg-desktop-portal'
+PORTAL_DATA_DIR = '/usr/share/xdg-desktop-portal'
+IMPL_PORTAL = 'org.freedesktop.impl.portal.'
+
+# The files that the checks take from the packages installed here, each one
+# associated with the package responsible for installing it. niri-git
+# installs niri-portals.conf as well.
+PORTAL_PREREQUISITES = (
+    (XDG_DESKTOP_PORTAL, 'xdg-desktop-portal'),
+    (f'{PORTAL_DATA_DIR}/portals/gnome.portal', 'xdg-desktop-portal-gnome'),
+    (f'{PORTAL_DATA_DIR}/portals/gtk.portal', 'xdg-desktop-portal-gtk'),
+    (f'{PORTAL_DATA_DIR}/portals/cosmic.portal', 'xdg-desktop-portal-cosmic'),
+    (f'{PORTAL_DATA_DIR}/niri-portals.conf', 'niri'),
+    (f'{PORTAL_DATA_DIR}/cosmic-portals.conf', 'xdg-desktop-portal-cosmic'),
+    (f'{PORTAL_DATA_DIR}/xfce-portals.conf', 'xfce4-session'),
+)
+
+# The packages installed by install-niri for screen sharing, and the
+# nautilus files that install-niri prevents pacman from extracting. The
+# routing checks take the portal packages from this machine rather than from
+# install-niri, so they would not notice if one of these were removed from
+# niri.kdl.
+NIRI_PORTAL_PACKAGES = ('xdg-desktop-portal-gnome', 'wireplumber')
+NAUTILUS_NO_EXTRACT = ('usr/share/dbus-1/services/org.freedesktop.FileManager1.service',
+                       'usr/share/applications/org.gnome.Nautilus.desktop')
+
+# Where the sessions of niri, COSMIC and XFCE, named by their
+# XDG_CURRENT_DESKTOP, must route these interfaces.
+PORTAL_ROUTES = {
+    'niri': {'ScreenCast': 'gnome', 'Screenshot': 'gnome', 'FileChooser': 'gtk'},
+    'COSMIC': {'ScreenCast': 'cosmic', 'Screenshot': 'cosmic'},
+    'XFCE': {'FileChooser': 'gtk'},
+}
+
+# The run under niri lacking Ditana's files, in addition to one for each desktop
+# listed in PORTAL_ROUTES.
+NIRI_WITHOUT_DITANA = "niri without Ditana's files"
+
+PORTAL_TIMEOUT = 30
+
+# The line through which xdg-desktop-portal -v declares it holds its bus name.
+# It has already routed every interface by that point.
+PORTAL_READY = 'org.freedesktop.portal.Desktop acquired'
+PORTAL_ROUTE_RE = re.compile(r'\b(?:Using|Choosing) ([\w.-]+)\.portal for ([\w.]+)')
+
+# A session bus capable of launching no service: it names no directory for
+# service files. The policy adheres to that of dbus's session.conf.
+PRIVATE_BUS_CONFIG = """\
+<busconfig>
+  <type>session</type>
+  <listen>unix:path={socket}</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+"""
+
+
+class PortalReady(Exception):
+    """Raised by the reader of a run of xdg-desktop-portal at PORTAL_READY, so that run_contained ends the run."""
+
+
+def portal_run_paths(run):
+    """The socket of the private bus and the runtime directory of a run of xdg-desktop-portal in the directory RUN."""
+    return os.path.join(run, "bus"), os.path.join(run, "runtime")
+
+
+def portal_routes(desktop, config_dirs, workdir):
+    """Where the real xdg-desktop-portal routes each interface under DESKTOP, as {interface: [portal, ...]}.
+
+    dbus-run-session starts it on a private bus that names no directory of
+    service files, so that no backend can start, and the system bus points
+    there as well. The environment is built from scratch, with a home and a
+    runtime directory of its own: nothing of the session that runs the
+    checks gets in, neither its bus nor its PipeWire nor its
+    ~/.config/xdg-desktop-portal. XDG_CURRENT_DESKTOP is DESKTOP,
+    XDG_CONFIG_DIRS is CONFIG_DIRS, and XDG_DATA_DIRS is /usr/share, so
+    that the files of the packages in /usr/share/xdg-desktop-portal/ count
+    as on an installed system. Unset, XDG_DATA_DIRS would add
+    /usr/local/share/xdg-desktop-portal/, and with it whatever this machine
+    keeps there. xdg-desktop-portal also reads /etc/xdg-desktop-portal/, a
+    path built into it, whatever XDG_CONFIG_DIRS says, so a portals.conf or
+    a *-portals.conf of this machine there can still change the result.
+    XDG_DESKTOP_PORTAL_DIR would name the files directly, but
+    xdg-desktop-portal then ignores every other directory and with it the
+    layering of the configuration files, so that it routes differently from
+    an installed system.
+
+    The lines "Using X.portal for Y" of -v say where each interface goes,
+    and "Choosing X.portal for Y as a last-resort fallback" where no
+    configuration names a portal for it; Settings takes several portals.
+    xdg-desktop-portal routes every interface before it acquires its bus
+    name, and the run ends at the line that says so. Neither
+    xdg-desktop-portal nor the bus ends on its own, and dbus-run-session
+    leaves both running when it is stopped itself, so run_contained stops
+    them.
+
+    Returns (routes, None, RUN), or (None, why, RUN) where xdg-desktop-portal
+    did not get that far. RUN is the directory of the run below WORKDIR.
+    """
+    run = tempfile.mkdtemp(prefix="p", dir=workdir)
+    socket_path, runtime = portal_run_paths(run)
+    bus_config = os.path.join(run, "bus.conf")
+    write_file(bus_config, PRIVATE_BUS_CONFIG.format(socket=socket_path))
+    home = os.path.join(run, "home")
+    os.mkdir(home)
+    os.mkdir(runtime, 0o700)
+    env = {
+        "PATH": os.environ.get("PATH", os.defpath),
+        "HOME": home,
+        "XDG_RUNTIME_DIR": runtime,
+        "XDG_CONFIG_DIRS": config_dirs,
+        "XDG_DATA_DIRS": os.path.dirname(PORTAL_DATA_DIR),
+        "XDG_CURRENT_DESKTOP": desktop,
+        "DBUS_SYSTEM_BUS_ADDRESS": f"unix:path={socket_path}",
+    }
+    routes, lines = {}, []
+
+    def entry(raw):
+        line = raw.decode(errors="replace").rstrip("\n")
+        lines.append(line)
+        match = PORTAL_ROUTE_RE.search(line)
+        if match:
+            portals = routes.setdefault(match[2], [])
+            if match[1] not in portals:
+                portals.append(match[1])
+        elif PORTAL_READY in line:
+            raise PortalReady
+
+    argv = ["dbus-run-session", f"--config-file={bus_config}", "--", XDG_DESKTOP_PORTAL, "-v"]
+    try:
+        status = run_contained(argv, PORTAL_TIMEOUT, None, entry, env)
+    except PortalReady:
+        return routes, None, run
+    last = lines[-1] if lines else "no output"
+    if status is None:
+        return None, f"it did not acquire its bus name within {PORTAL_TIMEOUT} s (last line: {last!r})", run
+    return None, f"it ended with exit status {status} before it acquired its bus name (last line: {last!r})", run
+
+
+def portal_list(portals):
+    """PORTALS as a message names them: 'gnome', 'cosmic, gtk', or 'no portal'."""
+    return ", ".join(portals) if portals else "no portal"
+
+
+def expect_portal_routes(desktop, routes, expected, out_errors):
+    """Reports each interface of EXPECTED, by its short name, that ROUTES does not send to the one portal given there."""
+    for interface, portal in expected.items():
+        portals = routes.get(IMPL_PORTAL + interface, [])
+        if portals != [portal]:
+            out_errors.append(f"❌ Under {desktop}, xdg-desktop-portal routes {IMPL_PORTAL}{interface} to "
+                              f"{portal_list(portals)}; expected {portal}.")
+
+
+def check_portals_niri(routes, out_errors):
+    """Under niri, ScreenCast and Screenshot go to gnome, and FileChooser goes to gtk.
+
+    niri gets ScreenCast and Screenshot from xdg-desktop-portal-gnome alone.
+    Without it, browsers for Meet, Teams or Jitsi, OBS and every other
+    program found neither portal, and sharing the screen failed. That
+    backend delegates its file chooser to nautilus, which is not the file
+    manager chosen in the installer, so Ditana's niri-portals.conf hands
+    FileChooser to xdg-desktop-portal-gtk. The file names nothing else and
+    relies on xdg-desktop-portal reading it on top of niri's own: read in
+    its place, as with XDG_DESKTOP_PORTAL_DIR, it leaves ScreenCast and
+    Screenshot with no portal at all. ROUTES maps each run to what
+    portal_routes() found.
+    """
+    expect_portal_routes('niri', routes['niri'], PORTAL_ROUTES['niri'], out_errors)
+
+
+def check_portals_niri_file_chooser_only(routes, out_errors):
+    """Under niri, Ditana's files move FileChooser alone: every other interface goes where niri's own file sends it.
+
+    niri-portals.conf names FileChooser and nothing else, since
+    xdg-desktop-portal reads it on top of niri's own file, and README.md
+    says that every other interface stays as niri sets it. The run without
+    Ditana's files is the yardstick.
+    """
+    ditana, plain = routes['niri'], routes[NIRI_WITHOUT_DITANA]
+    for interface in sorted(ditana.keys() | plain.keys()):
+        if interface != IMPL_PORTAL + 'FileChooser' and ditana.get(interface, []) != plain.get(interface, []):
+            out_errors.append(f"❌ Under niri, Ditana's files move {interface} from "
+                              f"{portal_list(plain.get(interface, []))} to {portal_list(ditana.get(interface, []))}; "
+                              f"they are to move FileChooser alone.")
+
+
+def check_portals_without_gnome(routes, out_errors):
+    """gnome.portal changes nothing under COSMIC and XFCE: ScreenCast and Screenshot go to cosmic under COSMIC, FileChooser goes to gtk under XFCE, and no interface goes to gnome under either.
+
+    install-niri installs xdg-desktop-portal-gnome for the whole system, and
+    a system may hold COSMIC and XFCE beside niri. For each interface,
+    xdg-desktop-portal takes the first portal of the list in the
+    configuration that is installed and implements it, and for Settings
+    each such portal, so a portal that gets no interface changes nothing.
+    """
+    for desktop in ('COSMIC', 'XFCE'):
+        expect_portal_routes(desktop, routes[desktop], PORTAL_ROUTES[desktop], out_errors)
+        for interface, portals in sorted(routes[desktop].items()):
+            if 'gnome' in portals:
+                out_errors.append(f"❌ Under {desktop}, xdg-desktop-portal routes {interface} to "
+                                  f"{portal_list(portals)}: gnome.portal, which comes with niri, is to change "
+                                  f"nothing there.")
+
+
+def check_portal_runs_leave_nothing(runs, out_errors):
+    """No process of a run of xdg-desktop-portal outlives it: none carries its runtime directory, and its bus takes no connection.
+
+    Neither xdg-desktop-portal nor the private bus ends on its own, and
+    dbus-run-session leaves both running when it is stopped itself. A run
+    that left them behind would add a bus and a portal to the machine of
+    whoever runs the checks, with every run. run_contained stops each
+    process that carries its marker; this check finds them by another entry
+    of their environment, and the bus by its socket. RUNS holds the
+    directories of the runs.
+    """
+    for run in runs:
+        socket_path, runtime = portal_run_paths(run)
+        pids = environment_pids(f"XDG_RUNTIME_DIR={runtime}".encode())
+        if pids:
+            out_errors.append(f"❌ Processes {pids} of a run of xdg-desktop-portal are still there after it.")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            try:
+                client.connect(socket_path)
+                connected = True
+            except OSError:
+                connected = False
+        if connected:
+            out_errors.append("❌ The private bus of a run of xdg-desktop-portal still takes connections after it.")
+
+
+def check_niri_portal_setting(all_settings, out_errors):
+    """install-niri still installs xdg-desktop-portal-gnome and wireplumber, and calls the NoExtract helper for the D-Bus service of nautilus for org.freedesktop.FileManager1 and for its launcher.
+
+    The routing checks run xdg-desktop-portal with the portal packages
+    installed on the machine, which the workflows install by hand, not with
+    those of install-niri, so they stay green when one of these leaves
+    niri.kdl. Without xdg-desktop-portal-gnome, niri has no portal for
+    ScreenCast and Screenshot, and without wireplumber, ScreenCast finds no
+    PipeWire session where install-audio is deselected. Without the call,
+    nautilus, which comes with xdg-desktop-portal-gnome, takes over "Show in
+    folder" and appears in the menus as a second file manager. The patterns
+    are those that no_extract_calls() finds; what it has to say about other
+    lines is for check_no_extract() to report. This check needs nothing of
+    the machine and never skips.
+    """
+    setting = next((s for s in all_settings if s.get('name') == 'install-niri'), {})
+    for package in NIRI_PORTAL_PACKAGES:
+        if package not in setting.get('arch-packages', []):
+            out_errors.append(f"❌ 'install-niri' no longer installs {package}, which screen sharing under niri rests "
+                              f"on; the routing checks take the portal packages from this machine and do not notice.")
+    patterns = {pattern for _, _, listed in no_extract_calls([setting], []) for pattern in listed}
+    for path in NAUTILUS_NO_EXTRACT:
+        if path not in patterns:
+            out_errors.append(f"❌ 'install-niri' no longer calls {NO_EXTRACT} for {path}, a file of nautilus, "
+                              f"which comes with xdg-desktop-portal-gnome.")
+
+
+def check_portals(out_errors):
+    """Runs xdg-desktop-portal under niri, COSMIC and XFCE, and under niri without Ditana's files, and checks where it routes each interface.
+
+    Ditana's files are copied from folders/ into a directory of their own,
+    which XDG_CONFIG_DIRS names, as the installer copies them into
+    /etc/xdg. The checks skip where dbus-run-session, a portal package or
+    one of the configuration files of niri, COSMIC and XFCE is missing.
+    """
+    missing = [f"{path} ({package})" for path, package in PORTAL_PREREQUISITES if not os.path.exists(path)]
+    if shutil.which("dbus-run-session") is None:
+        missing.insert(0, "dbus-run-session (dbus)")
+    if missing:
+        skip("portal-packages", f"No {', no '.join(missing)} here: skipping the checks of where xdg-desktop-portal "
+             f"routes each interface under niri, COSMIC and XFCE.", out_errors)
+        return
+    with tempfile.TemporaryDirectory() as workdir:
+        ditana = os.path.join(workdir, "xdg")
+        target = os.path.join(ditana, os.path.basename(PORTAL_CONFIG_DIR))
+        if os.path.isdir(repo_path(PORTAL_CONFIG_DIR)):
+            shutil.copytree(repo_path(PORTAL_CONFIG_DIR), target)
+        else:
+            os.makedirs(target)
+        runs = {desktop: (desktop, ditana) for desktop in PORTAL_ROUTES}
+        runs[NIRI_WITHOUT_DITANA] = ("niri", tempfile.mkdtemp(dir=workdir))
+        routes, directories, found = {}, [], []
+        for label, (desktop, config_dirs) in runs.items():
+            result, problem, run = portal_routes(desktop, config_dirs, workdir)
+            directories.append(run)
+            if problem is None:
+                routes[label] = result
+            else:
+                found.append(f"❌ xdg-desktop-portal under {label}: {problem}.")
+        check_portal_runs_leave_nothing(directories, found)
+        if not found:
+            check_portals_niri(routes, found)
+            check_portals_niri_file_chooser_only(routes, found)
+            check_portals_without_gnome(routes, found)
+        out_errors.extend(found)
+
+
+print("🔍 Checking where xdg-desktop-portal routes each interface under niri, COSMIC and XFCE...")
+portal_errors = []
+check_niri_portal_setting(settings, portal_errors)
+check_portals(portal_errors)
+for line in portal_errors:
+    print(line)
+if portal_errors:
     errors = True
 
 # ---------------------------------------------------------------------------

@@ -9,17 +9,44 @@
                   "xwayland-satellite" \
                   "swaybg" \
                   "monique" \
-                  "niri-settings-git"
+                  "niri-settings-git" \
+                  \ // === Screen sharing ===
+                  \ // niri gets the ScreenCast and Screenshot portals exclusively from
+                  \ // xdg-desktop-portal-gnome. Absent this, browsers (for Meet, Teams, or Jitsi),
+                  \ // OBS, and every other application locate neither portal, resulting in screen
+                  \ // sharing failing.
+                  "xdg-desktop-portal-gnome" \
+                  \ // ScreenCast requires an active PipeWire session managed by a session manager,
+                  \ // and wireplumber is otherwise available only through the install-audio option,
+                  \ // which may be excluded during installation.
+                  "wireplumber"
     login-commands "systemctl --user stop niri.service 2>/dev/null" // note that we do that for all DEs (independent from $XDG_SESSION_DESKTOP)
     files "/usr/lib/ditana/start-niri-greetd" \
           "/usr/share/ditana/wayland-sessions/niri-ditana.desktop" \
           \ // === Niri config ===
           "/etc/skel/.config/niri/config.kdl" \
           "/usr/share/slick-greeter/badges/niri.svg" \
+          \ // === Portals ===
+          \ // xdg-desktop-portal-gnome delegates its file chooser to nautilus, even though
+          \ // nautilus is not the file manager specified during installation. This file
+          \ // hands FileChooser to xdg-desktop-portal-gtk instead. xdg-desktop-portal 1.22
+          \ // reads it on top of niri's native niri-portals.conf located in
+          \ // /usr/share/xdg-desktop-portal/, thereby directing all other interfaces to
+          \ // follow niri's routing.
+          "/etc/xdg/xdg-desktop-portal/niri-portals.conf" \
           \ // === NVIDIA Niri fix ===
-          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json"
+          "/etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json" \
+          \ // === Called by the chroot-script ===
+          "/usr/lib/ditana/no-extract"
     early-chroot-script \
       \ // Patch the keyboard repeat values in the niri config.
       #"sed -i -E "s|(repeat-delay[[:space:]]+)[0-9]+|\1${KEYBOARD_DELAY}|" /etc/skel/.config/niri/config.kdl"# \
       #"sed -i -E "s|(repeat-rate[[:space:]]+)[0-9]+|\1${KEYBOARD_RATE}|" /etc/skel/.config/niri/config.kdl"#
+    chroot-script \
+      \ // nautilus arrives as a dependency of xdg-desktop-portal-gnome and is intended to
+      \ // stay out of the way. Its D-Bus service for org.freedesktop.FileManager1 would
+      \ // assume control of "Show in folder" under niri and Wayfire, replacing Thunar or
+      \ // COSMIC Files: its file sorts before Thunar's, and dbus-broker selects the first.
+      \ // Its launcher would put a second file manager into the menus.
+      #"/usr/lib/ditana/no-extract "Ditana keeps nautilus, which comes with xdg-desktop-portal-gnome for niri, out of the way: the NoExtract lines that follow keep pacman from extracting its D-Bus service for org.freedesktop.FileManager1 and its launcher. To get them back, remove this comment and those lines, then run 'pacman -S nautilus'." usr/share/dbus-1/services/org.freedesktop.FileManager1.service usr/share/applications/org.gnome.Nautilus.desktop"#
   }

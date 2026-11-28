@@ -1,8 +1,9 @@
 name: Daily check of the configuration
 
 # Runs the checks on main once daily and publishes nothing, so that a change
-# in the Arch or Ditana repositories which disrupts a NoExtract pattern
-# becomes visible even without a commit.
+# in the Arch or Ditana repositories which disrupts a NoExtract pattern, or
+# changes where xdg-desktop-portal routes an interface, becomes visible even
+# without a commit.
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -26,6 +27,17 @@ jobs:
       # without .git.
       - name: Install the tools
         run: pacman -Syu --noconfirm git rust kdlfmt shellcheck pre-commit
+
+      # The routing check starts the genuine xdg-desktop-portal using the
+      # portals and the *-portals.conf files from niri, COSMIC, and XFCE within
+      # these packages. Absent those, it would skip, and in CI a skip
+      # constitutes an error, causing the run to fail rather than pass without
+      # the check. niri comes from extra, so the check reads the
+      # niri-portals.conf from extra and not that of niri-git, which Ditana
+      # installs: a change in niri-git becomes visible only once it arrives in
+      # extra.
+      - name: Install the portal packages
+        run: pacman -S --noconfirm xdg-desktop-portal xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-desktop-portal-cosmic niri xfce4-session
 
       - uses: actions/checkout@v4
         with:
